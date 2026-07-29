@@ -409,6 +409,66 @@ LIBERTY_QUIPS = {
 
 Handing this off as narrative-design material — the actual wiring (a per-chapter FDC override, a distinct voice line for `speakFDC`, the `story`/`outro` hook) is a stage-11 implementation task, and a new named character belongs in NARRATIVE.md's roster before it belongs in code. Recommend a Sonnet pass on NARRATIVE.md to formally add LIBERTY FIRES to the character list when stage 11 is scoped, per CLAUDE.md's doc-vs-sim split.
 
+## 9. Later transcripts (08-48, 12-56, 18-05) — what they add
+
+Three more sessions landed in `Dialogue History/` since §1–2 were written, the last (18-05, 681 lines)
+long enough to reach Track E content (SALUTE reports) and several chapters not seen before (3.1, 3.4,
+3.5, 4.2, 2.3). All three are cumulative exports of the same growing session — each new file re-exports
+everything before it plus new material at the tail — so the unique content is concentrated at the end of
+the newest file, not spread evenly. This section is findings only, per the model split: parser/FDC
+correctness fixes go to ROADMAP Track F (F5–F7 below), not into this file's quip-pool scope.
+
+### 9.1 Pool repetition — confirmed a second time, independent of §2
+
+`corrSnark`'s "A bold correction. Somewhere out there a map is being held upside down..." and "That is
+one HELL of a walk, MUSTANG..." each fire twice more across these three sessions, beyond the repeat §2
+already caught from the first transcript. **14a (apply the expanded pools already written in §3) is still
+unapplied.** No new information about *what* to fix — this just confirms the fix is worth prioritizing,
+from an independent batch of play.
+
+### 9.2 SALUTE spot report (E2) reads well in the wild
+
+Two independent SALUTE deliveries (skirmish s1, ch1.3 HOLD THE LINE) — same six-line structure, distinct
+color each time ("relayed from an adjacent company with better things to do" vs. "relayed from a recon
+patrol that went home an hour ago... passed through four radios and two liars, verify it yourself"). Good
+variety, correctly never hands over a grid, and "you have been given a neighborhood, I require an
+address" is a nice bridge into the CFF prompt. No note needed beyond flagging that it shipped well —
+nothing in §1–8 covered E2 since it postdates them.
+
+### 9.3 Immediate suppression — a real player hit this wall
+
+ch3.4 EVERYONE'S MOVING transcript: the observer typed `IMMEDIATE SUPPRESSION 253535 OUT` in a genuine
+friendlies-under-fire moment and got `parsed as unknown` → "Say again, over. Slower, and in English this
+time." — the mockery reserved for gibberish, aimed at a player who used a real, doctrinal proword. This
+is concrete evidence for **ROADMAP 12g** (immediate suppression mission type, currently `BLOCKED by 13`):
+not just a documented doctrine gap, a wall a real playtester walked into. Worth a note on that row when
+it unblocks.
+
+### 9.4 Three parser/FDC bugs found by reading actual play, then confirmed in the regex
+
+These are new — spotted from transcript behavior, then confirmed against the actual regexes in
+`index.html` before being written up. They're correctness issues, not tone, so they're logged as new rows
+on **ROADMAP Track F** (F5, F6, F7) rather than folded into this file's quip-pool scope:
+
+- **STT/typo tolerance gap.** A player said "right" and "drop" correctly but voice recognition rendered
+  them as "WRITE 50" and "DROPPED 200" / "DRAW 200". The adjust/shift regexes
+  (`\b(left|right)\s+(\d+)`, `\b(add|drop)\s+(\d+)` — `index.html:3457,3459,3497,3499,3531,3533`) match
+  none of these — "WRITE 50 ADD 50" silently **dropped the deviation half of the correction** (FDC only
+  echoed "ADD 50, OUT," no error, no notice), and "DROPPED 200" alone with no other field parsed as full
+  `unknown`, costing the player over a minute of retries in one session before landing on the exact word
+  "DROP".
+- **"Danger clothes."** Twice in these transcripts, voice recognition rendered "DANGER CLOSE" as "DANGER
+  CLOTHES." The danger-close gate (`p.raw.includes('danger close')`, `index.html:3635`) is an exact
+  substring match, so the player was told *"you did not say the fucking proword"* for a proword they did
+  say — STT noise punished as a doctrine violation the player didn't commit.
+- **Readback duplicates DANGER CLOSE.** Whenever the observer includes the words "danger close" in their
+  own transmission, the FDC's readback shows it twice (`index.html:3640`, `locStr += ', DANGER CLOSE'`
+  unconditionally) — e.g. observer sends "...DANGER CLOSE, TROOPS IN THE OPEN...", FDC reads back
+  "...DANGER CLOSE, DANGER CLOSE TROOPS IN THE OPEN...". Cosmetic, but it's in the one line CLAUDE.md
+  calls sacred — the doctrinal readback — so it's worth cleaning up.
+
+See ROADMAP.md Track F rows F5–F7 for the fix specs.
+
 ---
 
-**Next step, if wanted:** dispatch a Fable subagent to apply §3's array replacements to `index.html:1487-1628` and the four `story`/`outro` edits in §4 (both include the God's-name scrub from §2a), then a manual playtest of a mission that hits `corrSnark` and `rantFrat`/`rantCiv` to confirm nothing broke pacing or `pick()`'s no-immediate-repeat logic with the larger arrays. LIBERTY FIRES (§8) is separate — it's stage-11 scoped, not a drop-in edit to the current build.
+**Next step, if wanted:** apply §3's array replacements to `SHITFIRE.html:1487-1628` and the four `story`/`outro` edits in §4 (both include the God's-name scrub from §2a), then a manual playtest of a mission that hits `corrSnark` and `rantFrat`/`rantCiv` to confirm nothing broke pacing or `pick()`'s no-immediate-repeat logic with the larger arrays. LIBERTY FIRES (§8) is separate — it's stage-11 scoped, not a drop-in edit to the current build. §9's F5–F7 are separate again — parser fixes, not dialogue text, owned by whoever takes Track F.
