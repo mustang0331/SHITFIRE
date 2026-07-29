@@ -289,6 +289,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { Sky } from 'three/addons/objects/Sky.js';   // 13c — Preetham sky, one draw call
 
 /* ============================================================ CONFIG */
 const CONFIG = {
@@ -332,7 +333,7 @@ const CONFIG = {
     exposure: 1.15,     // 13b — renderer.toneMappingExposure
     satComp: 1.0,       // 13b — palette saturation trim; see gfxPal(). 1.0 = neutral.
     // --- forward declarations: inert until the row that consumes them lands ---
-    sky: false,         // 13c — Sky.js + time of day
+    sky: true,          // 13c — Sky.js + time of day
     hillshade: false, aoStrength: 0.35,                 // 13d
     nearLOD: false, nearLODSize: 2400, nearLODSeg: 300, // 13e
     veg: false, vegBudget: 4000, vegRadius: 2600,       // 13f
@@ -553,21 +554,91 @@ if (CONFIG.GFX.toneMap) {
 }
 
 const scene = new THREE.Scene();
-// Fog is shaded, so ACES hits it; a plain Color background is the clear colour and ACES does
-// not. Pre-tone the sky on the CPU with the identical curve so the horizon has no seam.
-// (G0.3 / row 13c replaces both of these with values sampled from the time-of-day sky.)
-const SKY_ZENITH = 0xBFE0EA, FOG_HORIZON = 0xE3EADB;
-scene.background = CONFIG.GFX.toneMap
-  ? acesFilmic(SKY_ZENITH, CONFIG.GFX.exposure)
-  : new THREE.Color(SKY_ZENITH);
-scene.fog = new THREE.Fog(FOG_HORIZON, 4500, 15000);
+scene.fog = new THREE.Fog(0xE3EADB, 4500, 15000);   // colour driven by TOD, see applyTOD()
 
 const camera = new THREE.PerspectiveCamera(CONFIG.CAMERA.fov, innerWidth / innerHeight, 0.5, 22000);
 
 const sun = new THREE.DirectionalLight(0xfff4e0, 1.25);
-sun.position.set(-0.4, Math.tan(55 * Math.PI / 180), 0.55).normalize().multiplyScalar(1000);
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xbfe0ea, 0x5c6b4e, 0.55));
+const hemi = new THREE.HemisphereLight(0xbfe0ea, 0x5c6b4e, 0.55);
+scene.add(hemi);
+
+/* ---- 13c: time of day -----------------------------------------------------
+   One TOD value is the lighting authority: sun direction, sun colour and
+   intensity, hemisphere sky colour, fog colour, and the Preetham sky
+   parameters all derive from it. Nothing else should set those directly.
+
+   'day' deliberately reproduces the pre-13c sun EXACTLY (elev 64.5°, azi 324°,
+   the normalized form of the old hard-coded vector) so that landing this row
+   does not move the light out from under an already-approved render. GRAPHICS.md
+   proposes elev 55 / azi 145 for day, which is a more physically coherent arc
+   with dawn/dusk but visibly relights the island — switch `day` to those values
+   if that trade is wanted. Keep chapter assignments away from elev < 5: a very
+   low sun throws long shadows toward the observer and can hide targets. */
+const TOD_TABLE = {
+  day:      { elev: 64.5, azi: 324, sun: 0xFFF4E0, inten: 1.25, hemiSky: 0xBFE0EA,
+              fog: 0xE3EADB, turbidity: 2.2, rayleigh: 1.0,  mieC: 0.005, mieG: 0.80 },
+  dawn:     { elev: 6,    azi: 100, sun: 0xFFC08A, inten: 1.05, hemiSky: 0xE8C9A8,
+              fog: 0xE6D6C4, turbidity: 4.0, rayleigh: 2.6,  mieC: 0.008, mieG: 0.82 },
+  dusk:     { elev: 9,    azi: 250, sun: 0xFF9A5A, inten: 0.95, hemiSky: 0xD8A9A0,
+              fog: 0xE0C6BA, turbidity: 5.0, rayleigh: 2.2,  mieC: 0.007, mieG: 0.82 },
+  overcast: { elev: 40,   azi: 145, sun: 0xE8EAEC, inten: 0.55, hemiSky: 0xC9D2D6,
+              fog: 0xD5DBDD, turbidity: 10,  rayleigh: 0.6,  mieC: 0.020, mieG: 0.75 },
+};
+let TOD = 'day';
+let skyMesh = null;
+const _sunDir = new THREE.Vector3();
+
+if (CONFIG.GFX.sky) {
+  skyMesh = new Sky();
+  // Sky is a unit BackSide box with depthWrite off. Scale it to sit inside the
+  // 22000 far plane with the observer camera (always within ±5000 of origin)
+  // enclosed: half-extent 9000 -> worst-case corner ~15600 + 5000 offset = ~20600,
+  // still short of far. NOTE the AAR shot-plot camera pulls back by roughly
+  // span * 1.15 and can reach ~8500 out on a very wide shot group; if a plot ever
+  // shows a black wedge instead of sky, that camera has left the box — raise this
+  // scale and the far plane together, don't shrink the plot framing.
+  skyMesh.scale.setScalar(18000);
+  scene.add(skyMesh);
+}
+
+function todDir(t, out) {
+  const el = t.elev * Math.PI / 180, az = t.azi * Math.PI / 180;
+  return out.set(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
+}
+
+function applyTOD(name) {
+  TOD = TOD_TABLE[name] ? name : 'day';
+  const t = TOD_TABLE[TOD];
+  todDir(t, _sunDir);
+  sun.position.copy(_sunDir).multiplyScalar(1000);
+  sun.color.setHex(t.sun);
+  sun.intensity = t.inten;
+  hemi.color.setHex(t.hemiSky);
+  scene.fog.color.setHex(t.fog);
+  if (skyMesh) {
+    // Sky.js includes <tonemapping_fragment>, so the sky goes through ACES exactly
+    // as the fog does — the two stay consistent at the horizon with no CPU pre-tone.
+    // The mesh encloses the camera, so scene.background is never visible; leave it null.
+    const u = skyMesh.material.uniforms;
+    u.turbidity.value = t.turbidity;
+    u.rayleigh.value = t.rayleigh;
+    u.mieCoefficient.value = t.mieC;
+    u.mieDirectionalG.value = t.mieG;
+    u.sunPosition.value.copy(_sunDir);   // expects a direction, not a world position
+    scene.background = null;
+  } else {
+    // No sky mesh: fall back to 13b's flat background, pre-toned on the CPU so it
+    // still agrees with the tone-mapped fog instead of opening a horizon seam.
+    scene.background = CONFIG.GFX.toneMap
+      ? acesFilmic(t.hemiSky, CONFIG.GFX.exposure)
+      : new THREE.Color(t.hemiSky);
+  }
+  // 13d bakes sun direction into terrain vertex colours; when it lands, a TOD change
+  // must trigger a terrain rebuild. Inert until then.
+  if (CONFIG.GFX.hillshade && typeof buildTerrain === 'function') buildTerrain();
+}
+applyTOD('day');
 
 // Ocean
 let oceanShallows = null;
@@ -4097,10 +4168,19 @@ function newMission(first, type, chapter) {
         log('', 'Deploying to a new island — new map sheets are in the library [P].', 'sys');
       }
     }
+    // 13c: chapter TOD overrides volume TOD, both default to day. Only the light and
+    // sky change — nothing here touches ballistics, LOS, or the map sheets.
+    const wantTOD = chapter.tod || (vol && vol.tod) || 'day';
+    if (wantTOD !== TOD) {
+      applyTOD(wantTOD);
+      if (wantTOD !== 'day') log('', `Light: ${TOD.toUpperCase()}.`, 'sys');
+    }
   } else {
     if (!first) CONFIG.SEED.mission++;
     if (type) currentType = type;
     else if (!first) currentType = SCN_TYPES[Math.floor(Math.random() * SCN_TYPES.length)];
+    // 13c: Skirmish is always full daylight, so a chapter's dusk can't leak into it.
+    if (TOD !== 'day') applyTOD('day');
   }
   Scenario = genScenario(currentType, CONFIG.SEED.mission);
   scenarioT0 = sim.now;
