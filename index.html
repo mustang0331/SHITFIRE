@@ -2575,10 +2575,15 @@ function handleAdjust(p) {
     return;
   }
   if (state !== 'ADJUSTING') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
-  // strict net: corrections come rounded — deviation in tens, range in fifties
+  // strict net: corrections come rounded — deviation in tens, range in hundreds.
+  // 50 m is legal ONLY on the correction that enters fire for effect (DOCTRINE.md,
+  // "Corrections"), so the range modulus is gated on p.ffe rather than always 50.
   if (activeChapter && activeChapter.strict && p.any &&
-      (Math.abs(p.corr.right) % 10 || Math.abs(p.corr.add) % 50)) {
-    FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: deviation in TENS, range in FIFTIES or hundreds. Recompute and say again, over.', { delay: 1 });
+      (Math.abs(p.corr.right) % 10 || Math.abs(p.corr.add) % (p.ffe ? 50 : 100))) {
+    FDC.say(p.ffe
+      ? 'MUSTANG 12, HELLHOUND — STRICT NET: deviation in TENS, range in FIFTIES entering fire for effect. Recompute and say again, over.'
+      : 'MUSTANG 12, HELLHOUND — STRICT NET: deviation in TENS, range in HUNDREDS. Fifties are for the correction that takes us into fire for effect, not this one. Recompute and say again, over.',
+      { delay: 1 });
     return;
   }
   // dangerous deviation gate: a correction that walks the aimpoint onto
@@ -2629,8 +2634,9 @@ function handleAdjust(p) {
   }
   if (p.ffe) parts.push('FIRE FOR EFFECT');
   FDC.say(parts.join(', ') + ', OUT.', { delay: 1 });
-  // stupid-but-safe: un-doctrinal rounding gets a snide remark, then we fire
-  if (p.any && (Math.abs(p.corr.right) % 10 || Math.abs(p.corr.add) % 50) && Math.random() < 0.55)
+  // stupid-but-safe: un-doctrinal rounding gets a snide remark, then we fire.
+  // Same doctrinal rule as the strict gate above — 50 m only entering fire for effect.
+  if (p.any && (Math.abs(p.corr.right) % 10 || Math.abs(p.corr.add) % (p.ffe ? 50 : 100)) && Math.random() < 0.55)
     FDC.say(pick(QUIPS.snideRound), { delay: 1.3 });
   else if (Math.abs(p.corr.right) + Math.abs(p.corr.add) > 150 && Math.random() < 0.5)
     FDC.say(pick(QUIPS.corrSnark), { delay: 1 });
@@ -4017,7 +4023,7 @@ function newMission(first, type, chapter) {
     if (chapter.method)
       log('', `Chapter requirement: locate the target by ${chapter.method === 'polar' ? 'POLAR (direction + distance)' : 'SHIFT FROM A KNOWN POINT'} — a grid call caps this chapter at 2★.`, 'sys');
     if (chapter.strict)
-      log('', 'STRICT NET: full format enforced — callsigns, warning order, location, description, OVER; corrections rounded (tens/fifties); surveillance term at end of mission.', 'sys');
+      log('', 'STRICT NET: full format enforced — callsigns, warning order, location, description, OVER; corrections rounded (deviation in tens, range in hundreds — fifties only entering fire for effect); surveillance term at end of mission.', 'sys');
     if (chapter.asset === 'mortar60')
       log('', 'ASSET: 60mm mortar section — 8-digit grids (10 m precision) required. Tighter dispersion, tighter target.', 'sys');
     if (chapter.par)
