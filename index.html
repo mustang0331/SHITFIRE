@@ -127,7 +127,7 @@
   <div id="maptitle"><span>TACTICAL MAP</span><span>1 SQUARE = 1 KM</span></div>
   <canvas id="mapcv" width="560" height="560"></canvas>
   <div id="maplegend">&#9650; OP &middot; &#9632; FRIENDLY STRONGPOINT &middot; &#9679; FIRING BATTERY (155MM)<br>
-  Enemy positions are not plotted — locating them is your job. [M] or [ESC] to close.</div>
+  &#10005; KNOWN POINT (shift missions) &middot; Enemy positions are not plotted — locating them is your job. [M] or [ESC] to close.</div>
 </div></div>
 
 <div id="aar"><div id="aarbox" class="panel"></div></div>
@@ -157,8 +157,10 @@ const CONFIG = {
     passMaxAdjustRounds: 4, targetRange: [1500, 3200], enemyOffset: [150, 250],
   },
   FDC: { obs: 'MUSTANG 12', fdc: 'HELLHOUND FIRES', readbackDelay: 1.3, shotDelay: 4.0 },
-  VOICE: { lang: 'en-US', rate: 1.05, pitch: 0.8, volume: 1.0, ttsEnabled: true,
-           preferredVoices: ['david', 'mark', 'guy', 'male', 'en-us', 'english'] },
+  VOICE: { lang: 'en-US', ttsLang: 'en-IN', rate: 1.05, pitch: 0.8, volume: 1.0,
+           ttsEnabled: true,
+           preferredVoices: ['ravi', 'heera', 'en-in', 'india',
+                             'david', 'mark', 'guy', 'male', 'en-us', 'english'] },
   UI: { laseHold: 6 },
 };
 const DIFFICULTY = 'normal';
@@ -416,6 +418,14 @@ const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [],
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), mat);
     scene.add(m); units.smokePuffs.push({ m, off: i * 2.5, bx: 0, by: 0, bz: 0 });
   }
+  // known-point marker posts
+  units.kpPosts = [];
+  const postMat = new THREE.MeshLambertMaterial({ color: 0xE8E4D8, flatShading: true });
+  for (let i = 0; i < 2; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.8, 0.5), postMat);
+    m.visible = false;
+    scene.add(m); units.kpPosts.push(m);
+  }
 }
 let enemyAlive = true;
 
@@ -445,8 +455,23 @@ function genScenario(seed) {
     compound = { x: OP.x + Math.sin(az) * range, z: OP.z - Math.cos(az) * range };
     enemy = { x: compound.x + 200, z: compound.z };
   }
+  // registration / known points for shift missions
+  const kps = [];
+  for (let k = 0; k < 2; k++) {
+    for (let tries = 0; tries < 200; tries++) {
+      const az = rng() * Math.PI * 2;
+      const range = 900 + rng() * 2100;
+      const x = OP.x + Math.sin(az) * range, z = OP.z - Math.cos(az) * range;
+      if (H(x, z) < 3) continue;
+      if (!hasLOS(eye.x, eye.y, eye.z, x, H(x, z) + 2, z)) continue;
+      if (kps.length && dist2(kps[0].x, kps[0].z, x, z) < 800) continue;
+      if (dist2(x, z, enemy.x, enemy.z) < 400) continue;
+      kps.push({ id: String(1001 + k), x, z });
+      break;
+    }
+  }
   return { seed, type: 'position-under-attack', difficulty: DIFFICULTY,
-           compound, enemy, rng };
+           compound, enemy, kps, rng };
 }
 
 function placeUnits() {
@@ -475,6 +500,11 @@ function placeUnits() {
   units.flag.pole.position.set(fx, fh + 3.5, fz);
   units.flag.banner.position.set(fx + 1.2, fh + 6.3, fz);
   units.smokePuffs.forEach(p => { p.bx = c.x - 6; p.by = H(c.x - 6, c.z + 3); p.bz = c.z + 3; });
+  units.kpPosts.forEach((m, i) => {
+    const kp = Scenario.kps[i];
+    m.visible = !!kp;
+    if (kp) m.position.set(kp.x, H(kp.x, kp.z) + 1.4, kp.z);
+  });
   enemyAlive = true;
 }
 
@@ -541,7 +571,7 @@ function speakFDC(msg) {
   // Read numbers digit-by-digit, radio style: "GRID 245 523" -> "2 4 5, 5 2 3"
   const spoken = msg.replace(/\d+/g, m => m.split('').join(' '));
   const u = new SpeechSynthesisUtterance(spoken);
-  u.lang = CONFIG.VOICE.lang;
+  u.lang = CONFIG.VOICE.ttsLang;
   u.rate = CONFIG.VOICE.rate;
   u.pitch = CONFIG.VOICE.pitch;
   u.volume = CONFIG.VOICE.volume;
@@ -981,6 +1011,25 @@ function parseMessage(raw) {
     for (let i = di; i < toks.length && !stop.has(toks[i]); i++) descToks.push(toks[i]);
     return { type: 'cff', method: 'grid', warno, digits, desc: descToks.join(' '), raw: t, toks };
   }
+  // shift from known point: "shift known point 1001, right 200, add 400"
+  const mShift = t.match(/\b(?:from|shift)\s+(?:known point\s+|kp\s+|a\s?b\s+)?(\d{4})\b/);
+  if (mShift) {
+    const warno = ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none');
+    let sRight = 0, sAdd = 0;
+    const sLR = t.match(/\b(left|right)\s+(\d+)/);
+    if (sLR) sRight = (sLR[1] === 'right' ? 1 : -1) * parseInt(sLR[2]);
+    const sAD = t.match(/\b(add|drop)\s+(\d+)/);
+    if (sAD) sAdd = (sAD[1] === 'add' ? 1 : -1) * parseInt(sAD[2]);
+    const sDir = t.match(/\bdirection\s+(\d+)\b/);
+    const kw = new Set(['hellhound', 'fires', 'this', 'is', 'mustang', 'adjust',
+      'fire', 'for', 'effect', 'shift', 'from', 'known', 'point', 'kp', 'a', 'b',
+      'ab', 'left', 'right', 'add', 'drop', 'direction', 'over', 'out', 'break',
+      'danger', 'close']);
+    const desc = toks.filter(w => !kw.has(w) && !/^\d+$/.test(w)).join(' ');
+    return { type: 'cff', method: 'shift', warno, kpId: mShift[1],
+             sRight, sAdd, dirMils: sDir ? parseInt(sDir[1]) : null,
+             desc, raw: t, toks };
+  }
   // polar: "direction 4400, distance 2100"
   const mDir = t.match(/\bdirection\s+(\d+)\b/);
   const mDist = t.match(/\bdistance\s+(\d+)\b/);
@@ -1027,9 +1076,26 @@ function handleCFF(p) {
     FDC.say('MUSTANG 12, we are mid-mission. Adjust, fire for effect, or send end of mission, over.', { delay: 1 });
     return;
   }
-  // target location -> world point, either method
+  // target location -> world point, any method
   let cx, cz, locStr;
-  if (p.method === 'polar') {
+  if (p.method === 'shift') {
+    const kp = (Scenario.kps || []).find(k => k.id === p.kpId);
+    if (!kp) {
+      FDC.say(`NEGATIVE. There is no known point ${p.kpId} registered on this net. Say again, over.`, { delay: 1 });
+      return;
+    }
+    const az = p.dirMils !== null
+      ? (p.dirMils % 6400) / MILS_PER_RAD
+      : azTo(OP.x, OP.z, kp.x, kp.z);
+    const fx = Math.sin(az), fz = -Math.cos(az);
+    const rx = Math.cos(az), rz = Math.sin(az);
+    cx = kp.x + fx * p.sAdd + rx * p.sRight;
+    cz = kp.z + fz * p.sAdd + rz * p.sRight;
+    locStr = `SHIFT KNOWN POINT ${p.kpId}` +
+      (p.dirMils !== null ? `, DIRECTION ${fmtMils(p.dirMils % 6400)}` : '') +
+      (p.sRight ? `, ${p.sRight > 0 ? 'RIGHT' : 'LEFT'} ${Math.abs(p.sRight)}` : '') +
+      (p.sAdd ? `, ${p.sAdd > 0 ? 'ADD' : 'DROP'} ${Math.abs(p.sAdd)}` : '');
+  } else if (p.method === 'polar') {
     if (p.distM < 100 || p.distM > 12000) {
       FDC.say(pick(QUIPS.badGrid), { delay: 1 });
       return;
@@ -1255,6 +1321,17 @@ function drawMap() {
   ctx.arc(wpx(BATTERY.x), wpz(BATTERY.z), 2, 0, Math.PI * 2);
   ctx.fill();
   mapMarkerLabel(ctx, 'BTRY 155', wpx(BATTERY.x) + 9, wpz(BATTERY.z) + 4);
+  // known points
+  for (const kp of (Scenario.kps || [])) {
+    const kx = wpx(kp.x), kz = wpz(kp.z);
+    ctx.strokeStyle = '#10150c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(kx - 5, kz - 5); ctx.lineTo(kx + 5, kz + 5);
+    ctx.moveTo(kx - 5, kz + 5); ctx.lineTo(kx + 5, kz - 5);
+    ctx.stroke();
+    mapMarkerLabel(ctx, 'AB' + kp.id, kx + 8, kz + 4);
+  }
   // OP
   const ox = wpx(OP.x), oz = wpz(OP.z);
   ctx.fillStyle = '#10150c';
@@ -1302,6 +1379,10 @@ function newMission(first) {
     `Friendly strongpoint bearing ~${fmtMils(brgRounded)} mils. ` +
     `Use [B] binos and [L] laser to fix the enemy grid ([M] for the map), then send your call for fire — grid or polar (direction/distance). ` +
     `Hold [SPACE] to transmit by voice, or type below.`, 'sys');
+  if (Scenario.kps && Scenario.kps.length)
+    log('', 'Known points registered: ' + Scenario.kps.map(kp =>
+      `AB${kp.id} grid ${gridOf(kp.x, kp.z)} (brg ${fmtMils(radToMils(azTo(OP.x, OP.z, kp.x, kp.z)))})`).join(' · ') +
+      '. Shift example: "adjust fire, shift known point 1001, right 200, add 400, over".', 'sys');
   FDC.say(pick(QUIPS.greet), { delay: 1.5 });
   if (first) {
     yaw = azTo(OP.x, OP.z, c.x, c.z);
