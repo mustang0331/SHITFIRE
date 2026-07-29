@@ -325,7 +325,79 @@ const CONFIG = {
     convoyStopDur: [60, 180],          // pit-stop length range (s)
     hutCollateralR: 24, civCollateralR: 28,
   },
+  // Visual overhaul (SPEC stage 13 / GRAPHICS.md). Every row hangs off one flag here so the
+  // whole plan can be A/B'd or reverted without touching code.
+  GFX: {
+    toneMap: true,      // 13b — ACES filmic tone mapping
+    exposure: 1.15,     // 13b — renderer.toneMappingExposure
+    satComp: 1.0,       // 13b — palette saturation trim; see gfxPal(). 1.0 = neutral.
+    // --- forward declarations: inert until the row that consumes them lands ---
+    sky: false,         // 13c — Sky.js + time of day
+    hillshade: false, aoStrength: 0.35,                 // 13d
+    nearLOD: false, nearLODSize: 2400, nearLODSeg: 300, // 13e
+    veg: false, vegBudget: 4000, vegRadius: 2600,       // 13f
+    water: false,       // 13g
+    craters: 0,         // 13h
+    bloom: false,       // 11d — SUNLAMP only
+  },
 };
+
+/* --- 13b: ACES filmic, evaluated on the CPU -------------------------------
+   three applies ACESFilmicToneMapping in the fragment shader, so anything the
+   shader touches (lit materials, fog) gets tone mapped — but scene.background,
+   when it is a plain Color, is written as the clear colour and bypasses the
+   shader entirely. Enabling ACES without accounting for that opens a visible
+   seam where the tone-mapped fog meets the untouched sky.
+
+   This is three's exact r160 pipeline (ACESInputMat -> RRTAndODTFit ->
+   ACESOutputMat, with the same exposure/0.6 scale), so a colour pushed through
+   here lands where the shader would have put it. Used to pre-tone the
+   background so sky and fog still agree at the horizon. */
+function acesFit(v) {
+  const a = v * (v + 0.0245786) - 0.000090537;
+  const b = v * (0.983729 * v + 0.4329510) + 0.238081;
+  return a / b;
+}
+function acesFilmic(hex, exposure) {
+  const c = new THREE.Color(hex);
+  const s = exposure / 0.6;
+  let r = c.r * s, g = c.g * s, bl = c.b * s;
+  // ACESInputMat
+  let x = 0.59719 * r + 0.35458 * g + 0.04823 * bl;
+  let y = 0.07600 * r + 0.90834 * g + 0.01566 * bl;
+  let z = 0.02840 * r + 0.13383 * g + 0.83777 * bl;
+  x = acesFit(x); y = acesFit(y); z = acesFit(z);
+  // ACESOutputMat
+  r  =  1.60475 * x - 0.53108 * y - 0.07367 * z;
+  g  = -0.10208 * x + 1.10813 * y - 0.00605 * z;
+  bl = -0.00327 * x - 0.07276 * y + 1.07602 * z;
+  return c.setRGB(Math.min(1, Math.max(0, r)), Math.min(1, Math.max(0, g)), Math.min(1, Math.max(0, bl)));
+}
+
+/* Palette saturation trim, one knob for the whole island.
+
+   GRAPHICS.md G0.2 says ACES "desaturates midtones ~10%" and that the jungle
+   greens will need a saturation bump to compensate. Measured against this
+   palette at exposure 1.15, that is not what happens — ACES *raises* saturation
+   on almost all of it, because these are dark-to-mid colours and the RRT fit
+   expands saturation below the highlight rolloff:
+
+       jungle A 0x4E7A3D  +13.0%      sand  0xD8C89A  -26.7%
+       jungle B 0x3B5E2E  +22.3%      rock  0x5A544E  +31.9%
+       ocean    0x1E5A7A  +14.3%
+
+   Only sand — the brightest colour, the one actually in the rolloff — loses
+   any. So a >1.0 compensation would push four of five further the wrong way.
+   satComp therefore defaults to 1.0 (neutral) and this stays a tuning knob
+   rather than a correction: if the island reads oversaturated under ACES, trim
+   BELOW 1.0. Turn satComp, not the hex values. */
+function gfxPal(hex) {
+  const c = new THREE.Color(hex);
+  if (!CONFIG.GFX.toneMap || CONFIG.GFX.satComp === 1) return c;
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  return c.setHSL(hsl.h, Math.min(1, hsl.s * CONFIG.GFX.satComp), hsl.l);
+}
 let DIFFICULTY = 'normal';
 let currentType = 'strongpoint';
 const SCN_META = {
@@ -471,10 +543,24 @@ const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight);
+// 13b. r160 already defaults ColorManagement.enabled = true and outputColorSpace =
+// SRGBColorSpace, and every colour in this file is authored as sRGB hex, so the existing
+// palette is already being converted correctly. Do not "fix" the colour space — the palette
+// was tuned under these defaults and changing it would shift every colour, map sheets included.
+if (CONFIG.GFX.toneMap) {
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = CONFIG.GFX.exposure;
+}
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xBFE0EA);
-scene.fog = new THREE.Fog(0xE3EADB, 4500, 15000);
+// Fog is shaded, so ACES hits it; a plain Color background is the clear colour and ACES does
+// not. Pre-tone the sky on the CPU with the identical curve so the horizon has no seam.
+// (G0.3 / row 13c replaces both of these with values sampled from the time-of-day sky.)
+const SKY_ZENITH = 0xBFE0EA, FOG_HORIZON = 0xE3EADB;
+scene.background = CONFIG.GFX.toneMap
+  ? acesFilmic(SKY_ZENITH, CONFIG.GFX.exposure)
+  : new THREE.Color(SKY_ZENITH);
+scene.fog = new THREE.Fog(FOG_HORIZON, 4500, 15000);
 
 const camera = new THREE.PerspectiveCamera(CONFIG.CAMERA.fov, innerWidth / innerHeight, 0.5, 22000);
 
@@ -488,12 +574,12 @@ let oceanShallows = null;
 {
   const ocean = new THREE.Mesh(
     new THREE.PlaneGeometry(44000, 44000).rotateX(-Math.PI / 2),
-    new THREE.MeshLambertMaterial({ color: 0x1E5A7A }));
+    new THREE.MeshLambertMaterial({ color: gfxPal(0x1E5A7A) }));
   ocean.position.y = 0;
   scene.add(ocean);
   oceanShallows = new THREE.Mesh(
     new THREE.CircleGeometry(CONFIG.TERRAIN.islandRadius + 900, 48).rotateX(-Math.PI / 2),
-    new THREE.MeshLambertMaterial({ color: 0x2E7DA0 }));
+    new THREE.MeshLambertMaterial({ color: gfxPal(0x2E7DA0) }));
   oceanShallows.position.y = 0.15;
   scene.add(oceanShallows);
 }
@@ -506,9 +592,10 @@ function buildTerrain() {
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
   const blk = TERRAIN_PALETTE === 'black';
-  const cSandLo = new THREE.Color(blk ? 0x3A3733 : 0xC7B383), cSand = new THREE.Color(blk ? 0x4A4640 : 0xD8C89A);
-  const cJunA = new THREE.Color(blk ? 0x3E5A34 : 0x4E7A3D), cJunB = new THREE.Color(blk ? 0x2E4526 : 0x3B5E2E);
-  const cRokA = new THREE.Color(blk ? 0x403C38 : 0x5A544E), cRokB = new THREE.Color(blk ? 0x524D46 : 0x6E665C);
+  // 13b: palette runs through gfxPal so ACES's midtone desaturation is pre-compensated.
+  const cSandLo = gfxPal(blk ? 0x3A3733 : 0xC7B383), cSand = gfxPal(blk ? 0x4A4640 : 0xD8C89A);
+  const cJunA = gfxPal(blk ? 0x3E5A34 : 0x4E7A3D), cJunB = gfxPal(blk ? 0x2E4526 : 0x3B5E2E);
+  const cRokA = gfxPal(blk ? 0x403C38 : 0x5A544E), cRokB = gfxPal(blk ? 0x524D46 : 0x6E665C);
   const tmp = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
