@@ -193,6 +193,12 @@
   <div class="mrow" id="mtypes"></div>
   <div class="mlabel">DIFFICULTY</div>
   <div class="mrow" id="mdiffs"></div>
+  <div class="mlabel">TERRAIN</div>
+  <div class="mrow">
+    <button class="mbtn" id="mdem">LOAD DEM HEIGHTMAP&hellip;</button>
+    <button class="mbtn" id="mdemreset">PROCEDURAL ISLAND</button>
+    <input type="file" id="demfile" accept="image/*" style="display:none">
+  </div>
   <div id="mbest"></div>
   <div class="foot">[K] / [ESC] close &middot; [N] random mission</div>
 </div></div>
@@ -227,6 +233,7 @@ const CONFIG = {
     meshSegments: 300, islandRadius: 3900, radiusWobble: 800,
     ridgeHeight: 95, massifHeight: 165, massifRadius: 950,
     massifX: -520, massifZ: -360, oceanFloor: -30,
+    demRes: 512, demMaxElev: 240, demSeaLum: 10,
   },
   CAMERA: { fov: 60, binoFov: 9, eyeHeight: 2.2, mouseSens: 0.0022, pitchClamp: 1.35 },
   BALLISTICS: {
@@ -297,7 +304,25 @@ const smoothstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); retu
 
 /* ============================================================ TERRAIN  H(x,z) */
 // World coords: x = east, z = south (north is -z). Island centered on origin.
+// H dispatches to a loaded DEM when present, else the procedural island —
+// everything downstream (mesh, lase, LOS, impacts, map sheets) only sees H.
+let DEM = null;
 function H(x, z) {
+  return DEM ? demSample(x, z) : H_proc(x, z);
+}
+function demSample(x, z) {
+  const n = DEM.n, d = DEM.data;
+  const u = (x + 5000) / 10000, v = (z + 5000) / 10000;
+  if (u < 0 || u > 1 || v < 0 || v > 1) return CONFIG.TERRAIN.oceanFloor;
+  const fx = u * (n - 1), fz = v * (n - 1);
+  const i0 = Math.floor(fx), j0 = Math.floor(fz);
+  const i1 = Math.min(i0 + 1, n - 1), j1 = Math.min(j0 + 1, n - 1);
+  const tx = fx - i0, tz = fz - j0;
+  const a = d[j0 * n + i0], b = d[j0 * n + i1];
+  const c = d[j1 * n + i0], e = d[j1 * n + i1];
+  return a + (b - a) * tx + (c - a) * tz + (a - b - c + e) * tx * tz;
+}
+function H_proc(x, z) {
   const T = CONFIG.TERRAIN, s = CONFIG.SEED.terrain;
   const r = Math.hypot(x, z);
   const th = Math.atan2(z, x);
@@ -385,17 +410,18 @@ scene.add(sun);
 scene.add(new THREE.HemisphereLight(0xbfe0ea, 0x5c6b4e, 0.55));
 
 // Ocean
+let oceanShallows = null;
 {
   const ocean = new THREE.Mesh(
     new THREE.PlaneGeometry(44000, 44000).rotateX(-Math.PI / 2),
     new THREE.MeshLambertMaterial({ color: 0x1E5A7A }));
   ocean.position.y = 0;
   scene.add(ocean);
-  const shallows = new THREE.Mesh(
+  oceanShallows = new THREE.Mesh(
     new THREE.CircleGeometry(CONFIG.TERRAIN.islandRadius + 900, 48).rotateX(-Math.PI / 2),
     new THREE.MeshLambertMaterial({ color: 0x2E7DA0 }));
-  shallows.position.y = 0.15;
-  scene.add(shallows);
+  oceanShallows.position.y = 0.15;
+  scene.add(oceanShallows);
 }
 
 // Terrain mesh (single low-poly sheet; LOD rings come in a later stage)
@@ -422,11 +448,70 @@ function buildTerrain() {
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
-  const mesh = new THREE.Mesh(geo,
+  if (terrainMesh) {
+    scene.remove(terrainMesh);
+    terrainMesh.geometry.dispose();
+    terrainMesh.material.dispose();
+  }
+  terrainMesh = new THREE.Mesh(geo,
     new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
-  scene.add(mesh);
+  scene.add(terrainMesh);
 }
+let terrainMesh = null;
 buildTerrain();
+
+/* ============================================================ DEM INGESTION */
+// Drop any grayscale heightmap image (real-island DEM export, e.g. Iwo Jima)
+// onto the window, or load it from the mission menu. Luminance -> elevation,
+// border faded into ocean so every DEM reads as an island ringed by water.
+function rebuildWorld() {
+  buildTerrain();
+  buildMinimap();
+  placeOP();
+  placeBattery();
+  oceanShallows.visible = !DEM;
+  newMission(false);
+}
+function loadDEMFile(file) {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const n = CONFIG.TERRAIN.demRes;
+    const cv = document.createElement('canvas');
+    cv.width = n; cv.height = n;
+    const c2 = cv.getContext('2d');
+    c2.drawImage(img, 0, 0, n, n);
+    const px = c2.getImageData(0, 0, n, n).data;
+    const data = new Float32Array(n * n);
+    const T = CONFIG.TERRAIN, sea = T.demSeaLum;
+    for (let i = 0; i < n * n; i++) {
+      const lum = 0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2];
+      data[i] = lum <= sea
+        ? lerp(T.oceanFloor, 0, lum / sea)
+        : (lum - sea) / (255 - sea) * T.demMaxElev;
+    }
+    for (let j = 0; j < n; j++)
+      for (let i = 0; i < n; i++) {
+        const dEdge = Math.min(i, j, n - 1 - i, n - 1 - j) / n * 10000;
+        const m = smoothstep(0, 350, dEdge);
+        data[j * n + i] = data[j * n + i] * m + T.oceanFloor * (1 - m);
+      }
+    DEM = { data, n, name: file.name.replace(/\.[^.]+$/, '') };
+    rebuildWorld();
+    log('', `DEM loaded: ${file.name} (${img.width}×${img.height} → ${n}×${n}, max elev ${T.demMaxElev} m). World rebuilt — new mission on the new island.`, 'sys');
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    log('', 'Could not read that file as an image heightmap (use a grayscale PNG/JPG).', 'sys');
+  };
+  img.src = url;
+}
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) loadDEMFile(e.dataTransfer.files[0]);
+});
 
 /* ============================================================ OP */
 function findOP() {
@@ -443,9 +528,15 @@ function findOP() {
     }
   return best;
 }
-const OP = findOP();
-const eye = { x: OP.x, y: OP.h + CONFIG.CAMERA.eyeHeight, z: OP.z };
-camera.position.set(eye.x, eye.y, eye.z);
+const OP = { x: 0, z: 0, h: 0 };
+const eye = { x: 0, y: 0, z: 0 };
+function placeOP() {
+  const b = findOP();
+  OP.x = b.x; OP.z = b.z; OP.h = b.h;
+  eye.x = OP.x; eye.y = OP.h + CONFIG.CAMERA.eyeHeight; eye.z = OP.z;
+  camera.position.set(eye.x, eye.y, eye.z);
+}
+placeOP();
 
 /* ============================================================ FIRING BATTERY */
 // Fixed emplacement on flat low ground behind the OP. Cosmetic + map marker +
@@ -464,23 +555,31 @@ function findBattery() {
     }
   return best || { x: OP.x + 800, z: OP.z + 800 };
 }
-const BATTERY = findBattery();
+const BATTERY = { x: 0, z: 0 };
+const batteryMeshes = [];
 {
   const gunMat = new THREE.MeshLambertMaterial({ color: 0x3E4A34, flatShading: true });
   const gunGeo = new THREE.BoxGeometry(1.6, 1.4, 5.8);
   for (let i = 0; i < 2; i++) {
-    const x = BATTERY.x + i * 16 - 8, z = BATTERY.z + i * 7;
     const m = new THREE.Mesh(gunGeo, gunMat);
-    m.position.set(x, H(x, z) + 0.8, z);
     m.rotation.y = 0.5 + i * 0.15;
     scene.add(m);
+    batteryMeshes.push({ m, ox: i * 16 - 8, oz: i * 7, oy: 0.8 });
   }
   const tent = new THREE.Mesh(new THREE.BoxGeometry(6, 2.6, 4.5),
     new THREE.MeshLambertMaterial({ color: 0x6B6A52, flatShading: true }));
-  const tx = BATTERY.x - 14, tz = BATTERY.z + 10;
-  tent.position.set(tx, H(tx, tz) + 1.3, tz);
   scene.add(tent);
+  batteryMeshes.push({ m: tent, ox: -14, oz: 10, oy: 1.3 });
 }
+function placeBattery() {
+  const b = findBattery();
+  BATTERY.x = b.x; BATTERY.z = b.z;
+  for (const e of batteryMeshes) {
+    const x = BATTERY.x + e.ox, z = BATTERY.z + e.oz;
+    e.m.position.set(x, H(x, z) + e.oy, z);
+  }
+}
+placeBattery();
 
 /* ============================================================ UNITS (friendly compound + enemy) */
 const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [], flag: null };
@@ -1192,6 +1291,29 @@ function drawReticle() {
       ctx.fillText(String(Math.abs(m)), cx + 26, py + 4);
     }
   }
+  // fine 1-mil ticks near center
+  ctx.lineWidth = 1;
+  for (let m = -10; m <= 10; m++) {
+    if (m % 5 === 0) continue;
+    const px = cx + m * pxPerMil, py = cy + m * pxPerMil;
+    ctx.beginPath();
+    ctx.moveTo(px, cy - 2.5); ctx.lineTo(px, cy + 2.5);
+    ctx.moveTo(cx - 2.5, py); ctx.lineTo(cx + 2.5, py);
+    ctx.stroke();
+  }
+  // stadia: bar width = a 2 m man at 500 / 1000 / 2000 m (4 / 2 / 1 mils)
+  ctx.lineWidth = 1.6;
+  ctx.textAlign = 'left';
+  const stX = cx - 38 * pxPerMil, stY = cy + 24 * pxPerMil;
+  [['500', 4], ['1000', 2], ['2000', 1]].forEach((s, i) => {
+    const y = stY + i * 14;
+    ctx.beginPath();
+    ctx.moveTo(stX, y); ctx.lineTo(stX + s[1] * pxPerMil, y);
+    ctx.stroke();
+    ctx.fillText(s[0] + ' M', stX + 5 * pxPerMil + 4, y + 4);
+  });
+  ctx.font = '10px Consolas, monospace';
+  ctx.fillText('2M TGT', stX, stY - 12);
   // center dot
   ctx.beginPath(); ctx.arc(cx, cy, 1.6, 0, Math.PI * 2); ctx.fill();
 }
@@ -1759,7 +1881,7 @@ function showAAR() {
 const mapEl = document.getElementById('map');
 const mapCv = document.getElementById('mapcv');
 const miniCv = document.createElement('canvas');
-(function buildMinimap() {
+function buildMinimap() {
   const N = 280;
   miniCv.width = N; miniCv.height = N;
   const ctx = miniCv.getContext('2d');
@@ -1786,7 +1908,8 @@ const miniCv = document.createElement('canvas');
     }
   }
   ctx.putImageData(img, 0, 0);
-})();
+}
+buildMinimap();
 function mapMarkerLabel(ctx, text, x, y) {
   ctx.font = 'bold 11px Consolas, monospace';
   ctx.textAlign = 'left';
@@ -2064,7 +2187,8 @@ function renderSheet() {
   ctx.fillStyle = '#000';
   ctx.textAlign = 'center';
   ctx.font = 'bold 24px Consolas, monospace';
-  ctx.fillText('SHITFIRE — PROCEDURAL ISLAND TRAINING SHEET', W / 2, 46);
+  const islandName = DEM ? DEM.name.toUpperCase() : 'PROCEDURAL ISLAND';
+  ctx.fillText(`SHITFIRE — ${islandName} TRAINING SHEET`, W / 2, 46);
   ctx.font = '13px Consolas, monospace';
   ctx.fillText(`${def.name}  ·  SCALE 1:${def.scale.toLocaleString('en-US')}  ·  GRID 1000 M  ·  CONTOUR INTERVAL 10 M (INDEX 50 M)`, W / 2, 72);
   if (answer)
@@ -2195,6 +2319,19 @@ function toggleMenu(force) {
   }
   menuEl.classList.toggle('on', on);
 }
+document.getElementById('mdem').addEventListener('click',
+  () => document.getElementById('demfile').click());
+document.getElementById('demfile').addEventListener('change', e => {
+  if (e.target.files[0]) loadDEMFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('mdemreset').addEventListener('click', () => {
+  if (DEM) {
+    DEM = null;
+    rebuildWorld();
+    log('', 'Procedural island restored.', 'sys');
+  }
+});
 
 /* ============================================================ NEW MISSION */
 function newMission(first, type) {
@@ -2411,6 +2548,12 @@ canvas.addEventListener('touchend', () => { lastTouch = null; });
 /* ============================================================ MAIN LOOP */
 const headingEl = document.getElementById('heading');
 const binoHdgEl = document.getElementById('binohdg');
+// adaptive quality: frame-time EMA steps pixel ratio down before anything else
+const QUALITY = { tiers: [1.75, 1.4, 1.1, 0.85], tier: 0, ema: 0.016, lastChange: 0 };
+function applyQuality(t) {
+  QUALITY.lastChange = t;
+  renderer.setPixelRatio(Math.min(devicePixelRatio, QUALITY.tiers[QUALITY.tier]));
+}
 let lastFrame = 0, lastHdg = -1;
 function animate(tMs) {
   requestAnimationFrame(animate);
@@ -2420,6 +2563,14 @@ function animate(tMs) {
   sim.now = t;
   runEvents();
   pollGamepad(dt);
+  QUALITY.ema = QUALITY.ema * 0.94 + dt * 0.06;
+  if (t - QUALITY.lastChange > 2.5) {
+    if (QUALITY.ema > 0.024 && QUALITY.tier < QUALITY.tiers.length - 1) {
+      QUALITY.tier++; applyQuality(t);
+    } else if (QUALITY.ema < 0.013 && QUALITY.tier > 0) {
+      QUALITY.tier--; applyQuality(t);
+    }
+  }
   // idle coaching: nudge once if the net has gone quiet mid-mission
   if (!stateHinted) {
     const idle = sim.now - stateSince;
