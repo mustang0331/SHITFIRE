@@ -4,7 +4,11 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-29 · Baseline commit: `a847731`
+Last updated: 2026-07-29 · Baseline commit: `a74cee7` (AAR shot plot legibility pass)
+
+> ⚠ **A Fable agent committed to `index.html` at 03:36 while this board was being written**
+> (`a74cee7`). Confirm no agent still holds the file before dispatching row 13a. This is rule 1
+> below, and it is the second time in this project it has come up.
 
 ---
 
@@ -162,3 +166,4 @@ between any two graphics rows on request. It still serializes — rule 1 has no 
 | Date | Change |
 |---|---|
 | 2026-07-29 | Board created. Order set: stage 13 → stage 12 remainder → stage 11. Backlog moved out of README.md (duplicate IDs #27/#28 retired). Time-of-day assigned to 13c, removed from stage 12. G8 bloom reassigned to stage 11 as 11d. |
+| 2026-07-29 | Baseline moved `a847731` → `a74cee7`: an off-board Fable commit (AAR shot plot auto-fit + legibility) landed mid-session. Not attached to any stage — the AAR shot plot is an extra shipped alongside spec, like the OP watchtower and TLOG. Logged here so the board matches history. |
