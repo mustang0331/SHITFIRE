@@ -2316,7 +2316,19 @@ function parseMessage(raw) {
   if (!toks.length) return { type: 'empty' };
   if (t.includes('say again')) return { type: 'sayagain' };
   if (t.includes('end of mission')) {
-    return { type: 'eom', bda: t.replace(/.*end of mission/, '').replace(/\bover\b\s*$/, '').trim() };
+    // RREMS: refinement and "record as target" may ride with end of mission
+    const ref = { right: 0, add: 0, any: false };
+    const rLR = t.match(/\b(left|right)\s+(\d+)/);
+    if (rLR) { ref.right = (rLR[1] === 'right' ? 1 : -1) * parseInt(rLR[2]); ref.any = true; }
+    const rAD = t.match(/\b(add|drop)\s+(\d+)/);
+    if (rAD) { ref.add = (rAD[1] === 'add' ? 1 : -1) * parseInt(rAD[2]); ref.any = true; }
+    // surveillance text only — strip the refinement and record prowords
+    const bda = t.replace(/.*end of mission/, '')
+                 .replace(/\b(left|right|add|drop|up|down)\s+\d+/g, '')
+                 .replace(/record as target/g, '')
+                 .replace(/\bover\b\s*$/, '')
+                 .replace(/\s{2,}/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
+    return { type: 'eom', refine: ref, record: /record as target/.test(t), bda };
   }
   const ffe = t.includes('fire for effect');
   // grid extraction
@@ -2373,6 +2385,11 @@ function parseMessage(raw) {
     return { type: 'cff', method: 'polar', warno, dirMils: parseInt(mDir[1]),
              distM: parseInt(mDist[1]), desc: descToks.join(' '), raw: t, toks };
   }
+  // standalone OT direction ("direction 5920, over") — doctrine requires it
+  // before or with the first correction on a grid mission
+  const mDirOnly = t.match(/\bdirection\s+(\d+)\b/);
+  if (mDirOnly && !/\b(left|right|add|drop)\b/.test(t))
+    return { type: 'direction', dirMils: parseInt(mDirOnly[1]) };
   const corr = { right: 0, add: 0 };
   let any = false;
   const mLR = t.match(/\b(left|right)\s+(\d+)/);
@@ -2511,11 +2528,37 @@ function handleCFF(p) {
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr, method: p.method });
 }
 
+// OT direction: doctrine requires it before or with the first correction on
+// a grid mission, so the FDC can orient the observer's left/right.
+function handleDirection(p) {
+  if (!mission || mission.done) {
+    FDC.say(pick(QUIPS.noMission), { delay: 1 });
+    return;
+  }
+  mission.otDirSent = true;
+  const trueAz = radToMils(azTo(OP.x, OP.z, mission.aim.x, mission.aim.z));
+  let err = Math.abs(((p.dirMils - trueAz + 3200) % 6400) - 3200);
+  FDC.say(`DIRECTION ${fmtMils(p.dirMils % 6400)}, OUT.`, { delay: 1 });
+  if (err > 200 && coachOn())
+    FDC.say(`MUSTANG, that direction is off your own line of sight by roughly ${Math.round(err)} mils. Your left and right corrections are computed against it — check your compass, over.`, { delay: 1.4 });
+}
+
 function handleAdjust(p) {
   if (!mission || mission.done) {
     FDC.say(pick(QUIPS.noMission), { delay: 1 });
     sysHint();
     return;
+  }
+  // doctrine: OT direction accompanies or precedes the first correction on a
+  // grid mission — strict net enforces it, forgiving mode coaches it once
+  if (p.any && !mission.otDirSent && mission.method === 'grid' && !mission.dirNagged) {
+    mission.dirNagged = true;
+    if (activeChapter && activeChapter.strict) {
+      FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: I have no OT direction for this mission. Send DIRECTION before your correction so I know which way your left is, over.', { delay: 1.1 });
+      return;
+    }
+    if (coachOn())
+      FDC.say('Copy your correction — but be advised, MUSTANG, you never sent OT DIRECTION. On a grid mission it goes before or with the first correction. Sending it anyway, out.', { delay: 1.5 });
   }
   if (state === 'EOM?') {
     FDC.say('MUSTANG 12, rounds are complete. Send end of mission, over.', { delay: 1 });
@@ -2595,6 +2638,20 @@ function handleEOM(p) {
     return;
   }
   if (!mission.done) { mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now; }
+  // RREMS: refinement moves the recorded mean point of impact onto the
+  // adjusting point; "record as target" files it for future use
+  if (p.refine && p.refine.any) {
+    applyCorrection({ right: p.refine.right, add: p.refine.add });
+    mission.refined = true;
+    FDC.say(`REFINEMENT ${p.refine.right ? (p.refine.right > 0 ? 'RIGHT ' : 'LEFT ') + Math.abs(p.refine.right) : ''}` +
+            `${p.refine.add ? (p.refine.right ? ', ' : '') + (p.refine.add > 0 ? 'ADD ' : 'DROP ') + Math.abs(p.refine.add) : ''}, OUT.`,
+            { delay: 1.0 });
+  }
+  if (p.record) {
+    mission.recorded = true;
+    const tn = 'AB' + (7100 + (CONFIG.SEED.mission % 800));
+    FDC.say(`RECORDED AS TARGET ${tn}, OUT.`, { delay: 1.0 });
+  }
   FDC.say(`END OF MISSION${p.bda ? ', ' + p.bda.toUpperCase() : ''}, OUT.`, { delay: 1.2 });
   if (mission.failReason !== 'fratricide' && mission.failReason !== 'collateral') {
     const good = Scenario.type === 'convoy'
@@ -2609,9 +2666,12 @@ function handleEOM(p) {
 function expectedHint() {
   switch (state) {
     case 'ADJUSTING':
-      return 'Send an OT-line correction, e.g. "right 50, add 100, over" — or "fire for effect, over" once rounds are on target.';
+      return (mission && !mission.otDirSent && mission.method === 'grid'
+        ? 'Send OT DIRECTION first ("direction 5920, over") — then an OT-line correction, '
+        : 'Send an OT-line correction, ') +
+        'e.g. "right 50, add 100, over" — or "fire for effect, over" once rounds are on target. [R] in binos for the mil-relation card.';
     case 'EOM?':
-      return 'Send "end of mission, target neutralized, over" with your assessment.';
+      return 'Close with RREMS: "end of mission, target neutralized, over" — you may add a refinement ("left 10, drop 50") and "record as target" first.';
     case 'SHOT': case 'MISSION SENT': case 'FIRE FOR EFFECT':
       return 'Rounds are in progress — wait for SPLASH, observe the burst, then correct.';
     default:
@@ -2643,6 +2703,7 @@ function onPlayerMessage(raw) {
       if (FDC.lastMsg) FDC.say(`I SAY AGAIN: ${FDC.lastMsg}`, { delay: 1 });
       break;
     case 'cff': handleCFF(p); break;
+    case 'direction': handleDirection(p); break;
     case 'adjust': handleAdjust(p); break;
     case 'repeat':
       if (mission && !mission.done && state === 'ADJUSTING') {
@@ -2751,6 +2812,8 @@ function showAAR() {
     if (m.notes.length === 0) medals.push('ACTUALLY READ THE MANUAL — clean call format, no coaching');
     if (dur <= parC * 0.6) medals.push('FAST MOVER — done in well under par');
     if (activeChapter && activeChapter.strict) medals.push('IRON NET — passed under strict doctrine');
+    if (m.refined || m.recorded) medals.push('BY THE BOOK — closed the mission with refinement / record as target (RREMS)');
+    if (m.otDirSent) medals.push('ORIENTED — OT direction passed to the FDC');
     if (activeChapter && activeChapter.asset === 'mortar60') medals.push('TEN-METER MAN — precision work with the sixty');
   }
   TLOG.add('aar', '', verdict, { rounds: m.adjustRounds, dur: Math.round(dur),
