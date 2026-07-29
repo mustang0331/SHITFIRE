@@ -59,6 +59,8 @@ Coral ridges and defilade — an island that hides things. Polar and shift-from-
 | 2.3 | **Defilade Blues** | Crest-masked target — burst heard, not seen; adjust off the map and sound. *Implemented (stage 10): crest-masked from the OP, no LOS, fought off the map.* |
 | 2.4 | **The Perimeter** | Position under attack, harder: pick the right location method under pressure. |
 
+*A future chapter teaching mil-relation range estimation and the OT-factor correction workflow (see SPEC.md's COACHING & TRAINING FIDELITY) would belong here, alongside the volume's other measurement-off-the-reticle skills.*
+
 ## VOLUME III — THUNDER RUN *(dynamic fires · danger close · friendlies everywhere)*
 
 The big push. Everything on the island is moving, and half of it is friendly.

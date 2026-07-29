@@ -26,7 +26,7 @@ Open `index.html` in **Chrome or Edge (desktop)**. That's it. Voice needs mic pe
 
 ## Current state
 
-Build stages 1–10 of [SPEC.md](SPEC.md) are complete: core typed loop, voice layer, all three location methods (grid / polar / shift-from-known-point), FDC personality + radio audio, the five scenario templates with difficulties and danger close, the printable map library, real-DEM ingestion with adaptive quality and mobile/gamepad controls, world detail & population (structures, roads, villages, convoy pit stops, FDC rant/snide deviation policy), the campaign skeleton (volumes/chapters/stars, bookshelf menu, Skirmish mode), and the narrative layer (Foreword tutorial with GUNNY BOTTLECAP, skippable chapter briefings + narrative AAR outros, per-volume islands, Volume IV strict-net + 60mm mortars, named known points, AAR commendations, career-counter continuity quips). Two extras shipped alongside spec: an OP watchtower and a TLOG session transcript (see above). **Stage 11 (Epilogue)** is next — see the backlog below.
+Build stages 1–10 of [SPEC.md](SPEC.md) are complete: core typed loop, voice layer, all three location methods (grid / polar / shift-from-known-point), FDC personality + radio audio, the five scenario templates with difficulties and danger close, the printable map library, real-DEM ingestion with adaptive quality and mobile/gamepad controls, world detail & population (structures, roads, villages, convoy pit stops, FDC rant/snide deviation policy), the campaign skeleton (volumes/chapters/stars, bookshelf menu, Skirmish mode), and the narrative layer (Foreword tutorial with GUNNY BOTTLECAP, skippable chapter briefings + narrative AAR outros, per-volume islands, Volume IV strict-net + 60mm mortars, named known points, AAR commendations, career-counter continuity quips). Two extras shipped alongside spec: an OP watchtower and a TLOG session transcript (see above). **Stage 11 (Epilogue)** is next, followed by **stage 12**, which addresses training-fidelity gaps a session-transcript review found — the sim grades outcomes but doesn't yet teach target location or adjustment doctrine — see the backlog below.
 
 ## Scope: surface-to-surface only (for now)
 
@@ -85,6 +85,19 @@ Everything below is drawn from the existing spec, code, and project files. Items
 22. **Printable campaign log** — a training-record sheet (chapters, stars, dates) rendered through the same print pipeline as the map library.
 23. **Night/dawn chapters** — cheap palette + fog changes for atmosphere; pairs with illumination if #21 lands.
 24. **Multi-phase Meat Grinder chaining** — 4.4 THE MEAT GRINDER currently ships as a single hard mission (strict + hard + assault/danger close) rather than a chained grid → polar → shift → danger-close → moving-element sequence. Revisit as a true multi-phase mission once the single-mission version has been played and balanced.
+25. **Suppress / immediate suppression mission types** — DOCTRINE.md documents both (planned target by number + duration; friendlies-under-fire single-transmission call) as CFF mission types, but the parser currently only recognizes "adjust fire" and "fire for effect." Add parser + FDC handling, or move them to DOCTRINE.md's "what the sim deliberately ignores" list if they're staying out of scope.
+26. **In-sim FO cheat sheet** — [CHEATSHEET.md](CHEATSHEET.md) is written and ready; wire it up as an in-sim pull-up reference card (suggested key `[H]`, toggled like the map/library overlays) so a player can glance at CFF format/rounding/prowords mid-mission without alt-tabbing out.
+
+**FO skill depth (planned — stage 12)**
+
+A review of a real player session transcript (chapter 1.2 KNOCK KNOCK, Normal) found the sim grades outcomes but doesn't teach the two core FO skills: the player's corrections crept the miss down ~25%/round for seven rounds instead of bracketing toward doctrine's ~50%/round, three rounds in a row accomplished nothing, and the FDC snarked seven times without ever coaching. These seven items close that gap:
+27. **In-mission adjustment coaching** — detect timid corrections (correction far smaller than the observed miss), failure to bracket (every round on the same side of the OT line), and stagnant rounds (miss barely changes) from data already recorded per round; have the FDC deliver live doctrinal nudges on Easy/Normal (off on Hard), plus an AAR round-by-round miss trace, a correction-efficiency figure, and a plain-language diagnosis.
+28. **Target location under-support** — add mil-relation range estimation (known object size ÷ mils subtended = range) as a laser alternative, a degraded-optics/dead-laser drill that forces its use, and report the AAR's initial-location error as a vector (direction + distance) instead of a bare scalar so systematic bias is visible.
+29. **Mil reticle ↔ correction workflow** — wire the reticle to an OT-factor workflow (OT distance ÷ 1000 = meters per mil; measure burst deviation in mils, multiply, send that as the correction); Easy mode's spotting hint should surface the measured mils, not the finished correction, so it doesn't short-circuit the skill.
+30. **Consequence for slow fire** — targets currently wait through an unbounded engagement; have them scatter or displace after repeated near misses, giving the ≤4-adjusting-round standard a cost beyond star loss.
+31. **Doctrinal flow gaps vs DOCTRINE.md** — OT direction is never required before/with the first correction on grid missions outside strict mode; RREMS refinement is absent at end of mission; there's no "at my command" fire control, no immediate suppression mission type, and no smoke or illumination missions.
+32. **Assessment fidelity** — `gradeMission()` doesn't yet measure time-to-initiate (JFO standard: CFF within 2 minutes of target ID) or correction efficiency (each correction should roughly halve the miss).
+33. **Static environment** — permanent noon, no wind (so no smoke drift to read), no night/illumination conditions, no visibility variation; all observation is currently easier than it should be.
 
 ## Files
 
@@ -94,6 +107,7 @@ Everything below is drawn from the existing spec, code, and project files. Items
 | [SPEC.md](SPEC.md) | Full build spec + BUILD ORDER (the authority) |
 | [NARRATIVE.md](NARRATIVE.md) | Campaign storyline: volumes, chapters, characters, humor rules |
 | [DOCTRINE.md](DOCTRINE.md) | CFF formats, prowords, protocols — distilled from JFIRE 2019 + the JFO Student Handout |
+| [CHEATSHEET.md](CHEATSHEET.md) | Condensed FO pull-up reference card — planned in-sim overlay (backlog #26) |
 | [TLO.md](TLO.md) | Terminal/Enabling Learning Objectives and star-grading crosswalk for the campaign |
 | [CLAUDE.md](CLAUDE.md) | Project rules for the coding agent |
 | [QUICKSTART.md](QUICKSTART.md) | Stage-by-stage build workflow |
