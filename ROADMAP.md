@@ -4,11 +4,20 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-29 · Baseline commit: `a74cee7` (AAR shot plot legibility pass)
+Last updated: 2026-07-29 · Baseline commit: `e7ccfdb` (fix F1)
 
-> ⚠ **A Fable agent committed to `index.html` at 03:36 while this board was being written**
-> (`a74cee7`). Confirm no agent still holds the file before dispatching row 13a. This is rule 1
-> below, and it is the second time in this project it has come up.
+**Shipped so far off this board:** `13a` bino quality pin · `F1` range-rounding doctrine fix.
+**Next row: `13b`.**
+
+> ⚠ **Concurrency is live in this repo, not hypothetical.** A Fable agent committed to `index.html`
+> at 03:36 while this board was being drafted (`a74cee7`), and BALLISTICS_RESEARCH.md plus new TLOG
+> transcripts appeared at ~08:48 during the 13a/F1 work. **Confirm no agent holds `index.html`
+> before dispatching any row** — rule 1 below. This has now come up three times.
+
+> ⚠ **Rows 13b onward need a human in Chrome.** 13b is a tone-mapping + palette rebalance and 13c–13i
+> are visual; their gates ("reads unchanged in tone", "no horizon seam", "figures countable at
+> 3000 m") cannot be closed by an agent that cannot see the render. Agents can write the code and
+> reason about the math; **someone has to look at it before the row flips to DONE.**
 
 ---
 
@@ -26,6 +35,7 @@ Confusion in this project comes from asking the wrong file. One question, one au
 | Graphics implementation detail | **GRAPHICS.md** (detail for stage 13) | SPEC |
 | Dialogue rewrite text | **DIALOGUE_REVISIONS.md** (detail for stage 14) | NARRATIVE |
 | Training-objective crosswalk | **TLO.md** | — |
+| Real-world dispersion / lethality figures | **BALLISTICS_RESEARCH.md** (reference only — nothing in it is applied, and it does **not** license a trajectory sim) | — |
 | What is this project? (public face) | **README.md** | — |
 
 **README.md no longer carries a backlog.** It had one, it drifted, and it ended up with two
@@ -71,8 +81,8 @@ can be A/B'd or reverted alone.
 
 | ID | G-ref | What | Owner | Gate | Status |
 |---|---|---|---|---|---|
-| 13a | G0.4 | **Bino quality pin** — stop adaptive quality dropping pixel ratio while binos are up | Fable | Troop figures countable through binos at 3000 m after a forced quality step-down | READY |
-| 13b | G0 rest | `CONFIG.GFX` block, ACES tone mapping + **palette rebalance in the same commit** | Fable | Jungle/sand/ocean read unchanged in tone; map sheets unaffected | READY |
+| 13a | G0.4 | **Bino quality pin** — stop adaptive quality dropping pixel ratio while binos are up | Opus | Troop figures countable through binos at 3000 m after a forced quality step-down | **DONE** `af439a5` |
+| 13b | G0 rest | `CONFIG.GFX` block, ACES tone mapping + **palette rebalance in the same commit** | — | Jungle/sand/ocean read unchanged in tone; map sheets unaffected | **NEXT** ⚠ needs Chrome eyes |
 | 13c | G1 | Sky + **time-of-day model** (`Sky.js`, TOD table drives sun/hemi/fog) | Fable | Horizon has no seam; `[M]` map + printed sheets inherit no tint | READY |
 | 13d | G2 | **Baked hillshade + AO into terrain vertex colors** — highest-value row | Fable | Ridge in 3D matches contours on the sheet; black-sand palette doesn't crush; `rebuildWorld()` under ~250 ms | READY |
 | 13e | G3 | Near-field terrain LOD patch (fixes 33 m facets > 60 m effect radius) | Fable | Burst deviation judgable against micro-relief; no seam z-fight; `groundHit`/`hasLOS` untouched | READY |
@@ -137,9 +147,9 @@ between any two graphics rows on request. It still serializes — rule 1 has no 
 
 | ID | What | Owner | Status |
 |---|---|---|---|
-| F1 | **Doctrine bug: range rounding accepts 50 m outside FFE.** `index.html:2570` and `:2623` both check `% 50` unconditionally; per DOCTRINE.md 50 m is legal only on the correction entering FFE. Gate on `p.ffe`, and fix the STRICT NET line that states the loose rule as always true. Volume IV's "doctrine, verbatim" chapter is currently looser than doctrine. | Fable | READY |
-| F1b | Danger-close check `minF < 600` is exclusive; doctrine's "within 600 m" is inclusive → `<=`. Fold into F2 if F2 runs first (F2 replaces the flat threshold). | Fable | READY |
-| F2 | Tiered danger-close radio tension (≤800/≤700/≤600 bands) + FDC map-awareness gating — unmarked friendlies mean the FDC can't know, so no friction; marked friendlies mean a visible pause | Fable | READY |
+| F1 | **Doctrine bug: range rounding accepted 50 m outside FFE.** Both rounding checks validated against `% 50` unconditionally; per DOCTRINE.md 50 m is legal only on the correction entering FFE. Gated on `p.ffe`; the STRICT NET reply and the strict-chapter intro line both stated the loose rule as always true and were corrected. | Opus | **DONE** `e7ccfdb` |
+| F1b | Danger-close check `minF < 600` is exclusive; doctrine's "within 600 m" is inclusive → `<=`. Fold into F2 if F2 runs first (F2 replaces the flat threshold). | — | READY |
+| F2 | Tiered danger-close radio tension (≤800/≤700/≤600 bands) + FDC map-awareness gating — unmarked friendlies mean the FDC can't know, so no friction; marked friendlies mean a visible pause. **Read [BALLISTICS_RESEARCH.md](BALLISTICS_RESEARCH.md) §6 first** — it argues the flat 600 m gate is a deliberate and correct simplification, which bears directly on how far this row should go. | — | READY |
 | F3 | In-sim cheat-sheet overlay `[H]` from [CHEATSHEET.md](CHEATSHEET.md) | Fable | READY |
 | F4 | Multi-phase MEAT GRINDER chaining (4.4) — revisit after the single-mission version is balanced | Fable | PARKED |
 
@@ -167,3 +177,5 @@ between any two graphics rows on request. It still serializes — rule 1 has no 
 |---|---|
 | 2026-07-29 | Board created. Order set: stage 13 → stage 12 remainder → stage 11. Backlog moved out of README.md (duplicate IDs #27/#28 retired). Time-of-day assigned to 13c, removed from stage 12. G8 bloom reassigned to stage 11 as 11d. |
 | 2026-07-29 | Baseline moved `a847731` → `a74cee7`: an off-board Fable commit (AAR shot plot auto-fit + legibility) landed mid-session. Not attached to any stage — the AAR shot plot is an extra shipped alongside spec, like the OP watchtower and TLOG. Logged here so the board matches history. |
+| 2026-07-29 | **13a** `af439a5` and **F1** `e7ccfdb` shipped. Both implemented by Opus, not Fable — Fable 5 ran out of usage credits mid-dispatch. Deviation from CLAUDE.md's model split, accepted for two small well-gated rows; the split still stands as the default. |
+| 2026-07-29 | BALLISTICS_RESEARCH.md added to the authority map (reference only). Its §6 is flagged as required reading for row F2. |
