@@ -1013,6 +1013,7 @@ let enemyAlive = true;
 
 /* ============================================================ SCENARIO */
 let Scenario = null;
+let scenarioT0 = 0;   // sim time the current scenario began (time-to-initiate)
 
 function genScenario(type, seed) {
   const rng = mulberry32((seed * 2654435761 ^ CONFIG.SEED.terrain) >>> 0);
@@ -2051,6 +2052,9 @@ function fireMission(targetLocation, warno, meta) {
     // from truth at send time (JFO standard: within 200 m). Star metric.
     aimErr0: Scenario.enemy
       ? dist2(targetLocation.x, targetLocation.z, Scenario.enemy.x, Scenario.enemy.z) : null,
+    // time-to-initiate: JFO standard is a complete CFF within 2 min of
+    // target identification (scenario start stands in for target ID)
+    tInit: sim.now - scenarioT0,
     tStart: sim.now, tEnd: null, done: false, failReason: null, hits: 0,
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
   };
@@ -2692,13 +2696,10 @@ function showAAR() {
   }
   // adjustment-doctrine diagnosis: what the round trace says about technique
   const tr = m.missTrace;
-  let corrEff = null;
-  if (tr.length >= 2) {
-    let sum = 0;
-    for (let i = 1; i < tr.length; i++) sum += (tr[i - 1] - tr[i]) / Math.max(tr[i - 1], 1);
-    corrEff = sum / (tr.length - 1);
-  }
+  const corrEff = correctionEfficiency(m);
   const diag = [];
+  if (m.tInit > 120)
+    diag.push(`Call for fire took ${fmtTime(m.tInit)} to initiate (standard: within 2:00 of identifying the target). Locate faster — the target is not waiting for you.`);
   if (m.aimErr0 !== null && m.aimErr0 > 200)
     diag.push(`Initial target location was ${Math.round(m.aimErr0)} m off (standard: ≤200 m). Everything after that was recovery — work the map, or lase and read the grid, before you transmit.`);
   if (corrEff !== null && corrEff < 0.3 && tr.length >= 3)
@@ -2729,6 +2730,10 @@ function showAAR() {
   TLOG.add('aar', '', verdict, { rounds: m.adjustRounds, dur: Math.round(dur),
     firstMiss: m.firstMiss === null ? null : Math.round(m.firstMiss),
     aimErr0: m.aimErr0 === null ? null : Math.round(m.aimErr0),
+    tInit: Math.round(m.tInit),
+    corrEff: corrEff === null ? null : Math.round(corrEff * 100),
+    bracketed: !!(m.sides.long && m.sides.short),
+    trace: m.missTrace.slice(),
     notes: m.notes.length,
     ...(activeChapter ? { stars: gradeMission(m) } : {}) });
   // campaign star grading (MW2 style): grade, persist best, show in AAR
@@ -2755,6 +2760,7 @@ function showAAR() {
     (isConvoy
       ? `<tr><td>Vehicles destroyed</td><td>${m.hits}/4</td></tr>`
       : `<tr><td>Effect rounds on target</td><td>${m.hits}/${m.ffeRounds.length}</td></tr>`) +
+    `<tr><td>Time to initiate CFF</td><td>${fmtTime(m.tInit)} (standard ≤ 2:00)</td></tr>` +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
     (tr.length ? `<tr><td>Adjusting round trace</td><td>${tr.join(' → ')} m</td></tr>` : '') +
@@ -3436,6 +3442,15 @@ function starStr(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
 // bonuses for clean format, <=2 adjusting rounds, initial target location
 // within 200 m (the JFO standard), and beating the chapter par time.
 // Difficulty caps: easy 3 / normal 4 / hard 5. Any fail = 0.
+// Average fractional reduction in miss distance per adjusting round.
+// Doctrine's successive bracketing roughly halves it each round (~0.5).
+function correctionEfficiency(m) {
+  const tr = m.missTrace;
+  if (!tr || tr.length < 2) return null;
+  let sum = 0;
+  for (let i = 1; i < tr.length; i++) sum += (tr[i - 1] - tr[i]) / Math.max(tr[i - 1], 1);
+  return sum / (tr.length - 1);
+}
 function gradeMission(m) {
   const S = Scenario;
   const isConvoy = S.type === 'convoy';
@@ -3448,6 +3463,14 @@ function gradeMission(m) {
   if (m.aimErr0 !== null && m.aimErr0 <= 200) stars++;
   const par = (activeChapter && activeChapter.par) || 300;
   if ((m.tEnd || sim.now) - m.tStart <= par) stars++;
+  // Doctrinal deductions (JFO standards): a call that took longer than two
+  // minutes to initiate is not five-star work; neither is adjustment that
+  // burned rounds without moving the burst. Wasted rounds are the honest
+  // signal here — a single large final correction can flatter the average.
+  if (m.tInit > 120) stars = Math.min(stars, 4);
+  if (m.wasted >= 2) stars = Math.min(stars, 3);
+  const eff = correctionEfficiency(m);
+  if (eff !== null && eff < 0.25 && m.adjustRounds >= 3) stars = Math.min(stars, 3);
   if (activeChapter && activeChapter.method && m.method &&
       m.method !== activeChapter.method) stars = Math.min(stars, 2);
   return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
@@ -3676,6 +3699,7 @@ function newMission(first, type, chapter) {
     else if (!first) currentType = SCN_TYPES[Math.floor(Math.random() * SCN_TYPES.length)];
   }
   Scenario = genScenario(currentType, CONFIG.SEED.mission);
+  scenarioT0 = sim.now;
   placeUnits();
   if (chapter) {
     log('', `CHAPTER ${chapter.id} — ${chapter.title} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
