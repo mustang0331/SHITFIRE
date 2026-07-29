@@ -236,6 +236,9 @@
   <span class="ref">Example: mast subtends 5 mils &rarr; 26 &divide; 5 &times; 1000 = 5200 m</span>
   <span class="ref">DO NOT MIL A MAN — figures are drawn enlarged at range so you
   can see them. Mil hard structures. Deviation in mils is unaffected.</span>
+  <span class="ref">G-M ANGLE: your HUD reads <b style="display:inline">MAG</b>. The grid, the map
+  and the fire net read GRID. GRID = MAG + 124 mils (declination 7&deg; E). Send OT
+  DIRECTION in GRID.</span>
   <span class="ref">[R] closes this card</span>
 </div>
 
@@ -361,6 +364,23 @@ const CONFIG = {
     effectRadius: 60, hitsToNeutralize: 3, fratricideRadius: 80,
     passMaxAdjustRounds: 4, targetRange: [1500, 3200], enemyOffset: [150, 250],
   },
+  /* G2 — declination. The world, the grid, the map sheet and every azimuth on the
+     fire net are GRID (true) mils. The observer's own instruments — compass, HUD
+     heading, binocular heading — read MAGNETIC, because a real compass does.
+
+     SIGN CONVENTION, stated once because getting it backwards is silent and
+     costly: declEastDeg is degrees that magnetic north lies EAST of grid north.
+     With MN east of GN, a fixed direction measured from MN reads SMALLER than
+     measured from GN, so
+
+         magnetic = grid - declination
+         grid     = magnetic + declination
+
+     7 deg = 124.4 mils, which is far bigger than any correction the observer
+     will ever send. Transmitting a magnetic azimuth as OT direction is therefore
+     a real and very findable mistake, and handleDirection() calls it out by name
+     rather than as a generic "you are off by N mils". */
+  NAV: { declEastDeg: 7 },
   FDC: { obs: 'MUSTANG 12', fdc: 'HELLHOUND FIRES', readbackDelay: 1.3, shotDelay: 4.0 },
   VOICE: { lang: 'en-US', ttsLang: 'en-IN', rate: 1.05, pitch: 0.8, volume: 1.0,
            ttsEnabled: true,
@@ -632,6 +652,14 @@ function azTo(ax, az, bx, bz) {           // radians, 0 = grid north
 }
 function radToMils(r) { return ((r * MILS_PER_RAD) % 6400 + 6400) % 6400; }
 function fmtMils(m) { return String(Math.round(m) % 6400).padStart(4, '0'); }
+/* G2 — grid <-> magnetic. Everything internal to the sim (azTo, corrections, the
+   grid, the sheets, the net) is GRID. These two functions exist ONLY at the
+   boundary where a number is shown to the observer as an instrument reading, or
+   read back off one. Do not use them anywhere else: applying the declination
+   twice, or in the wrong direction, is a 124-mil error that looks like nothing. */
+const declMils = () => CONFIG.NAV.declEastDeg / 360 * 6400;
+const gridToMag = m => ((m - declMils()) % 6400 + 6400) % 6400;
+const magToGrid = m => ((m + declMils()) % 6400 + 6400) % 6400;
 const dist2 = (ax, az, bx, bz) => Math.hypot(bx - ax, bz - az);
 
 /* ============================================================ SCENE */
@@ -2053,7 +2081,7 @@ function genScenario(type, seed) {
     S.compound = compound;
     S.enemy = enemy;
     S.friendlies = [{ x: compound.x, z: compound.z, r: M.fratricideRadius }];
-    S.brief = `Friendly strongpoint, grid ${gridOf(compound.x, compound.z)} (bearing ~${brgTo(compound)} mils), is under assault. Locate the attackers pressing it and destroy them without hitting the friendlies.`;
+    S.brief = `Friendly strongpoint, grid ${gridOf(compound.x, compound.z)} (grid bearing ~${brgTo(compound)} mils), is under assault. Locate the attackers pressing it and destroy them without hitting the friendlies.`;
   } else if (type === 'troops') {
     if (OPT.mask) {
       // crest-masked: the target must NOT have line of sight from the OP
@@ -2073,13 +2101,13 @@ function genScenario(type, seed) {
     } else {
       S.enemy = findSpot(M.targetRange[0], M.targetRange[1], 2, 14, true) ||
                 { x: OP.x + 2000, z: OP.z };
-      S.brief = `Enemy infantry in the open, reported bearing ~${brgTo(S.enemy)} mils from your OP. A gift. Do not waste it.`;
+      S.brief = `Enemy infantry in the open, reported grid bearing ~${brgTo(S.enemy)} mils from your OP. A gift. Do not waste it.`;
     }
   } else if (type === 'wreck') {
     S.enemy = findSpot(1100, 2100, 1, 6, true) || { x: OP.x + 1500, z: OP.z };
     S.effectRadius = 30;
     S.hitsNeed = 2;
-    S.brief = `Training target: a derelict landing craft on the beach, bearing ~${brgTo(S.enemy)} mils. It cannot shoot back. Neither could the last observer.`;
+    S.brief = `Training target: a derelict landing craft on the beach, grid bearing ~${brgTo(S.enemy)} mils. It cannot shoot back. Neither could the last observer.`;
   } else if (type === 'raid') {
     // raiders MUST be near a village — try every village with LOS from the
     // OP, then relax LOS (fight it on the map) before any random fallback
@@ -2113,7 +2141,7 @@ function genScenario(type, seed) {
               findSpot(1200, 3000, 8, 999, true) || { x: OP.x + 1800, z: OP.z };
     S.effectRadius = 35;
     S.hitsNeed = 2;
-    S.brief = `Dug-in bunker reported on high ground, bearing ~${brgTo(S.enemy)} mils. The effect radius is tight — put it on the roof.`;
+    S.brief = `Dug-in bunker reported on high ground, grid bearing ~${brgTo(S.enemy)} mils. The effect radius is tight — put it on the roof.`;
   } else if (type === 'convoy') {
     let path = null;
     for (let tries = 0; tries < 400 && !path; tries++) {
@@ -2161,7 +2189,7 @@ function genScenario(type, seed) {
     S.fHold = OPT.fClose ? 120 : 180;
     S.fAdvMax = off - S.fHold;
     S.ft0 = sim.now;
-    S.brief = `Friendly infantry advancing from grid ${gridOf(S.fStart.x, S.fStart.z)} onto an enemy-held objective, bearing ~${brgTo(S.enemy)} mils.` +
+    S.brief = `Friendly infantry advancing from grid ${gridOf(S.fStart.x, S.fStart.z)} onto an enemy-held objective, grid bearing ~${brgTo(S.enemy)} mils.` +
       (OPT.fClose
         ? ' The lines are TANGLED — friendlies are already inside normal safe distances and still moving. DANGER CLOSE proword, creeping corrections, zero slack.'
         : ' This WILL be danger close: your call must include the proword DANGER CLOSE, and a short round lands on our own people.');
@@ -2820,7 +2848,11 @@ function spotLocation(x, z, diff) {
   }
   if (norm) {
     const b = roundTo(radToMils(azOT), 800), k = Math.floor(dOT / 1000);
-    return `BEARING ${fmtMils(milsWrap(b - 400))} TO ${fmtMils(milsWrap(b + 400))} ` +
+    // GRID, like everything else on the net (G2). The band is +/-400 mils, so a
+    // 124-mil G-M angle would not put the target outside it either way — but the
+    // report still says which north it is measured from, because a cue that
+    // leaves that ambiguous teaches the observer to stop asking.
+    return `BEARING ${fmtMils(milsWrap(b - 400))} TO ${fmtMils(milsWrap(b + 400))} GRID ` +
            `FROM YOUR TOWER, ${k} TO ${k + 1} THOUSAND OUT`;
   }
   const b0 = Math.floor(dOT / 2000) * 2;
@@ -4174,10 +4206,42 @@ function handleDirection(p) {
   }
   mission.otDirSent = true;
   const trueAz = radToMils(azTo(OP.x, OP.z, mission.aim.x, mission.aim.z));
-  let err = Math.abs(((p.dirMils - trueAz + 3200) % 6400) - 3200);
+  const off = t => Math.abs(((p.dirMils - t + 3200) % 6400) - 3200);
+  let err = off(trueAz);
   FDC.say(`DIRECTION ${fmtMils(p.dirMils % 6400)}, OUT.`, { delay: 1 });
-  if (err > 200 && coachOn())
+  /* G2 — there are now TWO specific, nameable declination mistakes, and both land
+     exactly one G-M angle off the truth:
+
+       magErr  the observer read MAG off the HUD and sent it raw. Needs to add 124.
+       revErr  the observer knew about the G-M angle and applied it backwards.
+
+     Both were previously invisible. The generic coach only spoke above 200 mils
+     and a 7-degree declination error is 124, so the trainer accepted a rotated OT
+     frame in silence — measured, and the reason the generic threshold below is now
+     100 rather than 200. OT direction is typed, not sighted through a wobbling
+     compass, so 100 mils is a real mistake and not honest sighting scatter. */
+  const magErr = off(gridToMag(trueAz));      // sent the raw magnetic reading
+  const revErr = off(magToGrid(trueAz));      // applied the G-M angle the wrong way
+  const D = Math.round(declMils());
+  /* A specific diagnosis has to fit DECISIVELY better than the plain answer, not
+     merely fit. A first attempt used `candidateErr < 40` alone, and the harness
+     caught it accusing an honest 90-mil-sloppy grid azimuth of having the G-M
+     angle backwards — 90 sits only 34 off the reversed candidate. Requiring the
+     candidate to beat the raw error by 60 mils separates "you made THIS mistake"
+     from "you were imprecise", which is the difference between coaching and
+     misinforming. */
+  const fits = candErr => candErr < 45 && err - candErr > 60;
+  if (fits(magErr)) {
+    if (coachOn())
+      FDC.say(`MUSTANG, that is your MAGNETIC reading. The net runs on grid. Add your G-M angle — ${D} mils — and send it again, over.`, { delay: 1.4 });
+    mission.notes.push(`Sent OT direction as a magnetic azimuth. The HUD reads MAG; the net wants GRID. Add ${D} mils (declination ${CONFIG.NAV.declEastDeg}° E).`);
+  } else if (fits(revErr)) {
+    if (coachOn())
+      FDC.say(`MUSTANG, you have your G-M angle the wrong way round — that is ${D} mils PAST the line, not short of it. Grid is magnetic PLUS the angle. Send it again, over.`, { delay: 1.4 });
+    mission.notes.push(`Applied the G-M angle in the wrong direction (subtracted instead of added). GRID = MAG + ${D} mils.`);
+  } else if (err > 80 && coachOn()) {
     FDC.say(`MUSTANG, that direction is off your own line of sight by roughly ${Math.round(err)} mils. Your left and right corrections are computed against it — check your compass, over.`, { delay: 1.4 });
+  }
 }
 
 function handleAdjust(p) {
@@ -5419,6 +5483,29 @@ function renderSheet() {
   }
   ctx.textAlign = 'left';
   ctx.fillText('METERS', bx0 + barSegs * barSeg * pxPerM + 14, by + 10);
+  /* G2 — declination diagram, in the marginal data where a real sheet carries it.
+     The sheet is GRID; the observer's compass is MAGNETIC; this is the number that
+     reconciles them, and without it on the paper the conversion is unlearnable. */
+  {
+    const dx = bx0 + barSegs * barSeg * pxPerM + 96, dy = by + 4, len = 30;
+    const rad = CONFIG.NAV.declEastDeg * Math.PI / 180;
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1.4;
+    ctx.beginPath();                                    // grid north, vertical
+    ctx.moveTo(dx, dy + len); ctx.lineTo(dx, dy);
+    ctx.stroke();
+    ctx.beginPath();                                    // magnetic north, east of it
+    ctx.moveTo(dx, dy + len);
+    ctx.lineTo(dx + Math.sin(rad) * len, dy + len - Math.cos(rad) * len);
+    ctx.stroke();
+    ctx.font = '10px Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('GN', dx - 8, dy - 3);
+    ctx.fillText('MN', dx + Math.sin(rad) * len + 3, dy - 1);
+    ctx.font = '12px Consolas, monospace';
+    ctx.fillText(`G-M ANGLE ${CONFIG.NAV.declEastDeg}° E = ${Math.round(declMils())} MILS`,
+                 dx + 44, dy + 14);
+    ctx.fillText('GRID = MAG + G-M ANGLE', dx + 44, dy + 30);
+  }
   ctx.fillText('READ GRIDS RIGHT, THEN UP. 6-DIGIT GRID = 100 M PRECISION (ARTILLERY).', bx0, by + 48);
   ctx.fillText('SHEET GENERATED FROM THE SIM HEIGHTFIELD H(x,z) — PAPER AND WORLD CORRELATE EXACTLY.', bx0, by + 66);
   ctx.fillText('PERMANENT STRUCTURES AND ROADS ARE PLOTTED — ENEMY POSITIONS ARE NOT. FINDING THEM IS THE EXERCISE.', bx0, by + 84);
@@ -5954,9 +6041,15 @@ function newMission(first, type, chapter) {
   log('', `Your OP: watchtower at grid ${gridOf(OP.x, OP.z)}, ground elev ${Math.round(OP.h)} m, deck +${Math.round(CONFIG.CAMERA.towerHeight)} m. ` +
     `Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. ` +
     `Hold [SPACE] to transmit by voice, or type below.`, 'sys');
+  // G2 — say this once per mission, unprompted. The observer has an instrument
+  // that reads one north and a net that runs on another, and finding that out by
+  // being 124 mils wrong is a worse lesson than being told.
+  log('', `NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. ` +
+    `Declination is ${CONFIG.NAV.declEastDeg}° EAST, so GRID = MAG + ${Math.round(declMils())} mils. ` +
+    `Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.`, 'sys');
   if (Scenario.kps && Scenario.kps.length)
     log('', 'Known points registered: ' + Scenario.kps.map(kp =>
-      `AB${kp.id} "${kp.name}" grid ${gridOf(kp.x, kp.z)} (brg ${fmtMils(radToMils(azTo(OP.x, OP.z, kp.x, kp.z)))})`).join(' · ') +
+      `AB${kp.id} "${kp.name}" grid ${gridOf(kp.x, kp.z)} (grid brg ${fmtMils(radToMils(azTo(OP.x, OP.z, kp.x, kp.z)))})`).join(' · ') +
       '. Shift example: "adjust fire, shift known point 1001, right 200, add 400, over" — the KP name works too ("shift BREWERY").', 'sys');
   if (WORLD.villages.length)
     log('', `NO-STRIKE: civilian village${WORLD.villages.length > 1 ? 's' : ''} ` +
@@ -6232,11 +6325,13 @@ function animate(tMs) {
   lookDir(_dir);
   _tgt.set(eye.x + _dir.x, eye.y + _dir.y, eye.z + _dir.z);
   camera.lookAt(_tgt);
-  // heading readout
+  // heading readout — MAGNETIC (G2). This is an instrument, and instruments read
+  // magnetic. Labelled MAG so it can never be confused with the grid azimuths on
+  // the map sheet, which is the whole reason the label changed from a bare AZ.
   const hdg = Math.round(radToMils(yaw));
   if (hdg !== lastHdg) {
     lastHdg = hdg;
-    const s = `AZ ${fmtMils(hdg)}`;
+    const s = `MAG ${fmtMils(gridToMag(hdg))}`;
     headingEl.textContent = s;
     binoHdgEl.textContent = s;
   }
