@@ -228,6 +228,7 @@ so continuing on this board is not wasted work if the port later goes ahead.
 | F4 | Multi-phase MEAT GRINDER chaining (4.4) — revisit after the single-mission version is balanced | Opus | PARKED |
 | F5 | **STT/typo tolerance in adjust corrections.** Transcript evidence: voice recognition renders "right" as "WRITE" and "drop" as "DROPPED"/"DRAW"; the `\b(left\|right)\s+(\d+)` and `\b(add\|drop)\s+(\d+)` regexes (`index.html:3457,3459,3497,3499,3531,3533`) match none of these, so a mangled deviation word is silently dropped from the correction (no error, no notice) while a mangled range word alone parses as full `unknown`. See [DIALOGUE_REVISIONS.md §9.4](DIALOGUE_REVISIONS.md). | Opus | Correction with one STT-plausible word variant (e.g. "write"/"dropped") still parses both fields; nothing is silently dropped | READY |
 | F6 | **"Danger clothes" — fuzzy-match the danger-close proword.** `p.raw.includes('danger close')` (`index.html:3635`) is an exact substring match; transcript shows voice recognition twice rendering "DANGER CLOSE" as "DANGER CLOTHES," and the player gets rebuked for a proword they actually said. Needs tolerance for that near-homophone before gating on it. | Opus | A close STT variant of "danger close" (e.g. "danger clothes") still satisfies the gate | READY |
+| F8 | **Mil card reference sizes did not match the world.** The card teaches `range = size / mils × 1000`, so a size that disagrees with the geometry silently teaches a wrong range. Truck card 5 m vs geometry 4.6 m (+174 m at 2000 m); target hut 3 vs 3.2 (−125 m); **village hut 3 vs 2.6 (+308 m)** — the card says "hut" once but the two hut types differed and are indistinguishable by eye; watchtower 100 m vs 300 m (3× error, and the observer stands on it so it can never be milled at all). Geometry rounded to the card, watchtower replaced by the airfield hangar. | Opus | **DONE** `ef0ef31` |
 | F7 | **Readback duplicates DANGER CLOSE.** When the observer's own raw text already contains "danger close", the readback-generation code appends `, DANGER CLOSE` unconditionally (`index.html:3640`), producing "...DANGER CLOSE, DANGER CLOSE TROOPS..." in the one line CLAUDE.md calls sacred. Dedupe. | Opus | Readback shows DANGER CLOSE once regardless of how the observer phrased it | READY |
 
 **F1 is a correctness bug in the doctrine the app exists to teach.** Recommend landing it alongside
@@ -251,14 +252,32 @@ structural and want a decision before code.
 
 #### G-A — UI, optics and instrumentation (self-contained, ship first)
 
+**G-A is COMPLETE.** All six shipped 2026-07-29, each with an executable harness and a
+headless-Chrome parse. None has been seen running — see §5.
+
 | ID | What | Owner | Gate | Status |
 |---|---|---|---|---|
-| G1 | **Remove the watchtower rail/fence** — it obstructs the observer's view from the OP | Opus | View from the OP unobstructed at every heading; tower still reads as a structure | **NEXT** |
-| G2 | **Magnetic vs true azimuth.** Map is true mil; everything the *observer* reads — compass, laser, HUD heading — should be **magnetic**, declination **+7°**. One conversion at the display boundary, not scattered. | Opus | Grid azimuth on the sheet and magnetic on the HUD differ by exactly 7° (124.4 mils); CFF traffic uses the correct one per DOCTRINE.md; no double-application | READY |
-| G3 | **Dispersion toggle** — turn off round error variance for testing. User-requested explicitly as a test aid. | Opus | Toggle makes `impact === aimpoint`; **flagged in the AAR and TLOG so a no-dispersion run can never be mistaken for a graded one** | READY |
-| G4 | **Binocular FOV + two more zoom levels**, with the mil reticle staying **true at every level** | Opus | Mil graduations measure correctly at all zoom levels (a mil is a mil, or the reticle is a lie); FOV/zoom relationship stated in one place | READY |
-| G5 | **Mil card renders behind the chat terminal** — z-order bug | Opus | Card fully visible with the terminal open | READY |
-| G6 | **Chat terminal draggable + resizable** — it takes up too much space | Opus | Draggable, resizable, position persisted; never covers the reticle centre by default | READY |
+| G1 | **Remove the watchtower rail/fence** — it obstructs the observer's view from the OP | Opus | View from the OP unobstructed at every heading; tower still reads as a structure | **DONE** `1c1bfff` ⚠ |
+| G2 | **Magnetic vs true azimuth.** Map is true mil; everything the *observer* reads — compass, laser, HUD heading — should be **magnetic**, declination **+7°**. One conversion at the display boundary, not scattered. | Opus | Grid azimuth on the sheet and magnetic on the HUD differ by exactly 7° (124.4 mils); CFF traffic uses the correct one per DOCTRINE.md; no double-application | **DONE** `067b473` ⚠ |
+| G3 | **Dispersion toggle** — turn off round error variance for testing. User-requested explicitly as a test aid. | Opus | Toggle makes `impact === aimpoint`; **flagged in the AAR and TLOG so a no-dispersion run can never be mistaken for a graded one** | **DONE** `6acc97c` |
+| G4 | **Binocular FOV + two more zoom levels**, with the mil reticle staying **true at every level** | Opus | Mil graduations measure correctly at all zoom levels (a mil is a mil, or the reticle is a lie); FOV/zoom relationship stated in one place | **DONE** `03beef8` ⚠ |
+| G5 | **Mil card renders behind the chat terminal** — z-order bug | Opus | Card fully visible with the terminal open | **DONE** `6b55985` ⚠ |
+| G6 | **Chat terminal draggable + resizable** — it takes up too much space | Opus | Draggable, resizable, position persisted; never covers the reticle centre by default | **DONE** `1bfe48b` ⚠ |
+
+Three bugs were **found while building these**, none of them reported, all in the class the
+project cares most about — the trainer teaching something false:
+
+- **F8** (fixed, `ef0ef31`): five of the six mil-card reference sizes disagreed with the geometry.
+  Worst case the card said "hut" once while villages and enemy positions used different hut
+  heights, so the same word milled to two different ranges — a 308 m error at 2000 m.
+- **G2's real payload**: the two declination mistakes (sending the magnetic reading raw; applying
+  the G-M angle backwards) both land 124 mils out, and the OT-direction coach only spoke above
+  200 mils. The trainer accepted a rotated OT frame *in silence*.
+- **G4's reticle**: graduated arms were hard-coded to ±42 mils, which overran the screen at 14X
+  (595 px against a 540 px half-screen). Extent is now derived from the visible field.
+
+The reticle's stadia bars were also sized to a 2 m **man**, contradicting the mil card's own
+DO NOT MIL A MAN warning two panels away. Re-referenced to the 5 m truck.
 
 #### G-B — Doctrine corrections (read DOCTRINE.md first; several need JFIRE)
 
@@ -285,9 +304,13 @@ structural and want a decision before code.
 | G20 | **The 10×10 km map may be too small** — an 800 m correction runs out of world. Affects `CONFIG.MAP.size`, terrain, the DEM pipeline, the printed sheet scale and every grid in every fixed-seed chapter. **Costed and decided before any code**: a size change may invalidate saved chapter seeds. | Opus | Decision recorded here with the seed-compatibility consequence stated; only then implemented | DECIDE |
 | G21 | **Do target location cues stay accurate when a new DEM is loaded?** User's open question. Verify — do not assume. Covers the E2 spot report, `nearestLandmark`, known points and the printed sheet. | Opus | Answered with evidence against a real loaded DEM (`KOFA_KING_VALLEY_FO_HEIGHTMAP.png` is in the tree); any drift fixed or logged | AUDIT |
 
-**Recommended order:** G1 → G5 → G3 → G2 → G4 → G6 (all of G-A, cheap and immediately felt), then **G19
-audit** and **G10/G13 research** before touching G7–G18, because the audit will likely rewrite those
-rows. G20/G21 last — G20 is a decision, not a task.
+**Order:** ~~G1 → G5 → G3 → G2 → G4 → G6~~ ✅ all shipped. **Next is the G19 audit**, then the
+G10/G13 research, and only then G7–G18 — the audit will likely rewrite several of those rows, so
+coding them first wastes the work. G20/G21 last; G20 is a decision, not a task.
+
+**Two G-A rows added keybinds** that the docs sweep must pick up: `[Z]` / mouse wheel cycles
+binocular power (4X/7X/14X), and `SHIFT+D` toggles dispersion. Both are in the in-app hint line
+already; README's control table is not yet updated.
 
 **Two rows contradict documents that currently outrank them, and the documents lose:**
 - **G12 vs CLAUDE.md.** CLAUDE.md says fratricide is an "automatic mission fail". The user's correction
@@ -330,6 +353,11 @@ and it closes all of it. Take a mission on the default island (terrain seed 1337
 | 8 | E6 | The town from ~2–3 km | Not unmistakably a *town* rather than a big village; civilian areas not obvious |
 | 9 | E7 | A boulder field at 1500–3200 m, and its symbol on both surfaces | Piles reading as noise instead of one identifiable feature; symbol illegible at `[M]` scale; symbol confusable with the fuel-point circle |
 | 10 | E7 | A named outcrop in a SALUTE report vs. its label on the sheet | Net name and sheet label disagreeing |
+| 11 | G1 | Look down over the deck edge from the OP | Near ground still hidden; or the tower no longer reads as a structure |
+| 12 | G4 | `[Z]` / wheel through 4X → 7X → 14X, glassing a truck | Reticle sparse or clipped at any power; mil graduations not visibly rescaling |
+| 13 | G2 | `MAG` in the topbar, and a printed sheet's new declination diagram | Diagram illegible in black and white; MAG mistaken for the old AZ |
+| 14 | G5 | Open the mil card `[R]` with the comms panel up | Card still overlapped, or fighting the touch bar on a small window |
+| 15 | G6 | Drag the comms header, resize from the corner, double-click to reset | Resize corner invisible; transcript clipped instead of resized; scroll not pinned to bottom |
 
 Anything that fails here becomes a Track F row, not a silent revert. Anything that passes flips its ⚠
 off in the tables above.
@@ -350,5 +378,6 @@ off in the tables above.
 | 2026-07-29 | **Track E closed** — E3 `ef9d473`, E4 `830d3cc`, E5 `cee195f`, E6 `0d2eaed`, E7 `ddd22f9`. All seven rows shipped; all carry ⚠, since the track is entirely about appearance and none of it has been seen in Chrome. New §5 collects that QA into one 15-minute pass. |
 | 2026-07-29 | **`index.html` → `SHITFIRE.html`**, renamed by the user, recorded as a git rename in `f4e7ad8` (staged from HEAD's exact blob so the diff is a pure path change and `--follow` still reaches all history). CLAUDE.md's first golden rule and the references in README/SPEC/QUICKSTART/GRAPHICS are stale until the docs sweep. |
 | 2026-07-29 | **A working JS syntax gate exists now** (`scratchpad/syntaxgate.ps1`): extracts the inline module, strips the imports, wraps it in `if (false) {}` and loads it as a classic script in headless Chrome, so a syntax error is reported as the early error it is while a clean parse executes nothing. Its first version used `new Function(src)` and was **worthless** — that compiles lazily, so it reported OK on a deliberately broken file. Both directions are now verified against an injected unbalanced paren, which it caught and located to the exact line. Every code row from E7 on should run it. |
+| 2026-07-29 | **Track G-A shipped whole** — G1 `1c1bfff`, G5 `6b55985`, G3 `6acc97c`, G2 `067b473`, G4 `03beef8`, G6 `1bfe48b`, plus **F8** `ef0ef31` found along the way. Every row carries an executable harness and a headless-Chrome parse; none has been seen running, so §5 grew. Three unreported training-fidelity bugs surfaced during the work (mil-card sizes disagreeing with the world by up to 308 m of taught range error; both declination mistakes landing inside the OT-direction coach's blind spot; the reticle overrunning the screen at 14X), which is the argument for taking user-feedback rows before spec rows — building next to real complaints finds the things nobody thought to report. |
 | 2026-07-29 | **Track G added** from [user_feedback.md](user_feedback.md) — 21 rows of feedback from the user actually flying the build, triaged into UI (G1–G6), doctrine (G7–G19) and structural (G20–G21). Inserted ahead of the rest of stage 13. Three rows need doctrine research before code (G10, G13, G18) and one is a decision, not a task (G20). Two supersede existing authority: **G12** overrides CLAUDE.md's "automatic mission fail" wording — fratricide *fails* the mission but must not *end* it — and **G14** supersedes the narrower row 12g. |
 | 2026-07-29 | Reviewed the three newer `Dialogue History/` transcripts (08-48, 12-56, 18-05). Added **F5** (STT/typo tolerance in adjust corrections), **F6** ("danger clothes" fuzzy-match), **F7** (readback duplicates DANGER CLOSE) to Track F, all found by reading real play and confirmed against the regexes. Annotated **12g** with live transcript evidence of a player hitting the immediate-suppression gap. Detail in [DIALOGUE_REVISIONS.md §9](DIALOGUE_REVISIONS.md). |
