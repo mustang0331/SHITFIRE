@@ -6,8 +6,15 @@ document is the bug.
 
 Last updated: 2026-07-29 · Baseline commit: `d586e54` (stage 13b)
 
-**Shipped off this board:** `13a` bino quality pin · `F1` range-rounding doctrine fix · `13b` ACES
-tone mapping. **Next row: `13c`.**
+**Shipped off this board:** `13a` bino quality pin · `F1` range-rounding fix · `13b` ACES tone mapping
+· `13c` sky + time of day · `E1` target legibility · `E2` SALUTE spot report.
+**In progress: `E3`** (night + NVG/thermal).
+
+> 📋 **Build-out in progress.** The user directed a full build-out on 2026-07-29 ("do not stop until
+> completed"), adding Track E from side notes. Rows are being worked by sequential Opus subagents —
+> **one writer in `index.html` at a time, no exceptions.** Several rows are committed but carry
+> ⚠ *needs Chrome*: their gates are visual and no agent can close them. Expect a visual QA pass at the
+> end covering everything so marked.
 
 > ⚠ **Visual rows need a human in Chrome.** 13c–13i have gates ("no horizon seam", "figures countable
 > at 3000 m", "civilian/military discrimination survives") that cannot be closed by an agent that
@@ -74,6 +81,11 @@ different item #27s and two different #28s. Backlog lives here now, with stable 
 
 Decided 2026-07-29: **graphics overhaul → stage 12 remainder → stage 11 (Epilogue).**
 
+**Revised 2026-07-29 (user directive, "finish the entire build out"):** Track E — observation and
+target acquisition — is inserted **ahead of the rest of stage 13**. Order is now
+**E1–E3 → E4–E7 → 13d–13i → stage 12 remainder → stage 11 → stage 14 + fixes.** Rationale: an
+observer who cannot see or find the target is a broken trainer, so legibility outranks beautification.
+
 Stage *numbers* are stable identifiers — they map to commit messages and, in one case, to a string
 inside the code ([index.html:3691](index.html#L3691) carries `blurb: 'stage 11'`). They are **not**
 the shipping order. Stage 13 ships before stage 12; that is intentional and this table is why.
@@ -87,7 +99,7 @@ can be A/B'd or reverted alone.
 |---|---|---|---|---|---|
 | 13a | G0.4 | **Bino quality pin** — stop adaptive quality dropping pixel ratio while binos are up | Opus | Troop figures countable through binos at 3000 m after a forced quality step-down | **DONE** `af439a5` |
 | 13b | G0 rest | `CONFIG.GFX` block, ACES tone mapping, CPU-side background pre-tone | Opus | Map sheets unaffected ✅ · tone confirmed good in Chrome ✅ | **DONE** `d586e54` |
-| 13c | G1 | Sky + **time-of-day model** (`Sky.js`, TOD table drives sun/hemi/fog). **Must pre-tone the background via `acesFilmic()`** the way 13b does, or the horizon seam returns. | Opus | Horizon has no seam; `[M]` map + printed sheets inherit no tint | **NEXT** |
+| 13c | G1 | Sky + **time-of-day model** (`Sky.js`, TOD table drives sun/hemi/fog). Sky.js includes `<tonemapping_fragment>`, so no CPU pre-tone is needed on the sky path; it is retained on the `sky:false` fallback. `day` reproduces the pre-13c sun to 0.038°. | Opus | Horizon has no seam; `[M]` map + printed sheets inherit no tint | **DONE** `999e4c6` ⚠ needs Chrome |
 | 13d | G2 | **Baked hillshade + AO into terrain vertex colors** — highest-value row | Opus | Ridge in 3D matches contours on the sheet; black-sand palette doesn't crush; `rebuildWorld()` under ~250 ms | READY |
 | 13e | G3 | Near-field terrain LOD patch (fixes 33 m facets > 60 m effect radius) | Opus | Burst deviation judgable against micro-relief; no seam z-fight; `groundHit`/`hasLOS` untouched | READY |
 | 13f | G4 | Instanced vegetation + scatter | Opus | **Civilian/military discrimination at 2000 m survives**; no veg on structures/roads; canopy ≤6 m | READY |
@@ -98,6 +110,28 @@ can be A/B'd or reverted alone.
 
 **13a first and alone**, per GRAPHICS.md: it is a two-line *training-fidelity correctness fix*, not a
 graphics change, and it should not be buried in a rebalance commit.
+
+### Track E — Observation & target acquisition (user-directed, 2026-07-29)
+
+Direct requests from the user, not from SPEC or GRAPHICS. **Track E outranks the rest of stage 13**:
+these fix the trainer's most-felt defect — *"it is very difficult to see people right now"* — which is
+a training failure, not a cosmetic one. An observer who cannot resolve or find the target cannot
+practise the skill the app exists to teach.
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| E1 | **Target legibility** — angular-size floor so a figure never falls under a minimum subtense; contrast against jungle/sand; contact disc so figures don't merge into terrain | Opus | Figures countable at 3200 m · **civ/mil discrimination improved, never degraded** | **DONE** `ffc2076` ⚠ needs Chrome |
+| E2 | **SALUTE / activity spot report** — cues the observer onto the target *area* without handing over the grid; difficulty-scaled vagueness; landmark- or sector-referenced | Opus | Orients the observer; never gives the 6/8-digit answer; doesn't tread on the readback | **DONE** `ec4d343` ⚠ needs Chrome |
+| E3 | **Night TOD + NVG / thermal optics** — `night` in TOD_TABLE; DAY/NVG/THERMAL cycle; thermal white-hot so figures read against cold terrain | Opus | Usable at night; **no EffectComposer**; civ/mil discrimination survives in every mode; doesn't trivialise day | IN PROGRESS |
+| E4 | **Asphalt roads** distinct from dirt tracks, in-world | Opus | Metalled routes visually distinct from dirt paths | READY |
+| E5 | **Roads on the `[M]` map and the printed sheets** — currently absent from the map despite being a terrain-association anchor | Opus | Road network legible on both, with legend symbols | READY |
+| E6 | **Settlement hierarchy** — small villages, larger towns, and the airfield, all plotted on map + sheets | Opus | Three distinct settlement scales readable in-world and on paper | READY |
+| E7 | **Rock formations / boulder piles** for terrain association | Opus | Distinctive, resectable off the map; placed by the seeded PRNG | READY |
+
+E4–E7 all serve the same end: **terrain association**. CLAUDE.md already requires permanent structures
+and roads on both the printed sheets and `[M]` with symbols and a legend so the observer can resect off
+the airfield, the mast, the village — E5 exists because roads are in the world but were never drawn on
+the map, which breaks that requirement.
 
 ### Track B — Stage 12 remainder: FO skill depth
 
