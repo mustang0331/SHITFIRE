@@ -37,6 +37,18 @@ After each stage tests clean and is committed, prompt:
 
 Repeat for stages 3–7 (polar+shift → FDC personality+audio → scenarios → map library → real DEMs+polish). **Commit between every stage.**
 
+## 6. World detail & campaign stages (8–11)
+
+Stages 1–7 are complete. Stage 8 populates the islands themselves — structures, roads, villages — before the campaign wraps a story around them. Prompt pattern:
+
+> Read SPEC.md and CLAUDE.md. Build **BUILD ORDER stage 8 only**: seeded, terrain-aware structures/roads/dirt-paths/landmarks (military: ammo depot, fuel point, airfield strip, radio mast, coastal-gun emplacement, watchtower; civilian: huts, villages), low-poly/instanced/merged geometry (60 fps rule stands); permanent structures + roads on the printable map sheets and the [M] map with symbols + a legend for terrain association (never enemy positions); civilian villages with wandering civilians, rendered distinctly — civilian casualties are an automatic mission fail, same as fratricide; convoy pit stops (seeded 1–3 minutes at fuel/ammo/airfield facilities); the FDC deviation policy (scripts are guidelines — dangerous deviation triggers the rant system, stupid-but-safe deviation gets a snide remark and the mission proceeds; strict mode still enforces format for grading). Stop after stage 8.
+
+Then the campaign phase adds the volume/chapter story mode on top of the now-populated islands — **read NARRATIVE.md alongside SPEC.md** for these. Prompt pattern:
+
+> Read SPEC.md, CLAUDE.md, and NARRATIVE.md. Build **BUILD ORDER stage 9 only**: chapter data model (fixed seeds), bookshelf volume/chapter mission menu with MW2-style 0–5 star display, `gradeMission(metrics)` with difficulty caps, sequential + star-gated unlocks, persistence, and [N] as Skirmish mode. Surface-to-surface only — Volume V (CAS) is a locked tease, do not build it. Stop after stage 9.
+
+Then stage 10 (narrative layer: briefings, Foreword tutorial, per-volume islands, strict-mode Volume IV, 60mm chapters, humor per NARRATIVE.md) and stage 11 (Epilogue incl. the SUNLAMP directed-energy mission — same direct-impact model — plus balance pass). **Commit between every stage.**
+
 ## Testing notes
 - **Voice**: needs mic permission on a real Chrome tab (won't work in the Artifact sandbox).
 - **Print / map library**: test via the browser print dialog (Save as PDF).

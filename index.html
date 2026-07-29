@@ -254,6 +254,11 @@ const CONFIG = {
                              'david', 'mark', 'guy', 'male', 'en-us', 'english'] },
   GAMEPAD: { lookSpeed: 2.8, deadzone: 0.16 },
   UI: { laseHold: 6 },
+  WORLD: {
+    roadWidth: 7, pathWidth: 3.2, villageCount: 2, civsPerVillage: 6,
+    convoyStopDur: [60, 180],          // pit-stop length range (s)
+    hutCollateralR: 24, civCollateralR: 28,
+  },
 };
 let DIFFICULTY = 'normal';
 let currentType = 'strongpoint';
@@ -469,6 +474,7 @@ function rebuildWorld() {
   buildMinimap();
   placeOP();
   placeBattery();
+  buildWorldFeatures();
   oceanShallows.visible = !DEM;
   newMission(false);
 }
@@ -581,6 +587,264 @@ function placeBattery() {
 }
 placeBattery();
 
+/* ============================================================ WORLD FEATURES */
+// Permanent, seeded, terrain-aware world detail: coast road, dirt paths,
+// military facilities, landmarks, and civilian villages. Rebuilt per island
+// (terrain seed ^ DEM name), NOT per mission — permanence is what makes the
+// features usable for terrain association on the printed sheet.
+const WORLD = { roads: [], paths: [], facilities: [], villages: [], civs: [], group: null };
+function strHash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+const _wMats = {
+  road:  new THREE.MeshLambertMaterial({ color: 0x8A7452, flatShading: true, side: THREE.DoubleSide }),
+  path:  new THREE.MeshLambertMaterial({ color: 0xA39272, flatShading: true, side: THREE.DoubleSide }),
+  strip: new THREE.MeshLambertMaterial({ color: 0x59564E, flatShading: true, side: THREE.DoubleSide }),
+  mil:   new THREE.MeshLambertMaterial({ color: 0x5C6650, flatShading: true }),
+  milB:  new THREE.MeshLambertMaterial({ color: 0x4A5240, flatShading: true }),
+  civ:   new THREE.MeshLambertMaterial({ color: 0xC9B891, flatShading: true }),
+  civB:  new THREE.MeshLambertMaterial({ color: 0xB5A075, flatShading: true }),
+  drum:  new THREE.MeshLambertMaterial({ color: 0x7A3A2A, flatShading: true }),
+  mast:  new THREE.MeshLambertMaterial({ color: 0xB9B4A6, flatShading: true }),
+  person:new THREE.MeshLambertMaterial({ color: 0xE8E2D0, flatShading: true }),
+};
+const _civGeo = new THREE.BoxGeometry(0.7, 1.8, 0.7);
+
+function ribbonMesh(pts, width, mat, lift) {
+  if (pts.length < 2) return null;
+  const n = pts.length;
+  const pos = new Float32Array(n * 6);
+  const idx = [];
+  for (let i = 0; i < n; i++) {
+    const o = pts[Math.max(i - 1, 0)], q = pts[Math.min(i + 1, n - 1)];
+    let dx = q.x - o.x, dz = q.z - o.z;
+    const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+    const hw = width / 2, px = -dz * hw, pz = dx * hw;
+    const x0 = pts[i].x + px, z0 = pts[i].z + pz;
+    const x1 = pts[i].x - px, z1 = pts[i].z - pz;
+    pos[i * 6]     = x0; pos[i * 6 + 1] = Math.max(H(x0, z0), 0) + lift; pos[i * 6 + 2] = z0;
+    pos[i * 6 + 3] = x1; pos[i * 6 + 4] = Math.max(H(x1, z1), 0) + lift; pos[i * 6 + 5] = z1;
+    if (i) idx.push(i * 2 - 2, i * 2 - 1, i * 2, i * 2 - 1, i * 2 + 1, i * 2);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+function wBox(x, z, w, h, d, mat, rotY) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, Math.max(H(x, z), 0) + h / 2, z);
+  if (rotY) m.rotation.y = rotY;
+  WORLD.group.add(m);
+  return m;
+}
+function isleName(rng) {
+  const syl = ['ta', 'va', 'mo', 'ra', 'hi', 'no', 'ke', 'lu', 'pa', 'si', 'ngo', 'fa'];
+  let n = '';
+  const c = 2 + Math.floor(rng() * 2);
+  for (let i = 0; i < c; i++) n += syl[Math.floor(rng() * syl.length)];
+  return n.toUpperCase();
+}
+
+function buildWorldFeatures() {
+  // teardown
+  if (WORLD.group) {
+    scene.remove(WORLD.group);
+    WORLD.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  }
+  WORLD.group = new THREE.Group();
+  WORLD.roads.length = 0; WORLD.paths.length = 0;
+  WORLD.facilities.length = 0; WORLD.villages.length = 0; WORLD.civs.length = 0;
+  const wSeed = (CONFIG.SEED.terrain ^ (DEM ? strHash(DEM.name) : 0)) >>> 0;
+  const rng = mulberry32(wSeed);
+  const W = CONFIG.WORLD;
+
+  // --- coast road: radial scan for the outermost low-shelf point per bearing
+  const NA = 128, ring = [];
+  for (let a = 0; a < NA; a++) {
+    const th = a / NA * Math.PI * 2;
+    const ux = Math.cos(th), uz = Math.sin(th);
+    let pt = null;
+    for (let r = 4700; r >= 400; r -= 40) {
+      const h = H(ux * r, uz * r);
+      if (h >= 2 && h <= 9) { pt = { x: ux * r, z: uz * r }; break; }
+    }
+    ring.push(pt);
+  }
+  for (let a = 0; a < NA; a++) {           // fill gaps from neighbors
+    if (ring[a]) continue;
+    const p = ring[(a + NA - 1) % NA], q = ring[(a + 1) % NA];
+    if (p && q) ring[a] = { x: (p.x + q.x) / 2, z: (p.z + q.z) / 2 };
+  }
+  let road = ring.filter(Boolean);
+  for (let pass = 0; pass < 2; pass++)     // smooth
+    road = road.map((p, i) => {
+      const a = road[(i + road.length - 1) % road.length], b = road[(i + 1) % road.length];
+      return { x: (a.x + p.x * 2 + b.x) / 4, z: (a.z + p.z * 2 + b.z) / 4 };
+    });
+  if (road.length > 8) {
+    road.push(road[0]);                    // close the loop
+    WORLD.roads.push(road);
+    const m = ribbonMesh(road, W.roadWidth, _wMats.road, 0.22);
+    if (m) WORLD.group.add(m);
+  }
+  const roadAt = f => road[Math.floor(f * (road.length - 1))] || { x: 0, z: 0 };
+  const inland = (p, d) => {               // step toward island center
+    const l = Math.hypot(p.x, p.z) || 1;
+    return { x: p.x - p.x / l * d, z: p.z - p.z / l * d };
+  };
+
+  // --- facilities (each with a map name; skipped gracefully if no terrain fits)
+  function scanBest(score) {
+    let best = null, bs = -Infinity;
+    for (let x = -3600; x <= 3600; x += 180)
+      for (let z = -3600; z <= 3600; z += 180) {
+        const s = score(x, z);
+        if (s !== null && s > bs) { bs = s; best = { x, z }; }
+      }
+    return best;
+  }
+  // airfield: flattest low ground with a workable heading
+  {
+    let bestDir = 0;
+    const af = scanBest((x, z) => {
+      const h = H(x, z);
+      if (h < 2 || h > 10) return null;
+      let best = null;
+      for (let d = 0; d < 4; d++) {
+        const th = d * Math.PI / 4, ux = Math.sin(th), uz = -Math.cos(th);
+        let dev = 0;
+        for (let s = -300; s <= 300; s += 100)
+          dev = Math.max(dev, Math.abs(H(x + ux * s, z + uz * s) - h));
+        if (best === null || dev < best.dev) best = { dev, th };
+      }
+      if (best.dev > 4.5) return null;
+      bestDir = best.th;
+      return -best.dev - Math.abs(h - 5) * 0.2;
+    });
+    if (af) {
+      const ux = Math.sin(bestDir), uz = -Math.cos(bestDir);
+      const pts = [];
+      for (let s = -310; s <= 310; s += 62)
+        pts.push({ x: af.x + ux * s, z: af.z + uz * s });
+      const m = ribbonMesh(pts, 40, _wMats.strip, 0.28);
+      if (m) WORLD.group.add(m);
+      wBox(af.x - uz * 40, af.z + ux * 40, 14, 5, 10, _wMats.mil, bestDir);
+      wBox(af.x - uz * 40 + ux * 24, af.z + ux * 40 + uz * 24, 14, 5, 10, _wMats.mil, bestDir);
+      wBox(af.x - uz * 26, af.z + ux * 26, 0.4, 7, 0.4, _wMats.mast);
+      WORLD.facilities.push({ kind: 'airfield', name: 'AIRFIELD', x: af.x, z: af.z, th: bestDir, len: 620 });
+    }
+  }
+  // radio mast: prominent high ground away from the OP — prime resection landmark
+  {
+    const mp = scanBest((x, z) => {
+      const h = H(x, z);
+      if (h < 35) return null;
+      if (dist2(x, z, OP.x, OP.z) < 900) return null;
+      return h;
+    });
+    if (mp) {
+      wBox(mp.x, mp.z, 0.9, 26, 0.9, _wMats.mast);
+      wBox(mp.x + 6, mp.z + 4, 5, 2.6, 4, _wMats.mil);
+      WORLD.facilities.push({ kind: 'mast', name: 'RDO MAST', x: mp.x, z: mp.z });
+    }
+  }
+  // coastal gun: headland overlooking water
+  {
+    const cg = scanBest((x, z) => {
+      const h = H(x, z);
+      if (h < 8 || h > 30) return null;
+      const l = Math.hypot(x, z) || 1;
+      if (H(x + x / l * 240, z + z / l * 240) > 0) return null;   // water seaward
+      return -Math.abs(h - 16);
+    });
+    if (cg) {
+      wBox(cg.x, cg.z, 6, 2.2, 6, _wMats.milB);
+      wBox(cg.x, cg.z, 1.2, 1.2, 7.5, _wMats.milB, Math.atan2(cg.x, cg.z));
+      WORLD.facilities.push({ kind: 'gun', name: 'CSTL GUN', x: cg.x, z: cg.z });
+    }
+  }
+  // fuel point + ammo depot: on the coast road, well apart
+  if (road.length > 8) {
+    const fFrac = 0.1 + rng() * 0.3, aFrac = (fFrac + 0.4 + rng() * 0.2) % 1;
+    const fp = inland(roadAt(fFrac), 30), ap = inland(roadAt(aFrac), 34);
+    if (H(fp.x, fp.z) > 1) {
+      wBox(fp.x, fp.z, 8, 3.4, 6, _wMats.mil);
+      for (let i = 0; i < 3; i++)
+        wBox(fp.x + 7 + i * 2.6, fp.z - 3, 1.8, 2.0, 1.8, _wMats.drum);
+      WORLD.facilities.push({ kind: 'fuel', name: 'FUEL PT', x: fp.x, z: fp.z });
+    }
+    if (H(ap.x, ap.z) > 1) {
+      for (let i = 0; i < 3; i++)
+        wBox(ap.x + (i - 1) * 11, ap.z + (i % 2) * 7, 8, 2.8, 6, _wMats.milB, i * 0.35);
+      WORLD.facilities.push({ kind: 'ammo', name: 'AMMO DEPOT', x: ap.x, z: ap.z });
+    }
+  }
+
+  // --- civilian villages on the coast road, with wandering civilians
+  const usedFracs = [];
+  for (let v = 0; v < W.villageCount && road.length > 8; v++) {
+    let frac, tries = 0;
+    do { frac = rng(); tries++; }
+    while (tries < 20 && (usedFracs.some(u => Math.abs(u - frac) < 0.18 || Math.abs(u - frac) > 0.82) ||
+           WORLD.facilities.some(f => dist2(f.x, f.z, roadAt(frac).x, roadAt(frac).z) < 500)));
+    usedFracs.push(frac);
+    const c = inland(roadAt(frac), 55);
+    if (H(c.x, c.z) < 1.5) continue;
+    const vil = { name: isleName(rng), x: c.x, z: c.z, r: 70, huts: [] };
+    const nH = 5 + Math.floor(rng() * 3);
+    for (let i = 0; i < nH; i++) {
+      const a = rng() * Math.PI * 2, r = 12 + rng() * 42;
+      const hx = c.x + Math.cos(a) * r, hz = c.z + Math.sin(a) * r;
+      if (H(hx, hz) < 1) continue;
+      wBox(hx, hz, 5.2, 2.6, 4.2, rng() < 0.5 ? _wMats.civ : _wMats.civB, rng() * Math.PI);
+      vil.huts.push({ x: hx, z: hz });
+    }
+    if (!vil.huts.length) continue;
+    for (let i = 0; i < W.civsPerVillage; i++) {
+      const m = new THREE.Mesh(_civGeo, _wMats.person);
+      WORLD.group.add(m);
+      WORLD.civs.push({ m, bx: c.x + (rng() - 0.5) * 70, bz: c.z + (rng() - 0.5) * 70,
+                        wr: 5 + rng() * 9, phase: rng() * 20, x: c.x, z: c.z });
+    }
+    WORLD.villages.push(vil);
+  }
+
+  // --- dirt paths: villages/facilities up toward the interior (first ridge shoulder)
+  const pathTargets = [...WORLD.villages, ...WORLD.facilities.filter(f => f.kind === 'mast' || f.kind === 'gun')];
+  for (let i = 0; i + 1 < pathTargets.length; i += 2) {
+    const a = pathTargets[i], b = pathTargets[i + 1];
+    const pts = [];
+    const n = 26;
+    for (let s = 0; s <= n; s++) {
+      const t = s / n;
+      const x = lerp(a.x, b.x, t) + Math.sin(t * 9 + i) * 26;
+      const z = lerp(a.z, b.z, t) + Math.cos(t * 7 - i) * 26;
+      if (H(x, z) < 0.5) { pts.length = 0; break; }   // refuse water crossings
+      pts.push({ x, z });
+    }
+    if (pts.length) {
+      WORLD.paths.push(pts);
+      const m = ribbonMesh(pts, W.pathWidth, _wMats.path, 0.18);
+      if (m) WORLD.group.add(m);
+    }
+  }
+  scene.add(WORLD.group);
+}
+buildWorldFeatures();
+
+// per-frame: civilians wander their village; positions kept for collateral checks
+function updateCivilians(t) {
+  for (const c of WORLD.civs) {
+    c.x = c.bx + Math.sin(t * 0.14 + c.phase) * c.wr;
+    c.z = c.bz + Math.cos(t * 0.11 + c.phase * 1.7) * c.wr;
+    c.m.position.set(c.x, Math.max(H(c.x, c.z), 0) + 0.9, c.z);
+  }
+}
+
 /* ============================================================ UNITS (friendly compound + enemy) */
 const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [], flag: null };
 {
@@ -663,6 +927,8 @@ function genScenario(type, seed) {
       const h = H(x, z);
       if (h < hMin || h > hMax) continue;
       if (needLOS && !hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) continue;
+      // keep generated targets clear of civilian villages (collateral = fail)
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
       return { x, z };
     }
     return null;
@@ -723,7 +989,20 @@ function genScenario(type, seed) {
     S.t0 = sim.now - 220 / S.speed;  // column already strung out on the road
     S.enemy = { x: path.sx, z: path.sz };
     S.escaped = false;
-    S.brief = `Enemy convoy, four vehicles, moving on the low ground near grid ${gridOf(path.sx, path.sz)}. Lead the column and time your fire for effect — if the head of the column runs off the end of the road, they are gone.`;
+    // pit stop: halt at the facility nearest the route (fuel/ammo/airfield),
+    // else a plain crew halt at a seeded point. 1-3 minutes, seeded.
+    let stopD = lerp(0.35, 0.6, rng()) * path.len, stopName = 'a crew halt';
+    let bestFD = 320;
+    for (const f of WORLD.facilities) {
+      if (f.kind !== 'fuel' && f.kind !== 'ammo' && f.kind !== 'airfield') continue;
+      const t = clamp((f.x - path.sx) * path.dx + (f.z - path.sz) * path.dz, 300, path.len - 300);
+      const fd = dist2(f.x, f.z, path.sx + path.dx * t, path.sz + path.dz * t);
+      if (fd < bestFD) { bestFD = fd; stopD = t; stopName = 'the ' + f.name.toLowerCase(); }
+    }
+    const [sLo, sHi] = CONFIG.WORLD.convoyStopDur;
+    S.stop = { d: Math.max(stopD, 320), dur: lerp(sLo, sHi, rng()), tArr: null,
+               resumed: false, name: stopName };
+    S.brief = `Enemy convoy, four vehicles, moving on the low ground near grid ${gridOf(path.sx, path.sz)}. Lead the column and time your fire for effect — or catch them when they pull in somewhere. If the head of the column runs off the end of the road, they are gone.`;
   } else if (type === 'assault') {
     S.enemy = findSpot(1600, 3000, 4, 60, true) || { x: OP.x + 2000, z: OP.z };
     const oAz = azTo(S.enemy.x, S.enemy.z, OP.x, OP.z);  // objective -> OP side
@@ -775,7 +1054,26 @@ function updateScenario() {
   const S = Scenario;
   if (!S) return;
   if (S.type === 'convoy') {
-    const dHead = clamp(S.speed * (sim.now - S.t0), 0, S.path.len);
+    // piecewise time->distance with the pit stop in the middle
+    const raw = S.speed * (sim.now - S.t0);
+    let dHead;
+    if (raw < S.stop.d) dHead = raw;
+    else {
+      if (S.stop.tArr === null) {
+        S.stop.tArr = sim.now;
+        log('', `The column has pulled in at ${S.stop.name}. Engines idling. This window will not stay open.`, 'sys');
+      }
+      const halted = sim.now - S.stop.tArr;
+      if (halted < S.stop.dur) dHead = S.stop.d;
+      else {
+        if (!S.stop.resumed) {
+          S.stop.resumed = true;
+          log('', 'The column is rolling again.', 'sys');
+        }
+        dHead = S.stop.d + S.speed * (halted - S.stop.dur);
+      }
+    }
+    dHead = clamp(dHead, 0, S.path.len);
     let cxSum = 0, czSum = 0, alive = 0;
     for (let i = 0; i < S.veh.length; i++) {
       const v = S.veh[i];
@@ -1053,6 +1351,37 @@ const QUIPS = {
   rantLost: [
     'STOP. Just — stop. MUSTANG, I have drunk deep of your transmissions and found NOTHING. No grid. No direction. No sense. You are a forward observer. So OBSERVE something, and then TELL ME ABOUT IT in the format God and the field manual intended. Warning order. Location. Description. OVER.',
     'MUSTANG, listen to me very carefully, because I will say this once. I do not know what you are doing on that hill, but it is not calling for fire. Take a breath. Look at your map. Send: warning order, target location, description. In that order. Like a professional. Over.',
+  ],
+  snide: [
+    'Copy your... whatever that was. The manual describes a format, MUSTANG. It is one page. There are pictures.',
+    'I processed that call out of charity. Callsigns, warning order, location, description. In that order. Like your instructor begged you.',
+    'That transmission was to a call for fire what a mudslide is to architecture. We will fire it anyway.',
+    'Copy. And to think they told me the radio was a professional instrument.',
+  ],
+  snideRound: [
+    'The guns round to tens, son — your boutique little numbers are a fantasy and my time is real. Firing.',
+    'Copy your artisanal correction. Deviation comes in tens, range in hundreds. We will do the arithmetic you would not. Firing.',
+    'The fire direction computer just sighed out loud, MUSTANG. Round your numbers like a professional. Firing anyway.',
+  ],
+  nearCiv: [
+    'Be advised — that grid sits close to the village. There are civilians on this rock, MUSTANG. Put one round in the market square and your war is over.',
+    'Copy all. Check your map, son — the village is a short walk from your splash pattern. Adjust like you mean it.',
+  ],
+  unsafeCorr: [
+    'NEGATIVE. CHECK YOUR CORRECTION, MUSTANG. That shift walks rounds onto {WHO}. Look at your burst, look at your map, and send me a correction that does not end careers. Say again, over.',
+    'I am NOT sending that. Plot it, son. Your correction lands on {WHO}. You have one radio and you are currently using it for manslaughter. Say again, over.',
+  ],
+  unsafeInsist: [
+    'Your funeral, MUSTANG. Shifting fire as ordered. I am writing your name in the log as I do it.',
+    'Copy. On your head, son. The board of inquiry meets Tuesdays. Shifting fire.',
+  ],
+  rantCiv: [
+    ['CHECK FIRE. CHECK FIRE.',
+     'That round went into the VILLAGE, MUSTANG. The civilian village. The one on your map — plotted, labeled, and full of people who were having a perfectly fine morning until you found the radio.',
+     'There is no report I can write that survives this. END OF MISSION. Get off my net and go sit somewhere quiet and think about maps.'],
+    ['CHECK FIRE. GOD ALMIGHTY, CHECK FIRE.',
+     'You just serviced a fishing village with one-five-five, you catastrophic instrument. Those were CIVILIANS. The huts were on the sheet. The brief said no-strike.',
+     'I have to make phone calls now, MUSTANG. Phone calls with generals on the other end. END OF MISSION.'],
   ],
   rantFrat: [
     ['CHECK FIRE. CHECK FIRE. CHECK FIRE.',
@@ -1486,6 +1815,21 @@ function resolveImpact(impact, isFFE) {
       return;
     }
   }
+  // Collateral damage vs civilians/villages — identical automatic fail.
+  const WC = CONFIG.WORLD;
+  const civHit =
+    WORLD.civs.some(c => dist2(impact.x, impact.z, c.x, c.z) < WC.civCollateralR) ||
+    WORLD.villages.some(v => v.huts.some(hh => dist2(impact.x, impact.z, hh.x, hh.z) < WC.hutCollateralR));
+  if (civHit) {
+    mission.done = true; mission.failReason = 'collateral'; mission.tEnd = sim.now;
+    const rant = pick(QUIPS.rantCiv);
+    FDC.say(rant[0], { delay: 1.0 });
+    FDC.say(rant[1], { delay: 2.2 });
+    FDC.say(rant[2], { delay: 2.8 });
+    setState('CHECK FIRE');
+    schedule(sim.now + 16, showAAR);
+    return;
+  }
   // walking rounds the WRONG direction twice earns a tirade
   if (!isFFE) {
     const dTgt = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
@@ -1711,7 +2055,15 @@ function handleCFF(p) {
           { delay: CONFIG.FDC.readbackDelay });
   FDC.say('MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
           { delay: 1.4 });
-  if (Math.random() < 0.45) FDC.say(pick(QUIPS.readbackTail), { delay: 1.1 });
+  // deviation policy: sloppy-but-safe call format earns a snide remark and
+  // proceeds; a clean call gets the usual readback color.
+  if (notes.length >= 2) FDC.say(pick(QUIPS.snide), { delay: 1.1 });
+  else if (Math.random() < 0.45) FDC.say(pick(QUIPS.readbackTail), { delay: 1.1 });
+  // advisory when the aimpoint is near a civilian village (non-blocking)
+  let minCiv = Infinity;
+  for (const v of WORLD.villages)
+    for (const hh of v.huts) minCiv = Math.min(minCiv, dist2(cx, cz, hh.x, hh.z));
+  if (minCiv < 250) FDC.say(pick(QUIPS.nearCiv), { delay: 1.2 });
   if (H(cx, cz) < 0) FDC.say(pick(QUIPS.water), { delay: 1 });
   setState('MISSION SENT');
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr });
@@ -1728,6 +2080,35 @@ function handleAdjust(p) {
     return;
   }
   if (state !== 'ADJUSTING') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
+  // dangerous deviation gate: a correction that walks the aimpoint onto
+  // friendlies or a village is refused with a rant. Resending the identical
+  // correction overrides it — scripts are guidelines, and it is his funeral.
+  if (p.any) {
+    const a = mission.aim;
+    const otAz = azTo(OP.x, OP.z, a.x, a.z);
+    const nx = a.x + Math.sin(otAz) * p.corr.add + Math.cos(otAz) * p.corr.right;
+    const nz = a.z - Math.cos(otAz) * p.corr.add + Math.sin(otAz) * p.corr.right;
+    let danger = null;
+    const declaredDC = mission.gridStr.includes('DANGER CLOSE');
+    if (!declaredDC) {
+      for (const f of friendlyPositions())
+        if (dist2(nx, nz, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius) + 50) {
+          danger = 'the friendly position'; break;
+        }
+    }
+    if (!danger) {
+      for (const v of WORLD.villages)
+        if (v.huts.some(hh => dist2(nx, nz, hh.x, hh.z) < 70)) { danger = 'the village'; break; }
+    }
+    const key = p.corr.right + ',' + p.corr.add;
+    if (danger && mission.unsafeKey !== key) {
+      mission.unsafeKey = key;
+      FDC.say(pick(QUIPS.unsafeCorr).replace('{WHO}', danger), { delay: 1 });
+      return;
+    }
+    if (danger) FDC.say(pick(QUIPS.unsafeInsist), { delay: 1 });
+    mission.unsafeKey = null;
+  }
   const parts = [];
   if (p.any) {
     if (p.corr.right) parts.push(`${p.corr.right > 0 ? 'RIGHT' : 'LEFT'} ${Math.abs(p.corr.right)}`);
@@ -1736,7 +2117,10 @@ function handleAdjust(p) {
   }
   if (p.ffe) parts.push('FIRE FOR EFFECT');
   FDC.say(parts.join(', ') + ', OUT.', { delay: 1 });
-  if (Math.abs(p.corr.right) + Math.abs(p.corr.add) > 150 && Math.random() < 0.5)
+  // stupid-but-safe: un-doctrinal rounding gets a snide remark, then we fire
+  if (p.any && (Math.abs(p.corr.right) % 10 || Math.abs(p.corr.add) % 50) && Math.random() < 0.55)
+    FDC.say(pick(QUIPS.snideRound), { delay: 1.3 });
+  else if (Math.abs(p.corr.right) + Math.abs(p.corr.add) > 150 && Math.random() < 0.5)
     FDC.say(pick(QUIPS.corrSnark), { delay: 1 });
   if (p.ffe) fireForEffect();
   else fireAdjustRound();
@@ -1746,7 +2130,7 @@ function handleEOM(p) {
   if (!mission) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
   if (!mission.done) { mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now; }
   FDC.say(`END OF MISSION${p.bda ? ', ' + p.bda.toUpperCase() : ''}, OUT.`, { delay: 1.2 });
-  if (mission.failReason !== 'fratricide') {
+  if (mission.failReason !== 'fratricide' && mission.failReason !== 'collateral') {
     const good = Scenario.type === 'convoy'
       ? Scenario.veh.filter(v => v.dead).length >= 3
       : (mission.ffeRounds.length > 0 && mission.hits >= Scenario.hitsNeed);
@@ -1831,12 +2215,14 @@ function showAAR() {
   const neutralized = isConvoy ? m.hits >= 3
     : (m.ffeRounds.length > 0 && m.hits >= S.hitsNeed);
   const frat = m.failReason === 'fratricide';
+  const collat = m.failReason === 'collateral';
   const escaped = m.failReason === 'escaped';
-  const pass = !frat && !escaped && neutralized && m.adjustRounds <= M.passMaxAdjustRounds;
+  const pass = !frat && !collat && !escaped && neutralized && m.adjustRounds <= M.passMaxAdjustRounds;
   const grade = ['A', 'B', 'C', 'D'][Math.min(m.notes.length, 3)];
   const dur = (m.tEnd || sim.now) - m.tStart;
   let verdict, why = '';
   if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted a friendly element. Automatic failure.'; }
+  else if (collat) { verdict = 'FAIL — CIVILIAN CASUALTIES'; why = 'Rounds impacted a civilian village. Collateral damage is an automatic failure, same as fratricide.'; }
   else if (escaped) { verdict = 'FAIL — CONVOY ESCAPED'; why = 'Fewer than three vehicles destroyed before the column ran off the map.'; }
   else if (!neutralized) {
     verdict = isConvoy ? 'FAIL — CONVOY STILL EFFECTIVE' : 'FAIL — TARGET STILL EFFECTIVE';
@@ -1941,6 +2327,39 @@ function drawMap() {
       ctx.fillText(String(CONFIG.MAP.originE / 1000 + i), p + 2, W - 4);
       ctx.fillText(String(CONFIG.MAP.originN / 1000 + 10 - i), 3, p + 11);
     }
+  }
+  // permanent world features first (terrain association layer), so mission
+  // markers draw over them
+  const strokePoly = (pts, style, width, dash) => {
+    ctx.strokeStyle = style; ctx.lineWidth = width;
+    ctx.setLineDash(dash || []);
+    ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(wpx(p.x), wpz(p.z)) : ctx.moveTo(wpx(p.x), wpz(p.z)));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  for (const r of WORLD.roads) strokePoly(r, 'rgba(122,79,42,0.85)', 2.2);
+  for (const p of WORLD.paths) strokePoly(p, 'rgba(122,79,42,0.65)', 1.3, [4, 3]);
+  for (const f of WORLD.facilities) {
+    const fx = wpx(f.x), fz = wpz(f.z);
+    if (f.kind === 'airfield') {
+      const ux = Math.sin(f.th), uz = -Math.cos(f.th);
+      const l = f.len / 2 / 10000 * W;
+      ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(fx - ux * l, fz - uz * l); ctx.lineTo(fx + ux * l, fz + uz * l);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#10150c';
+      ctx.fillRect(fx - 3, fz - 3, 6, 6);
+    }
+    mapMarkerLabel(ctx, f.name, fx + 6, fz - 4);
+  }
+  for (const v of WORLD.villages) {
+    ctx.fillStyle = '#7a4f2a';
+    for (const hh of v.huts.slice(0, 4))
+      ctx.fillRect(wpx(hh.x) - 2, wpz(hh.z) - 2, 4, 4);
+    mapMarkerLabel(ctx, v.name + ' (CIV)', wpx(v.x) + 8, wpz(v.z) + 4);
   }
   // friendly elements (strongpoint compound, or advancing squad centroid)
   if (Scenario.compound) {
@@ -2122,6 +2541,51 @@ function renderSheet() {
     ctx.stroke();
   }
 
+  // permanent world features — plotted like a real sheet so the FO can do
+  // terrain association / resection off them. Clipped to the map body.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(mx0, my0, mapPx, mapPx);
+  ctx.clip();
+  const sheetPoly = (pts, width, dash) => {
+    ctx.strokeStyle = '#000'; ctx.lineWidth = width;
+    ctx.setLineDash(dash || []);
+    ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(X(p.x), Y(p.z)) : ctx.moveTo(X(p.x), Y(p.z)));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  for (const r of WORLD.roads) sheetPoly(r, 1.5);
+  for (const p of WORLD.paths) sheetPoly(p, 0.8, [5, 4]);
+  ctx.font = 'bold 10px Consolas, monospace';
+  ctx.textAlign = 'left';
+  for (const f of WORLD.facilities) {
+    const fx = X(f.x), fz = Y(f.z);
+    if (f.kind === 'airfield') {
+      const ux = Math.sin(f.th), uz = -Math.cos(f.th);
+      const l = f.len / 2 / def.size * mapPx, hw = 24 / def.size * mapPx + 1.5;
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(fx - ux * l - uz * hw, fz - uz * l + ux * hw);
+      ctx.lineTo(fx + ux * l - uz * hw, fz + uz * l + ux * hw);
+      ctx.moveTo(fx - ux * l + uz * hw, fz - uz * l - ux * hw);
+      ctx.lineTo(fx + ux * l + uz * hw, fz + uz * l - ux * hw);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(fx - 2.5, fz - 2.5, 5, 5);
+    }
+    ctx.fillStyle = '#000';
+    ctx.fillText(f.name, fx + 6, fz - 4);
+  }
+  for (const v of WORLD.villages) {
+    ctx.fillStyle = '#000';
+    for (const hh of v.huts)
+      ctx.fillRect(X(hh.x) - 1.8, Y(hh.z) - 1.8, 3.6, 3.6);
+    ctx.fillText(v.name, X(v.x) + 8, Y(v.z) + 4);
+  }
+  ctx.restore();
+
   // grid + edge labels
   const kmN = def.size / 1000;
   ctx.font = '11px Consolas, monospace';
@@ -2217,6 +2681,7 @@ function renderSheet() {
   ctx.fillText('METERS', bx0 + barSegs * barSeg * pxPerM + 14, by + 10);
   ctx.fillText('READ GRIDS RIGHT, THEN UP. 6-DIGIT GRID = 100 M PRECISION (ARTILLERY).', bx0, by + 48);
   ctx.fillText('SHEET GENERATED FROM THE SIM HEIGHTFIELD H(x,z) — PAPER AND WORLD CORRELATE EXACTLY.', bx0, by + 66);
+  ctx.fillText('PERMANENT STRUCTURES, ROADS, AND VILLAGES ARE PLOTTED — USE THEM FOR TERRAIN ASSOCIATION AND RESECTION.', bx0, by + 84);
   // declination diagram
   const dcx = W - 330, dcy = by + 10;
   ctx.strokeStyle = '#000'; ctx.lineWidth = 1.4;
@@ -2243,7 +2708,18 @@ function renderSheet() {
   ctx.moveTo(lx, ly + 26); ctx.lineTo(lx + 12, ly + 14);
   ctx.strokeStyle = '#000'; ctx.lineWidth = 1.8; ctx.stroke();
   ctx.fillText('KNOWN / REGISTRATION POINT', lx + 22, ly + 24);
-  ctx.fillText('ENEMY POSITIONS NOT PLOTTED', lx + 22, ly + 46);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(lx, ly + 40); ctx.lineTo(lx + 14, ly + 40); ctx.stroke();
+  ctx.fillText('ROAD', lx + 22, ly + 44);
+  ctx.setLineDash([5, 4]);
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(lx, ly + 58); ctx.lineTo(lx + 14, ly + 58); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillText('TRACK / DIRT PATH', lx + 22, ly + 62);
+  ctx.fillRect(lx + 4, ly + 72, 5, 5);
+  ctx.fillText('BUILDING / FACILITY (NAMED)', lx + 22, ly + 80);
+  ctx.fillText('VILLAGE = HUT CLUSTER (CIVILIAN — NO-STRIKE)', lx + 22, ly + 98);
+  ctx.fillText('ENEMY POSITIONS NOT PLOTTED', lx + 22, ly + 116);
   ctx.font = '10px Consolas, monospace';
   ctx.fillText(`TERRAIN SEED ${CONFIG.SEED.terrain} · MISSION SEED ${CONFIG.SEED.mission} · SHITFIRE FO TRAINER`, mx0, PH - 18);
 }
@@ -2355,6 +2831,11 @@ function newMission(first, type) {
     log('', 'Known points registered: ' + Scenario.kps.map(kp =>
       `AB${kp.id} grid ${gridOf(kp.x, kp.z)} (brg ${fmtMils(radToMils(azTo(OP.x, OP.z, kp.x, kp.z)))})`).join(' · ') +
       '. Shift example: "adjust fire, shift known point 1001, right 200, add 400, over".', 'sys');
+  if (WORLD.villages.length)
+    log('', `NO-STRIKE: civilian village${WORLD.villages.length > 1 ? 's' : ''} ` +
+      WORLD.villages.map(v => v.name).join(' and ') +
+      ' — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. ' +
+      'Permanent structures and roads are on the sheet too — use them to orient.', 'sys');
   FDC.say(pick(QUIPS.greet), { delay: 1.5 });
   if (first) {
     const c = Scenario.compound || Scenario.enemy;
@@ -2595,6 +3076,7 @@ function animate(tMs) {
   }
   // scenario dynamics + battle ambience
   updateScenario();
+  updateCivilians(t);
   const flashOn = enemyAlive && Scenario &&
     (Scenario.type === 'strongpoint' || Scenario.type === 'assault' || Scenario.type === 'bunker');
   for (let i = 0; i < units.flashes.length; i++) {
@@ -2619,7 +3101,7 @@ newMission(true);
 requestAnimationFrame(animate);
 
 // Debug / stable interface exposure
-window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC,
+window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   get Scenario() { return Scenario; }, get mission() { return mission; }, OP, BATTERY };
 </script>
 </body>

@@ -1,6 +1,6 @@
 # CLAUDE.md — SHITFIRE (Forward Observer / Call-for-Fire Trainer)
 
-A single-file browser trainer for the FORWARD OBSERVER (not the gun crew). Full build spec is in **SPEC.md** — build it **per SPEC.md's "BUILD ORDER" section, one stage at a time.**
+A single-file browser trainer for the FORWARD OBSERVER (not the gun crew). Full build spec is in **SPEC.md** — build it **per SPEC.md's "BUILD ORDER" section, one stage at a time.** The campaign storyline (volumes, chapters, characters, humor rules) lives in **NARRATIVE.md**. **DOCTRINE.md** (distilled from JFIRE 2019 + the JFO Student Handout) is the authority for CFF formats, prowords, rounding, readback protocol, and strict-mode rules — check it before writing any parser or FDC traffic.
 
 ## Golden rules (do not violate)
 - **One `index.html`.** No build step, no bundler, no npm, no backend, no API keys.
@@ -11,15 +11,27 @@ A single-file browser trainer for the FORWARD OBSERVER (not the gun crew). Full 
 - Target 60 fps. Preallocate; no per-frame allocation in the render loop.
 
 ## Keep these interfaces stable (later stages depend on them)
-`H(x,z)` · `fireMission(targetLocation)` · `applyCorrection(otFrameDelta)` · `FDC.say(msg)` · `Scenario`
+`H(x,z)` · `fireMission(targetLocation)` · `applyCorrection(otFrameDelta)` · `FDC.say(msg)` · `Scenario` · `gradeMission(metrics) → stars` (stage 9+)
 
 ## Domain facts — get these right
 - **Ballistics = direct-impact model.** `impact = aimpoint + error`. NEVER simulate a trajectory, drag, or firing tables.
 - **First round** deviates randomly within a range; **follow-up rounds** are significantly tighter.
 - **Corrections are in the observer-target (OT) frame.** Convert to a world delta via OT azimuth and move `aimpoint`. **No angle-T / gun-line rotation** — gun assumed to execute perfectly.
 - Callsigns: observer **MUSTANG 12**, FDC **HELLHOUND FIRES**. FDC tone: dark-humored, sardonic, sharp on wrong calls — but never break the doctrinal readback.
-- Grid precision by asset: **artillery 6-digit/100 m; 60mm mortar 8-digit/10 m.**
-- Fratricide (hitting a friendly element) = automatic mission fail.
+- Grid precision by asset: **artillery 6-digit/100 m; 60mm mortar 8-digit/10 m** (a design simplification — doctrine ties fine grids to laser-grid missions; 6-digit is always acceptable).
+- CFF = **6 elements in 3 transmissions, each read back by the FDC**; corrections in order **deviation → range** ("left/right" nearest 10 m, "add/drop" in 100 m multiples); **danger close = within 600 m of friendlies** (expect creeping fire, ≤100 m corrections); end of mission = **RREMS** with surveillance terms suppressed/neutralized/destroyed. Details: DOCTRINE.md.
+- Fratricide (hitting a friendly element) = automatic mission fail (and 0 stars).
+- **Civilian casualties (collateral damage) = automatic mission fail**, identical to fratricide. Civilian villages/figures render distinctly from military elements.
+- **Permanent structures and roads must appear on the printed map sheets and the `[M]` map** (symbols + legend) so terrain association is a practicable skill (resect off the airfield, the radio mast, the village). Enemy positions are never plotted.
+- **Convoy pit stops:** moving convoys make seeded **1–3 minute stops** at gas stations/ammo depots/airfields along their route — catching a column halted differs from leading it on the move.
+- **FDC deviation policy:** doctrinal scripts are guidelines, flexible not rigid. **Dangerous deviation** (danger close w/o proword, corrections walking toward friendlies/civilians, unresolved-unsafe FFE) → FDC **rant**. **Stupid-but-safe deviation** (wrong element order, malformed-but-unambiguous calls, absurd rounding) → **snide remark**, mission proceeds. Strict mode still enforces format for grading — the rant/snide split is tone, not an extra gate.
+- **Surface-to-surface fires only.** CAS/9-line is future "Volume V" — a locked menu tease at most; never build it unasked.
+
+## Campaign rules (stages 9–11)
+- Mission menu = **book series**: Volumes → Chapters, per NARRATIVE.md (Foreword tutorial → Volumes I–IV → Epilogue). Chapters are **fixed-seed** missions; `[N]` random generator becomes **Skirmish** mode.
+- **Star grading, original-MW2 style:** 0–5★ per chapter from competency (rounds-to-effect, first-round miss, format, time vs. par), capped by difficulty (Easy 3 / Normal 4 / Hard 5), shown in the mission menu and AAR. Volumes unlock at cumulative star thresholds.
+- The Epilogue's directed-energy mission (SUNLAMP) **still uses the direct-impact model** — only pacing, prowords, visuals, and audio differ.
+- Humor: follow NARRATIVE.md's humor rules — sprinkle in story chapters, dial to 11 only in the Epilogue, and **never let a joke replace the doctrinal readback**.
 
 ## Conventions
 - Vanilla JS, ES modules, no framework.
@@ -39,3 +51,4 @@ A single-file browser trainer for the FORWARD OBSERVER (not the gun crew). Full 
 
 ## Workflow
 - `git init` first. Commit after each working stage. Review diffs before merging.
+- Doc/planning file updates (README.md, SPEC.md, NARRATIVE.md, CLAUDE.md, QUICKSTART.md, DOCTRINE.md) → **Sonnet subagent**. Sim (`index.html`) code → **Fable**.
