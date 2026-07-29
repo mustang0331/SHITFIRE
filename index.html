@@ -226,6 +226,10 @@
     <button class="mbtn" id="mdemreset">PROCEDURAL ISLAND</button>
     <input type="file" id="demfile" accept="image/*" style="display:none">
   </div>
+  <div class="mlabel">DEVELOPER</div>
+  <div class="mrow">
+    <button class="mbtn" id="mdevunlock">DEV UNLOCK: OFF</button>
+  </div>
   <div class="mlabel">SESSION TRANSCRIPT — COMMS + PARSE + IMPACTS, FOR DIALOGUE REVIEW</div>
   <div class="mrow">
     <button class="mbtn" id="mtlogtxt">EXPORT TEXT</button>
@@ -3249,9 +3253,13 @@ const CAMP = {
 };
 CAMP.load();
 
-function volUnlocked(vol) { return CAMP.total() >= vol.need; }
+// developer toggle: opens every volume and chapter (progress untouched)
+let DEV_UNLOCK = !!CAMP.data._devUnlock;
+function volUnlocked(vol) { return DEV_UNLOCK || CAMP.total() >= vol.need; }
 function chUnlocked(vol, ch) {
-  if (!ch.impl || !volUnlocked(vol)) return false;
+  if (!ch.impl) return false;
+  if (DEV_UNLOCK) return true;
+  if (!volUnlocked(vol)) return false;
   const impl = vol.chapters.filter(c => c.impl);
   const i = impl.indexOf(ch);
   return i === 0 || CAMP.stars(impl[i - 1].id) > 0;
@@ -3419,6 +3427,9 @@ function renderMenu() {
   document.getElementById('mbest').textContent = 'SKIRMISH BEST (' + DIFFICULTY.toUpperCase() + '): ' +
     (rows.length ? rows.join(' · ') : 'no passes recorded yet');
   document.getElementById('mtlogn').textContent = TLOG.entries.length + ' entries';
+  const devB = document.getElementById('mdevunlock');
+  devB.textContent = 'DEV UNLOCK: ' + (DEV_UNLOCK ? 'ON' : 'OFF');
+  devB.classList.toggle('sel', DEV_UNLOCK);
 }
 function toggleMenu(force) {
   const on = force !== undefined ? force : !menuEl.classList.contains('on');
@@ -3452,6 +3463,13 @@ document.getElementById('mtlogjson').addEventListener('click', () => {
 });
 document.getElementById('mtlogclear').addEventListener('click', () => {
   TLOG.clear();
+  renderMenu();
+});
+document.getElementById('mdevunlock').addEventListener('click', () => {
+  DEV_UNLOCK = !DEV_UNLOCK;
+  CAMP.data._devUnlock = DEV_UNLOCK;
+  CAMP.save();
+  log('', `Developer unlock ${DEV_UNLOCK ? 'ON — all chapters open (progress untouched)' : 'OFF — normal star-gated progression'}.`, 'sys');
   renderMenu();
 });
 
