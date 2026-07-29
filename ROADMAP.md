@@ -348,13 +348,13 @@ form becomes mandatory.
 
 | ID | What | Owner | Gate | Status |
 |---|---|---|---|---|
-| G20 | **The 10×10 km map may be too small** — an 800 m correction runs out of world. Affects `CONFIG.MAP.size`, terrain, the DEM pipeline, the printed sheet scale and every grid in every fixed-seed chapter. **Costed and decided before any code**: a size change may invalidate saved chapter seeds. | Opus | Decision recorded here with the seed-compatibility consequence stated; only then implemented | DECIDE |
+| G20 | **The 10×10 km map may be too small** — an 800 m correction runs out of world. Affects `CONFIG.MAP.size`, terrain, the DEM pipeline, the printed sheet scale and every grid in every fixed-seed chapter. **PARKED at the user's direction 2026-07-29: do not raise, cost, or implement this until the user brings it up.** Left on the board only so the observation is not lost. | — | **PARKED — do not action** |
 | G21 | **Do target location cues stay accurate when a new DEM is loaded?** User's open question. Verify — do not assume. Covers the E2 spot report, `nearestLandmark`, known points and the printed sheet. | Opus | Answered with evidence against a real loaded DEM (`KOFA_KING_VALLEY_FO_HEIGHTMAP.png` is in the tree); any drift fixed or logged | AUDIT |
 
 **Order:** ~~G1 → G5 → G3 → G2 → G4 → G6~~ ✅ shipped. ~~G19 audit~~ ✅ done — findings below, and
 they changed the plan: **G22 (the 3-transmission CFF state machine) is now NEXT**, because G7, G8,
 G9, G11, G14, G24, G26 and G27 all sit inside it. Then the G10/G13 doctrine research, then the rest
-of G-B. G20/G21 last; G20 is a decision, not a task.
+of G-B. **G20 is PARKED at the user's direction — do not action it until they raise it.** G21 last.
 
 **Two G-A rows added keybinds** that the docs sweep must pick up: `[Z]` / mouse wheel cycles
 binocular power (4X/7X/14X), and `SHIFT+D` toggles dispersion. Both are in the in-app hint line
