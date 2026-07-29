@@ -252,7 +252,8 @@
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
   [B] BINOS &middot; [L] LASE &middot; [R] MIL CARD &middot; [O] OPTICS: DAY/NVG/THERMAL<br>
-  [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] FDC VOICE &middot; [N] RANDOM MSN
+  [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] FDC VOICE &middot; [N] RANDOM MSN<br>
+  <span style="opacity:.62">[SHIFT+D] DISPERSION OFF — test aid, mission not graded</span>
 </div>
 
 <div id="map"><div id="mapbox" class="panel">
@@ -344,6 +345,17 @@ const CONFIG = {
     followUp:   { easy: { range: 12, defl: 7 }, normal: { range: 18, defl: 10 },
                   hard: { range: 26, defl: 15 } },                        // m, 1-sigma
     ffeRounds: 6, ffeStagger: [0.25, 0.9],
+    /* G3 — TEST AID. `false` makes every round land exactly on the aimpoint, so
+       the observer's own arithmetic can be checked without dispersion muddying
+       the result. Toggled live with SHIFT+D.
+
+       A mission fired with this off is NOT A GRADED MISSION and the code treats
+       it that way: no stars are recorded, the AAR says so in the verdict line,
+       the TLOG entry carries noDisp, and the HUD shows NO DISP the whole time.
+       An unmarked no-dispersion run would silently look like a perfect one,
+       which would corrupt the only record of how the observer is actually
+       doing — the whole point of the trainer. */
+    dispersion: true,
   },
   MISSION: {
     effectRadius: 60, hitsToNeutralize: 3, fratricideRadius: 80,
@@ -3517,7 +3529,11 @@ function setBinos(on) {
 }
 function refreshTool() {
   toolEl.textContent = (binos ? 'BINOS 7X' : 'EYES') +
-    (VISION.mode === 'day' ? '' : ' · ' + VIS_LABEL[VISION.mode]);
+    (VISION.mode === 'day' ? '' : ' · ' + VIS_LABEL[VISION.mode]) +
+    // G3 — permanently on screen while dispersion is off. A test aid that can be
+    // forgotten about is a test aid that eventually gets mistaken for the real
+    // thing, and this one makes the trainer flatter every shot.
+    (CONFIG.BALLISTICS.dispersion ? '' : ' · NO DISP');
 }
 
 const laseEl = document.getElementById('lase');
@@ -3615,18 +3631,32 @@ function spotBurst(impact) {
 function assetScale() {
   return activeChapter && activeChapter.asset === 'mortar60' ? 0.55 : 1;
 }
+/* G3 — both error functions draw from the stream FIRST and only then decide
+   whether to return the result. Bailing out early would leave the draws unspent,
+   and `mission.rng` also feeds the FFE round stagger, so an early return would
+   change the timing of the volley as a side effect of a switch that is only
+   supposed to affect where rounds land. Draw, discard, return zero. */
 function firstRoundError(rng) {
   const [lo, hi] = CONFIG.BALLISTICS.firstRound[DIFFICULTY];
   const mag = lerp(lo, hi, rng()) * assetScale(), az = rng() * Math.PI * 2;
+  if (!CONFIG.BALLISTICS.dispersion) return { x: 0, z: 0 };
   return { x: Math.sin(az) * mag, z: -Math.cos(az) * mag };
 }
 function followUpError(rng, otAz) {
   const s = CONFIG.BALLISTICS.followUp[DIFFICULTY];
   const k = assetScale();
   const along = gauss(rng) * s.range * k, across = gauss(rng) * s.defl * k;
+  if (!CONFIG.BALLISTICS.dispersion) return { x: 0, z: 0 };
   const fx = Math.sin(otAz), fz = -Math.cos(otAz);
   const rx = Math.cos(otAz), rz = Math.sin(otAz);
   return { x: fx * along + rx * across, z: fz * along + rz * across };
+}
+/* Sticky per-mission record. The switch can be thrown mid-mission, so asking
+   "is dispersion on?" at the AAR would miss a mission that was flown with it off
+   and flicked back on before the last round. Every round that leaves the tube
+   while it is off marks the mission, permanently. */
+function markDispersion() {
+  if (mission && !CONFIG.BALLISTICS.dispersion) mission.noDisp = true;
 }
 function tofFor(aim) {
   const B = CONFIG.BALLISTICS;
@@ -3656,6 +3686,8 @@ function fireMission(targetLocation, warno, meta) {
     // target identification (scenario start stands in for target ID)
     tInit: sim.now - scenarioT0,
     tStart: sim.now, tEnd: null, done: false, failReason: null, hits: 0,
+    noDisp: false,          // G3 — set by markDispersion() if any round is fired
+                            // with dispersion off; blocks star recording
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
   };
   if (warno === 'ffe') fireForEffect();
@@ -3675,6 +3707,7 @@ function applyCorrection(otFrameDelta) {
 
 function fireAdjustRound() {
   const B = CONFIG.BALLISTICS;
+  markDispersion();
   mission.adjustRounds++;
   const otAz = azTo(OP.x, OP.z, mission.aim.x, mission.aim.z);
   const err = mission.rounds.length === 0
@@ -3690,6 +3723,7 @@ function fireAdjustRound() {
 
 function fireForEffect() {
   const B = CONFIG.BALLISTICS;
+  markDispersion();
   setState('FIRE FOR EFFECT');
   if (Math.random() < 0.4) FDC.say(pick(QUIPS.ffeAck), { delay: 0.8 });
   const otAz = azTo(OP.x, OP.z, mission.aim.x, mission.aim.z);
@@ -4638,10 +4672,19 @@ function showAAR() {
     bracketed: !!(m.sides.long && m.sides.short),
     trace: m.missTrace.slice(),
     notes: m.notes.length,
-    ...(activeChapter ? { stars: gradeMission(m) } : {}) });
+    ...(m.noDisp ? { noDisp: true } : {}),
+    ...(activeChapter && !m.noDisp ? { stars: gradeMission(m) } : {}) });
   // campaign star grading (MW2 style): grade, persist best, show in AAR
   let starsHtml = '';
-  if (activeChapter) {
+  if (activeChapter && m.noDisp) {
+    /* G3 — a mission flown without dispersion is not a measurement of anything,
+       so it does not touch the campaign record. Deliberately does NOT record zero
+       stars either: that would destroy a previous honest result on this chapter,
+       punishing the user for using a test aid the trainer offers them. */
+    starsHtml = '<div style="margin-bottom:8px;color:#ffb3a0">NOT GRADED — round dispersion was ' +
+      'disabled (SHIFT+D) during this mission. No stars recorded; your previous best for this ' +
+      'chapter is untouched.</div>';
+  } else if (activeChapter) {
     const s = gradeMission(m);
     CAMP.record(activeChapter.id, S.difficulty, s);
     const cap = { easy: 3, normal: 4, hard: 5 }[S.difficulty];
@@ -4668,6 +4711,7 @@ function showAAR() {
     `<tr><td>Time to initiate CFF</td><td>${fmtTime(m.tInit)} (standard ≤ 2:00)</td></tr>` +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
+    (m.noDisp ? `<tr><td>Round dispersion</td><td>DISABLED — test mode, results not representative</td></tr>` : '') +
     (tr.length ? `<tr><td>Adjusting round trace</td><td>${tr.join(' → ')} m</td></tr>` : '') +
     (corrEff !== null ? `<tr><td>Correction efficiency</td><td>${Math.round(corrEff * 100)}% miss reduction/round (doctrine ≈50%)</td></tr>` : '') +
     (tr.length >= 2 ? `<tr><td>Bracket established</td><td>${m.sides.long && m.sides.short ? 'YES' : 'NO — all rounds one side'}</td></tr>` : '') +
@@ -6039,6 +6083,20 @@ document.addEventListener('keydown', e => {
     log('', `FDC voice ${CONFIG.VOICE.ttsEnabled ? 'ON' : 'OFF'}.`, 'sys');
   }
   else if (k === 'n') newMission(false);
+  /* G3 — SHIFT+D, not plain D. This is a test aid that removes the difficulty
+     from the trainer, so it should take deliberate intent to hit and should never
+     be reachable by a stray keypress while flying a graded chapter. */
+  else if (k === 'd' && e.shiftKey) {
+    const B = CONFIG.BALLISTICS;
+    B.dispersion = !B.dispersion;
+    refreshTool();
+    if (mission && !mission.done) markDispersion();
+    log('', B.dispersion
+      ? 'Round dispersion ON — rounds fall with normal first-round and follow-up error.'
+      : 'Round dispersion OFF (test mode) — every round lands exactly on the aimpoint. ' +
+        'This mission will NOT be graded and no stars will be recorded.', 'sys');
+    TLOG.add('sys', '', `dispersion ${B.dispersion ? 'on' : 'off'}`, { noDisp: !B.dispersion });
+  }
   else if (k === 'enter') { e.preventDefault(); txInput.focus(); }
 });
 document.addEventListener('keyup', e => {
