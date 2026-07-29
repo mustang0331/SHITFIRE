@@ -4,10 +4,17 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-29 · Baseline commit: `e7ccfdb` (fix F1)
+Last updated: 2026-07-29 · Baseline commit: `d586e54` (stage 13b)
 
-**Shipped so far off this board:** `13a` bino quality pin · `F1` range-rounding doctrine fix.
-**Next row: `13b`.**
+**Shipped off this board:** `13a` bino quality pin · `F1` range-rounding doctrine fix · `13b` tone
+mapping *(code landed, visual gate still open)*. **Next row: `13c`.**
+
+> 🔍 **One row is waiting on you, not on an agent.** 13b's code is committed and its map-sheet gate
+> passed, but its visual gate — "jungle, sand and ocean read unchanged in tone" — cannot be closed
+> without a human looking at it in Chrome. Open `index.html`, then flip `CONFIG.GFX.toneMap` between
+> `true` and `false` to A/B. If the island reads oversaturated, trim `CONFIG.GFX.satComp` **below**
+> 1.0 (see GRAPHICS.md G0.2 — the original guidance to bump it *up* was measured wrong and has been
+> corrected).
 
 > ⚠ **Concurrency is live in this repo, not hypothetical.** A Fable agent committed to `index.html`
 > at 03:36 while this board was being drafted (`a74cee7`), and BALLISTICS_RESEARCH.md plus new TLOG
@@ -82,8 +89,8 @@ can be A/B'd or reverted alone.
 | ID | G-ref | What | Owner | Gate | Status |
 |---|---|---|---|---|---|
 | 13a | G0.4 | **Bino quality pin** — stop adaptive quality dropping pixel ratio while binos are up | Opus | Troop figures countable through binos at 3000 m after a forced quality step-down | **DONE** `af439a5` |
-| 13b | G0 rest | `CONFIG.GFX` block, ACES tone mapping + **palette rebalance in the same commit** | — | Jungle/sand/ocean read unchanged in tone; map sheets unaffected | **NEXT** ⚠ needs Chrome eyes |
-| 13c | G1 | Sky + **time-of-day model** (`Sky.js`, TOD table drives sun/hemi/fog) | Fable | Horizon has no seam; `[M]` map + printed sheets inherit no tint | READY |
+| 13b | G0 rest | `CONFIG.GFX` block, ACES tone mapping, CPU-side background pre-tone | Opus | Map sheets unaffected ✅ · **jungle/sand/ocean read unchanged in tone — UNVERIFIED** | `d586e54` ⚠ **NEEDS CHROME** |
+| 13c | G1 | Sky + **time-of-day model** (`Sky.js`, TOD table drives sun/hemi/fog). **Must pre-tone the background via `acesFilmic()`** the way 13b does, or the horizon seam returns. | — | Horizon has no seam; `[M]` map + printed sheets inherit no tint | READY |
 | 13d | G2 | **Baked hillshade + AO into terrain vertex colors** — highest-value row | Fable | Ridge in 3D matches contours on the sheet; black-sand palette doesn't crush; `rebuildWorld()` under ~250 ms | READY |
 | 13e | G3 | Near-field terrain LOD patch (fixes 33 m facets > 60 m effect radius) | Fable | Burst deviation judgable against micro-relief; no seam z-fight; `groundHit`/`hasLOS` untouched | READY |
 | 13f | G4 | Instanced vegetation + scatter | Fable | **Civilian/military discrimination at 2000 m survives**; no veg on structures/roads; canopy ≤6 m | READY |
@@ -179,3 +186,4 @@ between any two graphics rows on request. It still serializes — rule 1 has no 
 | 2026-07-29 | Baseline moved `a847731` → `a74cee7`: an off-board Fable commit (AAR shot plot auto-fit + legibility) landed mid-session. Not attached to any stage — the AAR shot plot is an extra shipped alongside spec, like the OP watchtower and TLOG. Logged here so the board matches history. |
 | 2026-07-29 | **13a** `af439a5` and **F1** `e7ccfdb` shipped. Both implemented by Opus, not Fable — Fable 5 ran out of usage credits mid-dispatch. Deviation from CLAUDE.md's model split, accepted for two small well-gated rows; the split still stands as the default. |
 | 2026-07-29 | BALLISTICS_RESEARCH.md added to the authority map (reference only). Its §6 is flagged as required reading for row F2. |
+| 2026-07-29 | **13b** `d586e54` code landed; visual gate left open pending Chrome. GRAPHICS.md G0.2 corrected — its "ACES desaturates midtones, bump the greens" guidance was measured false against this palette, so `satComp` ships neutral instead of 1.12. The CPU background pre-tone (`acesFilmic()`) was not in the original plan; it is now a stated requirement for 13c. |

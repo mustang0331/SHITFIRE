@@ -104,11 +104,28 @@ if (CONFIG.GFX.toneMap) {
 ```
 
 ACES compresses highlights, which stops the additive burst flash and (later) the sun glint from
-clipping to flat white — the flash currently blows out and loses its shape. It also desaturates
-midtones ~10%, so the jungle greens at [index.html:489](index.html#L489) will need a small saturation
-bump to look the same. **Do the exposure/palette rebalance in the same commit** or the tropical
-palette will read muddy. `NeutralToneMapping` would be the better fit but does not exist in r160 —
-do not bump the three version for it.
+clipping to flat white — the flash currently blows out and loses its shape.
+
+> ⚠ **Corrected 2026-07-29 when 13b landed.** This section previously claimed ACES "desaturates
+> midtones ~10%, so the jungle greens will need a small saturation bump." **Measured against the
+> actual palette at exposure 1.15, that is false.** ACES *raises* saturation on four of five sampled
+> colours — jungle A +13.0%, jungle B +22.3%, ocean +14.3%, rock +31.9% — because they sit below the
+> highlight rolloff, where the RRT fit expands saturation rather than compressing it. Only sand
+> (`0xD8C89A`, the brightest) loses any, at −26.7%. A >1.0 compensation would push most of the island
+> **further the wrong way**. `CONFIG.GFX.satComp` therefore ships **neutral at 1.0**, and is a trim
+> knob to turn **down** if the island reads oversaturated — not a correction to dial up. The general
+> lesson holds for later rows: measure the transform against *this* palette before compensating for it.
+
+**Do the exposure/palette pass in the same commit** as the tone-mapping switch. `NeutralToneMapping`
+would be the better fit but does not exist in r160 — do not bump the three version for it.
+
+**The horizon seam (found while landing 13b).** three applies tone mapping in the fragment shader, so
+fog receives the curve — but `scene.background`, when it is a plain `Color`, is written as the clear
+colour and bypasses the shader entirely. Enabling ACES without handling this leaves the sky as the one
+surface in the scene that skipped the curve, measured at **18/255 on the red channel**. 13b added
+`acesFilmic()`, a CPU replication of r160's exact pipeline (`ACESInputMat` → `RRTAndODTFit` →
+`ACESOutputMat`, with the same `exposure / 0.6` scale), and pre-tones the background through it.
+**G1/13c must keep doing this** when it derives sky and fog from the time-of-day table.
 
 **G0.3 — Fog follows the sky.** Once G1 lands, the fog colour must be sampled from the horizon colour
 of the current time-of-day, or the horizon will show a hard seam. Keep `Fog` (linear) rather than
