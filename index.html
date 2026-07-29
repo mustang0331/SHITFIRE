@@ -56,6 +56,15 @@
     color: #9fb08c; text-align: right; pointer-events: none; line-height: 1.6;
     text-shadow: 0 1px 2px rgba(0,0,0,.8); }
 
+  /* Observer optics overlay (NVG / thermal): grain, vignette, tube tint, halo.
+     Backing store is CONFIG.OPTICS.cvW x cvH (320x180) and CSS stretches it to
+     fill, so the browser's own smoothing does the softening for free and the
+     whole overlay costs ~58k pixels instead of 2M. Sits above #gl and below
+     #bino so the reticle and the mil card stay at full contrast. */
+  #optics { position: fixed; inset: 0; width: 100%; height: 100%;
+    display: none; pointer-events: none; }
+  #optics.on { display: block; }
+
   /* Binoculars */
   #bino { position: fixed; inset: 0; display: none; pointer-events: none; }
   #bino.on { display: block; }
@@ -174,6 +183,7 @@
 </head>
 <body>
 <canvas id="gl"></canvas>
+<canvas id="optics"></canvas>
 
 <div id="topbar">
   <div id="status">STATE OBSERVING</div>
@@ -214,6 +224,7 @@
   <button class="tbtn" id="tb-talk">TALK</button>
   <button class="tbtn" data-act="binos">BINO</button>
   <button class="tbtn" data-act="lase">LASE</button>
+  <button class="tbtn" data-act="optics">OPTIC</button>
   <button class="tbtn" data-act="map">MAP</button>
   <button class="tbtn" data-act="menu">MENU</button>
   <button class="tbtn" data-act="new">NEW</button>
@@ -221,7 +232,8 @@
 
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
-  [B] BINOS &middot; [L] LASE &middot; [R] MIL CARD &middot; [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] VOICE &middot; [N] RANDOM MSN
+  [B] BINOS &middot; [L] LASE &middot; [R] MIL CARD &middot; [O] OPTICS: DAY/NVG/THERMAL<br>
+  [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] FDC VOICE &middot; [N] RANDOM MSN
 </div>
 
 <div id="map"><div id="mapbox" class="panel">
@@ -325,6 +337,20 @@ const CONFIG = {
   // Spot report: the cue that tells the observer WHERE TO LOOK without telling
   // him where the target IS. See sendSpotReport().
   SPOT: { enabled: true, lead: 2.4, gap: 2.9, saluteChance: 0.7, landmarkMax: 2600 },
+  // Observer optics: DAY / NVG / THERMAL, cycled with [O]. See VISION.
+  OPTICS: {
+    enabled: true,
+    hz: 24,             // overlay redraw rate (grain, vignette, halo). NOT the frame rate.
+    cvW: 320, cvH: 180, // overlay backing store; CSS stretches it to fill. Chunky on
+                        // purpose — grain and halo want to be soft, and this makes the
+                        // whole overlay cost ~58k pixels instead of 2M.
+    grain: 0.16,        // NVG scintillation amplitude, 0..1
+    haloR: 26,          // halo radius in overlay pixels at 1x
+    // Daylight degradation. Both devices stay AVAILABLE at every time of day and
+    // simply stop working well — see VISION's header for why that beats hiding them.
+    nvgBloomAt: 0.35,   // ambient above this starts blooming the tube out
+    thermalWashAt: 0.30,// ambient above this starts cooking the terrain hot
+  },
   UI: { laseHold: 6 },
   WORLD: {
     roadWidth: 7, pathWidth: 3.2, villageCount: 2, civsPerVillage: 6,
@@ -593,17 +619,48 @@ scene.add(hemi);
    proposes elev 55 / azi 145 for day, which is a more physically coherent arc
    with dawn/dusk but visibly relights the island — switch `day` to those values
    if that trade is wanted. Keep chapter assignments away from elev < 5: a very
-   low sun throws long shadows toward the observer and can hide targets. */
+   low sun throws long shadows toward the observer and can hide targets.
+
+   `light` (0..1) is the AMBIENT LEVEL this TOD represents. It is not a lighting
+   term — applyTOD does not read it for the sun or the hemisphere. It exists so
+   the observer's optics know how much light they are being asked to amplify:
+   an image intensifier blooms out in daylight and a thermal sight loses its
+   hot/cold separation once the sun has heated the ground. See VISION.
+   `hemiGnd` / `hemiInt` are optional overrides for the hemisphere bounce; they
+   default to the daytime values so no existing TOD changes.
+
+   'night' is moonlight, and it is deliberately DARK — the first pass ran it at
+   inten 0.16 / hemi 0.22 and a harness measured the naked eye doing BETTER at
+   night than the image intensifier, which made the whole device pointless. At
+   0.09 / 0.13 the jungle renders around sRGB 0.21 and a man on it around 0.06:
+   you can tell something is there and you cannot work with it, which is the
+   entire argument for [O]. Sun elevation is held at 8 deliberately: below ~5 the
+   Lambert terms on the near terrain go flat and target figures stop separating
+   from the ground they stand on, which is the long-shadow trap this comment
+   already warns about. Preetham cannot draw a night sky — it has no stars and
+   no night term — so night is faked by collapsing rayleigh and turbidity until
+   the scattering integral bottoms out, which lands a very dark blue-grey dome
+   that reads as an overcast moonlit night rather than a starfield. That is the
+   honest limit of a one-draw-call sky with no new dependency. */
 const TOD_TABLE = {
   day:      { elev: 64.5, azi: 324, sun: 0xFFF4E0, inten: 1.25, hemiSky: 0xBFE0EA,
-              fog: 0xE3EADB, turbidity: 2.2, rayleigh: 1.0,  mieC: 0.005, mieG: 0.80 },
+              fog: 0xE3EADB, turbidity: 2.2, rayleigh: 1.0,  mieC: 0.005, mieG: 0.80,
+              light: 1.00 },
   dawn:     { elev: 6,    azi: 100, sun: 0xFFC08A, inten: 1.05, hemiSky: 0xE8C9A8,
-              fog: 0xE6D6C4, turbidity: 4.0, rayleigh: 2.6,  mieC: 0.008, mieG: 0.82 },
+              fog: 0xE6D6C4, turbidity: 4.0, rayleigh: 2.6,  mieC: 0.008, mieG: 0.82,
+              light: 0.45 },
   dusk:     { elev: 9,    azi: 250, sun: 0xFF9A5A, inten: 0.95, hemiSky: 0xD8A9A0,
-              fog: 0xE0C6BA, turbidity: 5.0, rayleigh: 2.2,  mieC: 0.007, mieG: 0.82 },
+              fog: 0xE0C6BA, turbidity: 5.0, rayleigh: 2.2,  mieC: 0.007, mieG: 0.82,
+              light: 0.40 },
   overcast: { elev: 40,   azi: 145, sun: 0xE8EAEC, inten: 0.55, hemiSky: 0xC9D2D6,
-              fog: 0xD5DBDD, turbidity: 10,  rayleigh: 0.6,  mieC: 0.020, mieG: 0.75 },
+              fog: 0xD5DBDD, turbidity: 10,  rayleigh: 0.6,  mieC: 0.020, mieG: 0.75,
+              light: 0.75 },
+  night:    { elev: 8,    azi: 205, sun: 0x93A9CE, inten: 0.09, hemiSky: 0x161D2B,
+              fog: 0x0A0F18, turbidity: 0.7, rayleigh: 0.10, mieC: 0.0015, mieG: 0.86,
+              hemiGnd: 0x0C110D, hemiInt: 0.13, light: 0.05 },
 };
+const TOD_LIGHT = () => (TOD_TABLE[TOD] && TOD_TABLE[TOD].light !== undefined)
+  ? TOD_TABLE[TOD].light : 1;
 let TOD = 'day';
 let skyMesh = null;
 const _sunDir = new THREE.Vector3();
@@ -634,6 +691,8 @@ function applyTOD(name) {
   sun.color.setHex(t.sun);
   sun.intensity = t.inten;
   hemi.color.setHex(t.hemiSky);
+  hemi.groundColor.setHex(t.hemiGnd !== undefined ? t.hemiGnd : 0x5C6B4E);
+  hemi.intensity = t.hemiInt !== undefined ? t.hemiInt : 0.55;
   scene.fog.color.setHex(t.fog);
   if (skyMesh) {
     // Sky.js includes <tonemapping_fragment>, so the sky goes through ACES exactly
@@ -656,20 +715,33 @@ function applyTOD(name) {
   // 13d bakes sun direction into terrain vertex colours; when it lands, a TOD change
   // must trigger a terrain rebuild. Inert until then.
   if (CONFIG.GFX.hillshade && typeof buildTerrain === 'function') buildTerrain();
+  // The optics sit DOWNSTREAM of the lighting authority: applyTOD always writes
+  // the base sun/hemi/fog first, then applyVision multiplies its gain on top and
+  // re-derives the material variants and the overlay for the new ambient level.
+  // `var` (not let/const) so this hook is safe to read during the boot-time
+  // applyTOD('day') that runs long before the VISION block exists.
+  if (visionReady) applyVision();
 }
+var visionReady = false;
 applyTOD('day');
 
 // Ocean
 let oceanShallows = null;
 {
+  // water absorbs near-IR (almost black under a tube) and has a high heat
+  // capacity (slightly WARMER than the land it borders at night, so the
+  // shoreline stays readable in thermal). Both are physical, and both happen to
+  // keep the coast usable as a terrain-association feature after dark.
   const ocean = new THREE.Mesh(
     new THREE.PlaneGeometry(44000, 44000).rotateX(-Math.PI / 2),
-    new THREE.MeshLambertMaterial({ color: gfxPal(0x1E5A7A) }));
+    visTag(new THREE.MeshLambertMaterial({ color: gfxPal(0x1E5A7A) }),
+           { nvg: 0.06, th: [0.22, 0.22, 0.22] }));
   ocean.position.y = 0;
   scene.add(ocean);
   oceanShallows = new THREE.Mesh(
     new THREE.CircleGeometry(CONFIG.TERRAIN.islandRadius + 900, 48).rotateX(-Math.PI / 2),
-    new THREE.MeshLambertMaterial({ color: gfxPal(0x2E7DA0) }));
+    visTag(new THREE.MeshLambertMaterial({ color: gfxPal(0x2E7DA0) }),
+           { nvg: 0.09, th: [0.25, 0.25, 0.25] }));
   oceanShallows.position.y = 0.15;
   scene.add(oceanShallows);
 }
@@ -706,9 +778,17 @@ function buildTerrain() {
     terrainMesh.geometry.dispose();
     terrainMesh.material.dispose();
   }
-  terrainMesh = new THREE.Mesh(geo,
-    new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  // The terrain is the one material in the scene whose colour lives in a vertex
+  // attribute, not in material.color — so the generic optics derivation would read
+  // white and blow the ground out. Tag it explicitly. (visTag is hoisted; the tag
+  // is inert until VISION exists.) A rebuild makes a NEW material, so the optics
+  // have to be re-derived or a mid-mission island swap leaves the ground in day
+  // colours under a night device.
+  terrainMesh = new THREE.Mesh(geo, visTag(
+    new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
+    { nvg: 0.55, th: [0.14, 0.14, 0.14] }));   // vegetation is NIR-bright
   scene.add(terrainMesh);
+  if (visionReady) applyVision();
 }
 let terrainMesh = null;
 buildTerrain();
@@ -943,6 +1023,44 @@ const FIG = {
 // buildWorldFeatures() disposes every geometry it tears down. These are shared
 // and live for the life of the page — mark them off-limits.
 for (const k in FIG.geo) FIG.geo[k].userData.keep = true;
+
+/* Optics signatures. `vis` on a material overrides what NVG and THERMAL make of
+   it; anything without one is derived from its daytime luminance (see VISION).
+     nvg  a 0..1 tube brightness
+     th   an [r,g,b] thermal signature, 0..1
+   Discrimination is a HARD gate — collateral damage and fratricide are both
+   auto-fails, so neither device is allowed to turn the three families into a
+   guess. The generic derivation would fail that gate: under a monochrome tube
+   the enemy and friendly bodies land 0.34 vs 0.46, and under white-hot EVERY
+   human body is 1.0. Both are fixed the way the real problem is fixed:
+
+     NVG      An image intensifier sees near-IR, and NIR is not luminance. Live
+              vegetation is strongly NIR-reflective (the Wood effect) so jungle
+              reads BRIGHT; water absorbs NIR so the sea goes almost black; and
+              dyed uniform cloth is NIR-dark, so men read as DARK shapes against
+              bright ground. That is what makes the tube worth carrying, and it
+              is why these numbers are not derived from the daytime palette — the
+              first pass did derive them and measured WORSE than the naked eye at
+              night, because the enemy body (0.30) and the jungle (0.34) landed on
+              top of each other. Friendly caps are blown to 1.0 — an IR beacon,
+              the brightest thing on the island. Civilians keep an inverted read:
+              bright cotton body, dark hat.
+     THERMAL  friendly caps render CYAN — a thermal CID panel. Civilian hats are
+              woven straw, which is a genuine thermal insulator, so a civilian is
+              a warm body under a distinctly COLD wide head. Enemy is the only
+              family that is bright all the way up.
+   Village huts run slightly warm (cooking fires), which makes a no-strike
+   village read as a warm cluster in thermal instead of vanishing. */
+function visTag(mat, spec) { mat.userData.vis = spec; return mat; }
+visTag(FIG.mat.enemyBody,  { nvg: 0.16, th: [1.00, 1.00, 1.00] });  // NIR-dark cloth
+visTag(FIG.mat.enemyCap,   { nvg: 0.32, th: [0.86, 0.86, 0.86] });
+visTag(FIG.mat.friendBody, { nvg: 0.20, th: [1.00, 1.00, 1.00] });
+visTag(FIG.mat.friendCap,  { nvg: 1.00, th: [0.28, 1.00, 1.00] });  // IR beacon / CID panel
+visTag(FIG.mat.civBody,    { nvg: 0.90, th: [0.70, 0.70, 0.70] });  // undyed cotton: NIR-bright
+visTag(FIG.mat.civHat,     { nvg: 0.20, th: [0.14, 0.14, 0.14] });  // straw insulates: cold
+visTag(FIG.mat.disc,       { nvg: 0.02, th: [0.03, 0.03, 0.03] });
+visTag(_wMats.civ,         { nvg: 0.40, th: [0.38, 0.38, 0.38] });  // hut, cooking fire
+visTag(_wMats.civB,        { nvg: 0.38, th: [0.36, 0.36, 0.36] });
 
 function makeFigure(kind) {                 // 'enemy' | 'friendly' | 'civ'
   const civ = kind === 'civ', fr = kind === 'friendly';
@@ -1255,6 +1373,15 @@ const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [],
     s.scale.setScalar(3.5); s.visible = false;
     scene.add(s); units.flames.push(s);
   }
+  // optics signatures — see visTag() above. A running engine is the second
+  // hottest thing on the island after a man; a burning wreck is the first.
+  visTag(vehMat,             { nvg: 0.14, th: [0.90, 0.90, 0.90] });  // painted metal: NIR-dark
+  visTag(units.vehMatDead,   { nvg: 1.00, th: [1.00, 1.00, 1.00] });
+  visTag(hutMat,             { nvg: 0.40, th: [0.34, 0.34, 0.34] });
+  visTag(flashMat,           { nvg: 1.00, th: [1.00, 1.00, 1.00] });
+  visTag(flameMat,           { nvg: 1.00, th: [1.00, 1.00, 1.00] });
+  visTag(units.bunker.material, { nvg: 0.30, th: [0.30, 0.30, 0.30] });
+  visTag(postMat,            { nvg: 0.85, th: [0.16, 0.16, 0.16] });  // painted marker post
 }
 let enemyAlive = true;
 
@@ -1527,7 +1654,7 @@ function placeUnits() {
   // hide/reset everything mission-specific
   units.troops.forEach(m => m.visible = false);
   units.vehicles.forEach(m => {
-    m.visible = false; m.material = units.vehMatAlive;
+    m.visible = false; visSetMat(m, units.vehMatAlive);
     m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1);
   });
   units.huts.forEach(m => m.visible = false);
@@ -1535,7 +1662,7 @@ function placeUnits() {
   units.flashes.forEach(f => f.s.visible = false);
   units.fSquad.forEach(m => m.visible = false);
   units.bunker.visible = false;
-  units.bunker.material.color.setHex(0x6E665C);
+  visSetColor(units.bunker, 0x6E665C);
   units.flames.forEach(s => s.visible = false);
   units.smokePuffs.forEach(p => { p.on = false; p.m.visible = false; });
   enemyAlive = true;
@@ -1597,7 +1724,7 @@ function placeUnits() {
     m.position.set(S.enemy.x, H(S.enemy.x, S.enemy.z) + 0.9, S.enemy.z);
     m.rotation.set(0, rng() * Math.PI, 0.35);
     m.scale.set(2.2, 1.3, 1.6);
-    m.material = units.vehMatDead;
+    visSetMat(m, units.vehMatDead);
   } else if (S.type === 'raid') {
     troopCluster(S.enemy.x, S.enemy.z, 8, 18);
     const m = units.vehicles[0];
@@ -2248,8 +2375,378 @@ const bursts = [];
     group.add(flash); group.add(ring); group.add(dust);
     group.visible = false;
     scene.add(group);
+    // optics signatures: the muzzle/impact flash and the ring are the brightest
+    // things on the net; the dust column is genuinely hot for a few seconds.
+    visTag(flash.material, { nvg: 1.00, th: [1.00, 1.00, 1.00] });
+    visTag(ring.material,  { nvg: 0.95, th: [0.95, 0.95, 0.95] });
+    visTag(dust.material,  { nvg: 0.85, th: [0.62, 0.62, 0.62] });
+    for (const p of puffs) visTag(p.material, { nvg: 0.60, th: [0.44, 0.44, 0.44] });
     bursts.push({ group, flash, ring, dust, puffs, debris, t0: 0, active: false, seen: true });
   }
+  visTag(debrisMat, { nvg: 0.20, th: [0.40, 0.40, 0.40] });
+}
+
+/* ============================================================ OBSERVER OPTICS (DAY / NVG / THERMAL) */
+/* Three vision modes on the observer, cycled with [O]. Always on — not gated to
+   binoculars — because the device is worn, not part of the glass, and because
+   finding the target with the naked eye at night is the thing the device exists
+   to make possible.
+
+   IMPLEMENTATION CONSTRAINT (GRAPHICS.md §Do not do): no EffectComposer on the
+   default render path. It costs a full-screen render target plus several passes
+   and breaks the direct renderer.render() call the quality system assumes. So
+   there is no post-processing here at all. Instead:
+
+     1. MATERIAL VARIANTS. Every material in the scene gets an NVG clone and a
+        THERMAL clone, cached on the source material itself (userData._vis).
+        Toggling walks the scene once and reassigns .material. That is a
+        one-time cost per toggle — a few hundred assignments, no allocation in
+        the render loop — and it is the only thing that touches the GPU path.
+     2. LIGHTS + FOG + BACKGROUND. applyTOD stays the lighting authority and
+        always writes the base; applyVision multiplies the tube gain on top,
+        retints the fog, hides the Preetham sky, and swaps in a pre-toned flat
+        background so the horizon does not seam (the 13b lesson).
+     3. A 2D CANVAS OVERLAY for grain, vignette, tube tint, and halo — the three
+        things a material swap genuinely cannot do. 320x180 backing store, CSS
+        stretched, redrawn at CONFIG.OPTICS.hz (24), every layer prebuilt at
+        boot and drawn with drawImage. Nothing in it allocates per frame.
+
+   DAYLIGHT BALANCE — the choice, stated: both devices stay AVAILABLE at every
+   time of day and simply stop working. Hiding them from the menu in daylight
+   would teach nothing; blooming them out teaches the actual lesson, which is
+   that an image intensifier is a night device and a thermal sight loses its
+   hot/cold separation once the sun has cooked the ground to body temperature.
+   Above CONFIG.OPTICS.nvgBloomAt the NVG image collapses toward flat pale green;
+   above thermalWashAt the thermal cold floor rises until terrain and men are the
+   same grey. At full daylight both are worse than the naked eye, which is
+   correct, and neither can trivialise a day mission.
+
+   DISCRIMINATION IS A HARD GATE. See visTag() for how friendly, enemy, and
+   civilian stay separable under a monochrome tube and under white-hot. */
+const VISION = {
+  mode: 'day',
+  modes: ['day', 'nvg', 'thermal'],
+  cv: document.getElementById('optics'),
+  ctx: null,
+  layer: { nvg: null, thermal: null },   // prebuilt tint + vignette + bloom veil
+  grain: [],                             // prebuilt noise frames
+  halo: { nvg: null, thermal: null },    // prebuilt radial blob
+  src: [],                               // halo emitters (sprites), preallocated
+  gi: 0, last: 0,
+};
+const _hv = new THREE.Vector3();          // halo projection scratch — never reallocated
+
+/* --- pure colour maths (harness-verified; see the commit body) --------------- */
+function visLum(c) { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; }
+function visClamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+// how far past the "this device is out of its depth" threshold the ambient is
+function visDegrade(ambient, at) {
+  return at >= 1 ? 0 : visClamp01((ambient - at) / (1 - at));
+}
+// NVG: monochrome P43 green, gamma-lifted so shadow detail comes up the way a
+// tube's response curve does. Blooms toward flat pale green in daylight.
+function visNvgRGB(lum, bloom, out) {
+  const g = visClamp01(Math.pow(visClamp01(lum), 0.55));
+  const k = bloom * 0.85;
+  out.r = g * 0.14 + (0.72 - g * 0.14) * k;
+  out.g = g * 1.00 + (0.95 - g * 1.00) * k;
+  out.b = g * 0.20 + (0.72 - g * 0.20) * k;
+  return out;
+}
+// THERMAL: white-hot. Tagged signatures pass through; untagged materials get a
+// faint luminance-derived cold grey so terrain relief still reads (an FO has to
+// judge a burst against micro-relief, so a flat black ground would be a
+// regression). The cold floor rises with ambient until the separation is gone.
+function visThermalRGB(spec, lum, wash, out) {
+  if (spec && spec.th) {
+    // a tagged signature is pulled toward one mid grey as the ground heats up
+    out.r = spec.th[0] + (0.80 - spec.th[0]) * wash * 0.85;
+    out.g = spec.th[1] + (0.80 - spec.th[1]) * wash * 0.85;
+    out.b = spec.th[2] + (0.80 - spec.th[2]) * wash * 0.85;
+  } else {
+    // untagged = cold; the floor lifts with ambient until cold meets hot
+    const g = 0.05 + 0.13 * visClamp01(lum) + 0.62 * wash;
+    out.r = out.g = out.b = g;
+  }
+  out.r = visClamp01(out.r); out.g = visClamp01(out.g); out.b = visClamp01(out.b);
+  return out;
+}
+
+const _vo = { r: 0, g: 0, b: 0 };         // variant colour scratch
+const _lc = { r: 0, g: 0, b: 0 };         // source colour scratch, sRGB
+function visVariantOf(m0, mode) {
+  if (mode === 'day') return m0;
+  const cache = m0.userData._vis || (m0.userData._vis = {});
+  if (!cache[mode]) {
+    const v = m0.clone();
+    v.userData = { _visBase: m0 };        // clone() copies userData by reference; replace it
+    // a variant is a flat signature: vertex colours would multiply the terrain
+    // palette back in and neither device would be monochrome
+    if (v.vertexColors) { v.vertexColors = false; v.needsUpdate = true; }
+    cache[mode] = v;
+  }
+  return cache[mode];
+}
+function visTintVariant(m0, mode, bloom, wash) {
+  const v = visVariantOf(m0, mode);
+  if (!v.color || !m0.color) return v;
+  const spec = m0.userData.vis;
+  // r160 keeps Color components in the LINEAR working space, but every number in
+  // visNvgRGB/visThermalRGB is authored perceptually. Read and write in sRGB
+  // explicitly so a "0.05 cold" really renders near-black instead of mid-grey.
+  m0.color.getRGB(_lc, THREE.SRGBColorSpace);
+  if (mode === 'nvg') {
+    const lum = spec && spec.nvg !== undefined ? spec.nvg : visLum(_lc);
+    visNvgRGB(lum, bloom, _vo);
+  } else {
+    visThermalRGB(spec, visLum(_lc), wash, _vo);
+  }
+  v.color.setRGB(_vo.r, _vo.g, _vo.b, THREE.SRGBColorSpace);
+  return v;
+}
+
+/* Sky / fog / background per mode. Raw (pre-tone) hexes; the background is
+   pushed through acesFilmic() exactly as 13b/13c do, and the fog is given the
+   RAW value, so the two still agree at the horizon and no seam opens. */
+function visSkyHex(mode, ambient) {
+  if (mode === 'nvg') {
+    const w = visDegrade(ambient, CONFIG.OPTICS.nvgBloomAt);
+    return w > 0.5 ? 0x9FC79F : 0x0A2410;              // bloomed out vs a dark green dome
+  }
+  const w = visDegrade(ambient, CONFIG.OPTICS.thermalWashAt);
+  return w > 0.5 ? 0x8A8A8A : 0x06080C;                // washed vs cold sky
+}
+
+function applyVision(forceMode) {
+  if (!CONFIG.OPTICS.enabled) return;
+  const mode = forceMode || VISION.mode;
+  const t = TOD_TABLE[TOD], ambient = TOD_LIGHT();
+  const bloom = visDegrade(ambient, CONFIG.OPTICS.nvgBloomAt);
+  const wash = visDegrade(ambient, CONFIG.OPTICS.thermalWashAt);
+
+  // ---- lights, fog, background (applyTOD has already written the base) ----
+  if (mode === 'day') {
+    sun.intensity = t.inten;
+    sun.color.setHex(t.sun);
+    hemi.intensity = t.hemiInt !== undefined ? t.hemiInt : 0.55;
+    hemi.color.setHex(t.hemiSky);
+    hemi.groundColor.setHex(t.hemiGnd !== undefined ? t.hemiGnd : 0x5C6B4E);
+    scene.fog.color.setHex(t.fog);
+    if (skyMesh) { skyMesh.visible = true; scene.background = null; }
+  } else if (mode === 'nvg') {
+    // Automatic gain control. A tube does not output "the scene times N" — it
+    // drives its own screen to a roughly FIXED brightness whatever it is fed,
+    // which is why an intensified image looks the same at midnight and at dusk.
+    // So the rig is absolute, not a multiplier on the TOD. Amplification lives
+    // in the pow(lum, 0.55) curve in visNvgRGB; multiplying here as well was
+    // double-counting and pushed the whole image into saturation, where the
+    // transfer curve flattens and contrast dies. Daylight degradation is carried
+    // entirely by the bloom term, not by the rig.
+    sun.intensity = 0.42;
+    sun.color.setHex(0xFFFFFF);            // the phosphor colour lives in the materials
+    hemi.intensity = 0.30;
+    hemi.color.setHex(0xFFFFFF);
+    hemi.groundColor.setHex(0x9A9A9A);
+    const hex = visSkyHex('nvg', ambient);
+    scene.fog.color.setHex(hex);
+    if (skyMesh) skyMesh.visible = false;
+    scene.background = CONFIG.GFX.toneMap
+      ? acesFilmic(hex, CONFIG.GFX.exposure) : new THREE.Color(hex);
+  } else {
+    // Thermal has no sun, so the rig exists only to make a signature render as
+    // itself — but with enough directional term left that slope relief still
+    // reads. An FO judges a burst against micro-relief, and a perfectly flat
+    // ground would be a regression. Real thermal sights do show relief
+    // (differential heating and emissivity), so this is not a cheat.
+    sun.intensity = 0.90;
+    sun.color.setHex(0xFFFFFF);
+    hemi.intensity = 0.55;
+    hemi.color.setHex(0xFFFFFF);
+    hemi.groundColor.setHex(0xFFFFFF);
+    const hex = visSkyHex('thermal', ambient);
+    scene.fog.color.setHex(hex);
+    if (skyMesh) skyMesh.visible = false;
+    scene.background = CONFIG.GFX.toneMap
+      ? acesFilmic(hex, CONFIG.GFX.exposure) : new THREE.Color(hex);
+  }
+
+  // ---- material variants ----
+  scene.traverse(o => {
+    const cur = o.material;
+    if (!cur || Array.isArray(cur)) return;
+    if (o === skyMesh) return;
+    let m0 = o.userData._m0;
+    if (!m0) m0 = o.userData._m0 = (cur.userData && cur.userData._visBase) || cur;
+    if (!m0.color) return;                                  // ShaderMaterial etc.
+    o.material = mode === 'day' ? m0 : visTintVariant(m0, mode, bloom, wash);
+  });
+
+  // ---- overlay ----
+  VISION.cv.classList.toggle('on', mode !== 'day');
+  if (mode !== 'day') { visBuildLayer(mode, ambient); drawOptics(); }
+}
+
+/* --- overlay construction (all prebuilt; drawOptics only calls drawImage) --- */
+function visMakeCanvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+function visBuildLayer(mode, ambient) {
+  const O = CONFIG.OPTICS, W = O.cvW, Hh = O.cvH;
+  const c = VISION.layer[mode] || (VISION.layer[mode] = visMakeCanvas(W, Hh));
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, W, Hh);
+  if (mode === 'nvg') {
+    const bloom = visDegrade(ambient, O.nvgBloomAt);
+    // tube tint: a light green wash, heavy when the tube is blooming out
+    g.fillStyle = `rgba(120,255,150,${0.06 + 0.42 * bloom})`;
+    g.fillRect(0, 0, W, Hh);
+  } else {
+    const wash = visDegrade(ambient, O.thermalWashAt);
+    g.fillStyle = `rgba(210,215,225,${0.03 + 0.34 * wash})`;
+    g.fillRect(0, 0, W, Hh);
+  }
+  // heavy vignette — much heavier for NVG, which is looking down a tube
+  const rg = g.createRadialGradient(W / 2, Hh / 2, Hh * 0.16, W / 2, Hh / 2, Hh * 0.82);
+  const edge = mode === 'nvg' ? 0.90 : 0.62;
+  rg.addColorStop(0, 'rgba(0,0,0,0)');
+  rg.addColorStop(0.55, `rgba(0,0,0,${edge * 0.22})`);
+  rg.addColorStop(1, `rgba(0,0,0,${edge})`);
+  g.fillStyle = rg;
+  g.fillRect(0, 0, W, Hh);
+}
+function visBuildGrain() {
+  const O = CONFIG.OPTICS, W = O.cvW, Hh = O.cvH;
+  for (let f = 0; f < 6; f++) {
+    const c = visMakeCanvas(W, Hh);
+    const g = c.getContext('2d');
+    const img = g.createImageData(W, Hh);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const n = Math.random();
+      const v = n * 255;
+      d[i] = v * 0.55; d[i + 1] = v; d[i + 2] = v * 0.6;
+      d[i + 3] = n > 0.72 ? 255 : 0;         // sparse scintillation, not TV snow
+    }
+    g.putImageData(img, 0, 0);
+    VISION.grain.push(c);
+  }
+}
+function visBuildHalo() {
+  for (const mode of ['nvg', 'thermal']) {
+    const c = visMakeCanvas(64, 64);
+    const g = c.getContext('2d');
+    const rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    const col = mode === 'nvg' ? '190,255,205' : '255,255,255';
+    rg.addColorStop(0, `rgba(${col},0.95)`);
+    rg.addColorStop(0.35, `rgba(${col},0.34)`);
+    rg.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = rg;
+    g.fillRect(0, 0, 64, 64);
+    VISION.halo[mode] = c;
+  }
+}
+function visCollectSources() {
+  VISION.src.length = 0;
+  for (const f of units.flashes) VISION.src.push(f.s);
+  for (const s of units.flames) VISION.src.push(s);
+  for (const b of bursts) VISION.src.push(b.flash);
+}
+function drawOptics() {
+  const mode = VISION.mode;
+  if (mode === 'day' || !VISION.ctx) return;
+  const O = CONFIG.OPTICS, W = O.cvW, Hh = O.cvH, ctx = VISION.ctx;
+  ctx.clearRect(0, 0, W, Hh);
+  // 1. halo on every bright emitter that is on screen and in front of us. NVG
+  //    tubes and thermal cores both bloom around a point source; the overlay
+  //    runs at 24 Hz, so a halo lags the camera by ~40 ms, which reads as tube
+  //    persistence rather than as a bug.
+  const halo = VISION.halo[mode];
+  if (halo) {
+    ctx.globalCompositeOperation = 'lighter';
+    const r = O.haloR;
+    for (let i = 0; i < VISION.src.length; i++) {
+      const s = VISION.src[i];
+      if (!s.visible || !s.parent || !s.parent.visible) continue;
+      s.getWorldPosition(_hv);
+      _hv.project(camera);
+      if (_hv.z > 1 || _hv.x < -1.3 || _hv.x > 1.3 || _hv.y < -1.3 || _hv.y > 1.3) continue;
+      const px = (_hv.x * 0.5 + 0.5) * W, py = (-_hv.y * 0.5 + 0.5) * Hh;
+      ctx.drawImage(halo, px - r, py - r, r * 2, r * 2);
+    }
+  }
+  // 2. sensor grain — cycled from prebuilt frames, never generated per draw
+  if (VISION.grain.length) {
+    VISION.gi = (VISION.gi + 1 + (Math.random() * 3 | 0)) % VISION.grain.length;
+    ctx.globalAlpha = mode === 'nvg' ? O.grain : O.grain * 0.45;
+    ctx.drawImage(VISION.grain[VISION.gi], 0, 0);
+    ctx.globalAlpha = 1;
+  }
+  // 3. tint + vignette (+ daylight bloom veil), prebuilt by visBuildLayer
+  ctx.globalCompositeOperation = 'source-over';
+  const layer = VISION.layer[mode];
+  if (layer) ctx.drawImage(layer, 0, 0);
+}
+
+function setVision(mode) {
+  if (!CONFIG.OPTICS.enabled) return;
+  if (VISION.modes.indexOf(mode) < 0) mode = 'day';
+  VISION.mode = mode;
+  applyVision();
+  refreshTool();
+  refreshStatus();
+}
+const VIS_LABEL = { day: 'DAY OPTIC', nvg: 'NVG', thermal: 'THERMAL' };
+function cycleVision() {
+  const i = VISION.modes.indexOf(VISION.mode);
+  const next = VISION.modes[(i + 1) % VISION.modes.length];
+  setVision(next);
+  const a = TOD_LIGHT();
+  if (next === 'day') {
+    log('', 'Optics: naked eye / daylight glass.', 'sys');
+  } else if (next === 'nvg') {
+    log('', a > CONFIG.OPTICS.nvgBloomAt
+      ? 'NIGHT VISION UP — and the tube is blooming out. There is far too much light for an image intensifier; you are looking at a green fog. This is a night device.'
+      : 'NIGHT VISION UP. Green, grainy, and short on contrast — but you can see. Bright sources will halo; that is the tube, not the enemy.', 'sys');
+  } else {
+    log('', a > CONFIG.OPTICS.thermalWashAt
+      ? 'THERMAL UP — and the ground is as warm as the men standing on it. The sun has cooked your contrast away. Thermal is for the dark.'
+      : 'THERMAL UP. White-hot: bodies and running engines burn, terrain stays cold. Friendly markers read CYAN. Civilians are warm bodies under a COLD straw hat — check the head before you send, over.', 'sys');
+  }
+}
+
+/* --- boot ------------------------------------------------------------------ */
+{
+  VISION.ctx = VISION.cv.getContext('2d');
+  VISION.cv.width = CONFIG.OPTICS.cvW;
+  VISION.cv.height = CONFIG.OPTICS.cvH;
+  visBuildGrain();
+  visBuildHalo();
+  visCollectSources();
+  visionReady = true;
+  applyVision();              // 'day' — establishes _m0 on everything already built
+}
+
+/* Assign a day material to an object without losing the current vision mode, and
+   recolour a day material so its live variant follows. Anything that writes
+   `.material =` or `.material.color` on a scene object MUST go through these two
+   or it will either be overwritten on the next toggle or permanently corrupt a
+   cached variant. */
+function visSetMat(obj, dayMat) {
+  obj.userData._m0 = dayMat;
+  obj.material = VISION.mode === 'day' ? dayMat
+    : visTintVariant(dayMat, VISION.mode,
+        visDegrade(TOD_LIGHT(), CONFIG.OPTICS.nvgBloomAt),
+        visDegrade(TOD_LIGHT(), CONFIG.OPTICS.thermalWashAt));
+}
+function visSetColor(obj, hex) {
+  const m0 = obj.userData._m0 || obj.material;
+  m0.color.setHex(hex);
+  if (VISION.mode !== 'day')
+    obj.material = visTintVariant(m0, VISION.mode,
+      visDegrade(TOD_LIGHT(), CONFIG.OPTICS.nvgBloomAt),
+      visDegrade(TOD_LIGHT(), CONFIG.OPTICS.thermalWashAt));
 }
 function spawnBurst(x, y, z) {
   const seen = hasLOS(eye.x, eye.y, eye.z, x, y + 2, z);
@@ -2258,8 +2755,8 @@ function spawnBurst(x, y, z) {
   b.group.visible = true;
   b.group.position.set(x, y, z);
   const water = H(x, z) < 0;
-  b.dust.material.color.setHex(water ? 0xDCE9E6 : 0xB9A98C);
-  for (const p of b.puffs) p.material.color.setHex(water ? 0xCFDEDD : 0x8A877E);
+  visSetColor(b.dust, water ? 0xDCE9E6 : 0xB9A98C);
+  for (const p of b.puffs) visSetColor(p, water ? 0xCFDEDD : 0x8A877E);
   b.debris.forEach(d => {
     const a = Math.random() * Math.PI * 2, sp = 8 + Math.random() * 22;
     d.vx = Math.sin(a) * sp; d.vz = Math.cos(a) * sp; d.vy = 14 + Math.random() * 18;
@@ -2393,13 +2890,17 @@ function setBinos(on) {
   camera.updateProjectionMatrix();
   binoEl.classList.toggle('on', on);
   crosshairEl.style.display = on ? 'none' : 'block';
-  toolEl.textContent = on ? 'BINOS 7X' : 'EYES';
+  refreshTool();
   if (on) drawReticle();
   if (!on) { laseEl.textContent = ''; milcardEl.classList.remove('on'); }
   // pin to tier 0 while glassing, restore the stepped tier on exit. Also restarts the step
   // cooldown, so the higher cost of rendering at tier 0 can't slam the tier down the instant
   // binos come back down.
   applyQuality(sim.now);
+}
+function refreshTool() {
+  toolEl.textContent = (binos ? 'BINOS 7X' : 'EYES') +
+    (VISION.mode === 'day' ? '' : ' · ' + VIS_LABEL[VISION.mode]);
 }
 
 const laseEl = document.getElementById('lase');
@@ -2448,8 +2949,14 @@ const statusEl = document.getElementById('status');
 function setState(s) {
   if (s !== state) { stateSince = sim.now; stateHinted = false; }
   state = s;
+  refreshStatus();
+}
+// Status strip. Called on every state change AND on every optics change, so the
+// vision mode is always visible in the HUD without setState being the only path.
+function refreshStatus() {
   const rd = mission ? mission.rounds.length : 0;
-  statusEl.textContent = `STATE ${s}  |  RDS ${rd}  |  ` +
+  statusEl.textContent = `STATE ${state}  |  RDS ${rd}  |  ` +
+    `OPTIC ${VISION.mode.toUpperCase()}  |  TOD ${TOD.toUpperCase()}  |  ` +
     (activeChapter ? `CH ${activeChapter.id}` : 'SKIRMISH') +
     `  |  MSN SEED ${CONFIG.SEED.mission}`;
 }
@@ -2609,7 +3116,7 @@ function resolveImpact(impact, isFFE) {
     S.veh.forEach((v, i) => {
       if (!v.dead && dist2(impact.x, impact.z, v.x, v.z) < 40) {
         v.dead = true;
-        units.vehicles[i].material = units.vehMatDead;
+        visSetMat(units.vehicles[i], units.vehMatDead);
       }
     });
     if (S.veh.filter(v => !v.dead).length <= 1) enemyAlive = false;
@@ -2756,7 +3263,7 @@ function assessFFE() {
     units.troops.forEach(m => { if (m.visible) m.rotation.z = 1.35; });
     if (S.type === 'strongpoint')
       units.vehicles.forEach(m => { if (m.visible) m.rotation.z = 0.25; });
-    if (S.type === 'bunker') units.bunker.material.color.setHex(0x3A352F);
+    if (S.type === 'bunker') visSetColor(units.bunker, 0x3A352F);
   }
 }
 
@@ -3279,7 +3786,12 @@ function renderShotPlot(cv, m) {
     // size figures for the PLOT camera's range, not the observer's, or a
     // close bird's-eye frame shows 2.5x giants
     legibilityPass(_plotCam.position.x, _plotCam.position.y, _plotCam.position.z);
+    // the shot plot is an after-action document, not a live sight picture — force
+    // day materials/lighting for it and put the observer's optic back afterwards
+    const _visWas = VISION.mode;
+    if (_visWas !== 'day') applyVision('day');
     renderer.render(scene, _plotCam);
+    if (_visWas !== 'day') applyVision();
     ctx.clearRect(0, 0, W, Hh);
     ctx.drawImage(renderer.domElement, 0, 0, W, Hh);
   } catch (e) {
@@ -4545,6 +5057,7 @@ function newMission(first, type, chapter) {
     yaw = azTo(OP.x, OP.z, c.x, c.z);
     pitch = Math.atan2(H(c.x, c.z) + 2 - eye.y, dist2(OP.x, OP.z, c.x, c.z));
   }
+  setVision('day');            // every mission starts on the naked eye
   setState('OBSERVING');
 }
 
@@ -4637,6 +5150,7 @@ document.addEventListener('keydown', e => {
   }
   if (k === 'b') setBinos(!binos);
   else if (k === 'r') toggleMilCard();
+  else if (k === 'o') cycleVision();
   else if (k === 'l') doLase();
   else if (k === 'm') toggleMap();
   else if (k === 'k') toggleMenu();
@@ -4708,6 +5222,7 @@ document.querySelectorAll('#touchbar [data-act]').forEach(b => {
     const a = b.dataset.act;
     if (a === 'binos') setBinos(!binos);
     else if (a === 'lase') doLase();
+    else if (a === 'optics') cycleVision();
     else if (a === 'map') toggleMap();
     else if (a === 'menu') toggleMenu();
     else if (a === 'new') newMission(false);
@@ -4818,6 +5333,12 @@ function animate(tMs) {
   }
   updateBursts(dt);
   renderer.render(scene, camera);
+  // observer optics overlay: 2D canvas only, throttled to CONFIG.OPTICS.hz and
+  // drawn entirely from layers prebuilt at boot. No allocation, no composer.
+  if (VISION.mode !== 'day' && t - VISION.last > 1 / CONFIG.OPTICS.hz) {
+    VISION.last = t;
+    drawOptics();
+  }
 }
 
 /* ============================================================ BOOT */
