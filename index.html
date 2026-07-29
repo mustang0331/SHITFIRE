@@ -238,7 +238,9 @@
 
 <div id="map"><div id="mapbox" class="panel">
   <div id="maptitle"><span>TACTICAL MAP</span><span>1 SQUARE = 1 KM</span></div>
-  <canvas id="mapcv" width="560" height="560"></canvas>
+  <!-- 560 wide map body + a 130 px symbol legend band; drawMap() keys every
+       projection off the WIDTH, so the extra height is legend only. -->
+  <canvas id="mapcv" width="560" height="690"></canvas>
   <div id="maplegend">&#9650; OP &middot; &#9632; FRIENDLY STRONGPOINT &middot; &#9679; FIRING BATTERY (155MM)<br>
   &#10005; KNOWN POINT (shift missions) &middot; Enemy positions are not plotted — locating them is your job. [M] or [ESC] to close.</div>
 </div></div>
@@ -4272,6 +4274,222 @@ function mapMarkerLabel(ctx, text, x, y) {
   ctx.fillStyle = '#10150c';
   ctx.fillText(text, x, y);
 }
+
+/* ================================================== E5: THE PERMANENT WORLD LAYER
+   CLAUDE.md: "Permanent structures and roads must appear on the printed map
+   sheets and the [M] map (symbols + legend) so terrain association is a
+   practicable skill." That only holds if the paper and the screen agree, so
+   both are drawn by THIS function, from THE SAME `WORLD` arrays the 3D world
+   was built from, and differ only in a projection and an ink. There is no
+   second copy of the symbology to drift out of sync.
+
+   Road classes get genuinely different symbols, per topographic convention:
+
+     METALLED   a CASED double line — a heavy casing stroked first, a light
+                core stroked over it, so the route reads as two parallel lines
+                with white between. This is how a hard-surface road is drawn on
+                a 1:50,000 sheet, and it is what makes "the road bends around
+                the headland" a usable resection cue.
+     UNIMPROVED a single thin DASHED line. No casing.
+
+   Widths are CONVENTIONAL, not true to scale: the coast road is 14.4 m of
+   formation, which at 1:50,000 is 0.29 mm — invisible. Real sheets exaggerate
+   roads for exactly this reason, and so does this one.
+
+   Enemy positions are never passed in. This function cannot plot them; it only
+   ever reads WORLD, which contains no enemy data at all. */
+function facSymbol(ctx, kind, px, py, s, ink, paper, rot) {
+  ctx.lineWidth = Math.max(1, s * 0.22);
+  ctx.strokeStyle = ink; ctx.fillStyle = ink;
+  ctx.setLineDash([]);
+  switch (kind) {
+    case 'mast':                                  // radio tower: mast + guys + finial
+      ctx.beginPath();
+      ctx.moveTo(px, py + s); ctx.lineTo(px, py - s);
+      ctx.moveTo(px - s * 0.8, py + s); ctx.lineTo(px, py - s * 0.55);
+      ctx.lineTo(px + s * 0.8, py + s);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py - s, s * 0.26, 0, Math.PI * 2); ctx.fill();
+      break;
+    case 'gun': {                                 // coastal battery: emplacement + barrel
+      const a = rot || 0, ux = Math.sin(a), uz = -Math.cos(a);
+      ctx.beginPath();
+      ctx.arc(px, py, s * 0.62, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px, py); ctx.lineTo(px + ux * s * 1.5, py + uz * s * 1.5);
+      ctx.stroke();
+      break;
+    }
+    case 'fuel':                                  // tank farm: circle with a centre dot
+      ctx.beginPath(); ctx.arc(px, py, s * 0.72, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py, s * 0.26, 0, Math.PI * 2); ctx.fill();
+      break;
+    case 'ammo':                                  // magazine: open square, solid core
+      ctx.strokeRect(px - s * 0.8, py - s * 0.8, s * 1.6, s * 1.6);
+      ctx.fillRect(px - s * 0.3, py - s * 0.3, s * 0.6, s * 0.6);
+      break;
+    case 'dock':                                  // jetty: a T off the shore
+      ctx.beginPath();
+      ctx.moveTo(px - s, py); ctx.lineTo(px + s, py);
+      ctx.moveTo(px + s, py - s * 0.7); ctx.lineTo(px + s, py + s * 0.7);
+      ctx.stroke();
+      break;
+    default:                                      // generic permanent building
+      ctx.fillRect(px - s * 0.6, py - s * 0.6, s * 1.2, s * 1.2);
+      ctx.strokeStyle = paper; ctx.lineWidth = Math.max(0.7, s * 0.14);
+      ctx.strokeRect(px - s * 0.6, py - s * 0.6, s * 1.2, s * 1.2);
+  }
+}
+function drawWorldLayer(ctx, X, Y, o) {
+  const poly = pts => {
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const px = X(pts[i].x), py = Y(pts[i].z);
+      if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+    }
+  };
+  const prevJoin = ctx.lineJoin, prevCap = ctx.lineCap;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'butt';
+
+  // --- unimproved tracks first: they run UNDER the metalled net at junctions
+  ctx.setLineDash(o.dash);
+  ctx.lineWidth = o.dirtW;
+  ctx.strokeStyle = o.dirtInk;
+  for (const p of WORLD.paths) { poly(p); ctx.stroke(); }
+  ctx.setLineDash([]);
+
+  // --- metalled roads: casing, then core. Two passes over the whole network,
+  //     not per polyline, so junctions between spurs stay clean.
+  ctx.lineWidth = o.roadW;
+  ctx.strokeStyle = o.roadInk;
+  for (const r of WORLD.roads) { poly(r); ctx.stroke(); }
+  ctx.lineWidth = o.roadCoreW;
+  ctx.strokeStyle = o.roadCore;
+  for (const r of WORLD.roads) { poly(r); ctx.stroke(); }
+
+  // --- settlements. Every building is plotted, at a legibility floor: a 5 m
+  //     hut is 0.1 mm at 1:50,000, so the symbol is a minimum size rather than
+  //     a scaled footprint. Civilian areas are labelled (CIV) on both surfaces
+  //     because putting one round into one of them is an instant mission fail.
+  for (const v of WORLD.villages) {
+    ctx.fillStyle = o.ink;
+    const b = o.hut;
+    for (const hh of (v.huts || [])) {
+      const w = Math.max(b, (hh.w || 5) * o.mPerPx);
+      const d = Math.max(b, (hh.d || 5) * o.mPerPx);
+      ctx.fillRect(X(hh.x) - w / 2, Y(hh.z) - d / 2, w, d);
+    }
+    o.label(v.name + (v.tier === 'town' ? ' (TOWN, CIV)' : ' (CIV)'),
+            X(v.x) + o.sym * 1.6, Y(v.z) + o.sym * 0.5);
+  }
+
+  // --- named facilities
+  for (const f of WORLD.facilities) {
+    const fx = X(f.x), fy = Y(f.z);
+    if (f.kind === 'airfield') {
+      // runway: two casing lines at the true formation width, floored so the
+      // strip cannot collapse to a single line at sheet scale
+      const ux = Math.sin(f.th), uz = -Math.cos(f.th);
+      const l = f.len / 2 * o.mPerPx;
+      const hw = Math.max(o.sym * 0.5, 24 * o.mPerPx);
+      ctx.strokeStyle = o.ink; ctx.lineWidth = o.roadCoreW + 0.4;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(fx - ux * l - uz * hw, fy - uz * l + ux * hw);
+      ctx.lineTo(fx + ux * l - uz * hw, fy + uz * l + ux * hw);
+      ctx.moveTo(fx - ux * l + uz * hw, fy - uz * l - ux * hw);
+      ctx.lineTo(fx + ux * l + uz * hw, fy + uz * l - ux * hw);
+      ctx.moveTo(fx - ux * l - uz * hw, fy - uz * l + ux * hw);
+      ctx.lineTo(fx - ux * l + uz * hw, fy - uz * l - ux * hw);
+      ctx.moveTo(fx + ux * l - uz * hw, fy + uz * l + ux * hw);
+      ctx.lineTo(fx + ux * l + uz * hw, fy + uz * l - ux * hw);
+      ctx.stroke();
+    } else {
+      facSymbol(ctx, f.kind, fx, fy, o.sym, o.ink, o.paper,
+                f.kind === 'gun' ? Math.atan2(f.x, f.z) : 0);
+    }
+    o.label(f.name, fx + o.sym * 1.5, fy - o.sym * 0.6);
+  }
+  ctx.lineJoin = prevJoin; ctx.lineCap = prevCap;
+  ctx.setLineDash([]);
+}
+
+/* Legend rows, shared by both surfaces. Each row draws its own sample symbol so
+   the legend can never disagree with the map — same code path, same numbers. */
+const LEGEND_ROWS = [
+  { t: 'METALLED ROAD (HARD SURFACE)', d: (c, x, y, o) => {
+      c.setLineDash([]); c.lineWidth = o.roadW; c.strokeStyle = o.roadInk;
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + o.sw, y); c.stroke();
+      c.lineWidth = o.roadCoreW; c.strokeStyle = o.roadCore;
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + o.sw, y); c.stroke(); } },
+  { t: 'TRACK / UNIMPROVED (DIRT)', d: (c, x, y, o) => {
+      c.setLineDash(o.dash); c.lineWidth = o.dirtW; c.strokeStyle = o.dirtInk;
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + o.sw, y); c.stroke();
+      c.setLineDash([]); } },
+  { t: 'AIRFIELD / LANDING STRIP', d: (c, x, y, o) => {
+      c.setLineDash([]); c.lineWidth = o.roadCoreW + 0.4; c.strokeStyle = o.ink;
+      c.strokeRect(x, y - o.sym * 0.55, o.sw, o.sym * 1.1); } },
+  { t: 'RADIO MAST', d: (c, x, y, o) => facSymbol(c, 'mast', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
+  { t: 'COASTAL GUN BATTERY', d: (c, x, y, o) => facSymbol(c, 'gun', x + o.sw / 2, y, o.sym, o.ink, o.paper, Math.PI / 2) },
+  { t: 'FUEL POINT / TANKS', d: (c, x, y, o) => facSymbol(c, 'fuel', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
+  { t: 'AMMUNITION DEPOT', d: (c, x, y, o) => facSymbol(c, 'ammo', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
+  { t: 'BUILDING (PERMANENT)', d: (c, x, y, o) => facSymbol(c, 'bldg', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
+  { t: 'VILLAGE / TOWN — CIVILIAN, NO-STRIKE', d: (c, x, y, o) => {
+      c.setLineDash([]); c.fillStyle = o.ink;
+      for (const [dx, dy] of [[0, -0.6], [0.9, 0.3], [-0.8, 0.5], [1.9, -0.4]])
+        c.fillRect(x + o.sw / 2 + dx * o.sym - o.hut / 2,
+                   y + dy * o.sym - o.hut / 2, o.hut, o.hut); } },
+];
+
+// [M] map: dark ink on the shaded relief, near-white road core so the cased
+// double line still reads over jungle green and sand.
+function MAPOPT_SCREEN(W) {
+  const ctx = mapCv.getContext('2d');
+  return {
+    mPerPx: W / 10000, sym: 5, hut: 3.4, sw: 22,
+    ink: '#10150c', paper: 'rgba(255,255,255,0.9)',
+    roadInk: '#20201C', roadCore: '#E8E2D4', roadW: 4.0, roadCoreW: 1.8,
+    dirtInk: 'rgba(84,54,26,0.92)', dirtW: 1.3, dash: [4, 3],
+    label: (t, x, y) => mapMarkerLabel(ctx, t, x, y),
+  };
+}
+// Printed sheet: pure line art. Nothing here uses a grey or an alpha that a
+// black-and-white laser printer would have to dither.
+function MAPOPT_SHEET(ctx, mapPx, sizeM) {
+  return {
+    mPerPx: mapPx / sizeM, sym: 6, hut: 3.2, sw: 26,
+    ink: '#000', paper: '#fff',
+    roadInk: '#000', roadCore: '#fff', roadW: 3.2, roadCoreW: 1.4,
+    dirtInk: '#000', dirtW: 0.9, dash: [6, 4],
+    label: (t, x, y) => {
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 10px Consolas, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(t, x, y);
+    },
+  };
+}
+/* Lay the shared rows out in `cols` columns from (x0,y0) and return the bottom
+   edge, so the caller can assert the block fits inside its canvas. */
+function drawLegend(ctx, rows, x0, y0, colW, rowH, cols, o, font, textInk) {
+  const per = Math.ceil(rows.length / cols);
+  let maxY = y0;
+  rows.forEach((r, i) => {
+    const cx = x0 + Math.floor(i / per) * colW;
+    const cy = y0 + (i % per) * rowH;
+    ctx.save();
+    r.d(ctx, cx, cy, o);
+    ctx.restore();
+    ctx.setLineDash([]);
+    ctx.fillStyle = textInk;
+    ctx.font = font;
+    ctx.textAlign = 'left';
+    ctx.fillText(r.t, cx + o.sw + 8, cy + 3.5);
+    if (cy > maxY) maxY = cy;
+  });
+  return maxY + rowH;
+}
 function drawMap() {
   const W = mapCv.width, ctx = mapCv.getContext('2d');
   const wpx = x => (x + 5000) / 10000 * W;
@@ -4295,39 +4513,10 @@ function drawMap() {
       ctx.fillText(String(CONFIG.MAP.originN / 1000 + 10 - i), 3, p + 11);
     }
   }
-  // permanent world features first (terrain association layer), so mission
-  // markers draw over them
-  const strokePoly = (pts, style, width, dash) => {
-    ctx.strokeStyle = style; ctx.lineWidth = width;
-    ctx.setLineDash(dash || []);
-    ctx.beginPath();
-    pts.forEach((p, i) => i ? ctx.lineTo(wpx(p.x), wpz(p.z)) : ctx.moveTo(wpx(p.x), wpz(p.z)));
-    ctx.stroke();
-    ctx.setLineDash([]);
-  };
-  for (const r of WORLD.roads) strokePoly(r, 'rgba(122,79,42,0.85)', 2.2);
-  for (const p of WORLD.paths) strokePoly(p, 'rgba(122,79,42,0.65)', 1.3, [4, 3]);
-  for (const f of WORLD.facilities) {
-    const fx = wpx(f.x), fz = wpz(f.z);
-    if (f.kind === 'airfield') {
-      const ux = Math.sin(f.th), uz = -Math.cos(f.th);
-      const l = f.len / 2 / 10000 * W;
-      ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(fx - ux * l, fz - uz * l); ctx.lineTo(fx + ux * l, fz + uz * l);
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = '#10150c';
-      ctx.fillRect(fx - 3, fz - 3, 6, 6);
-    }
-    mapMarkerLabel(ctx, f.name, fx + 6, fz - 4);
-  }
-  for (const v of WORLD.villages) {
-    ctx.fillStyle = '#7a4f2a';
-    for (const hh of v.huts.slice(0, 4))
-      ctx.fillRect(wpx(hh.x) - 2, wpz(hh.z) - 2, 4, 4);
-    mapMarkerLabel(ctx, v.name + ' (CIV)', wpx(v.x) + 8, wpz(v.z) + 4);
-  }
+  // E5 — permanent world features first (terrain association layer), so mission
+  // markers draw over them. Same function, same WORLD data, and the same symbol
+  // vocabulary the printed sheet uses; only the ink and the projection differ.
+  drawWorldLayer(ctx, wpx, wpz, MAPOPT_SCREEN(W));
   // friendly elements (strongpoint compound, or advancing squad centroid)
   if (Scenario.compound) {
     const c = Scenario.compound;
@@ -4382,6 +4571,29 @@ function drawMap() {
   ctx.moveTo(W - 24, 16); ctx.lineTo(W - 19, 25);
   ctx.stroke();
   mapMarkerLabel(ctx, 'N', W - 28, 60);
+
+  /* E5 — symbol legend band, below the map body. The canvas is taller than it
+     is wide for exactly this: the map square stays W x W (every projection in
+     here is W-based and unaffected), and the band underneath carries the same
+     nine legend rows the printed sheet carries, drawn by the same code. A
+     symbol the observer learns on paper is the symbol he sees on [M]. */
+  const band = mapCv.height - W;
+  if (band > 20) {
+    ctx.fillStyle = '#12160e';
+    ctx.fillRect(0, W, W, band);
+    ctx.strokeStyle = '#39442e'; ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, W + 0.5, W - 1, band - 1);
+    ctx.fillStyle = '#9fb08c';
+    ctx.font = '10px Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('PERMANENT DETAIL — TERRAIN ASSOCIATION', 10, W + 16);
+    const lo = MAPOPT_SCREEN(W);
+    lo.ink = '#e2e8d2'; lo.paper = '#12160e';
+    lo.roadInk = '#e2e8d2'; lo.roadCore = '#12160e';
+    lo.dirtInk = '#c8b48a';
+    drawLegend(ctx, LEGEND_ROWS, 12, W + 34, 268, 17, 2, lo,
+               '9.5px Consolas, monospace', '#9fb08c');
+  }
 }
 function toggleMap(force) {
   const on = force !== undefined ? force : !mapEl.classList.contains('on');
@@ -4515,43 +4727,9 @@ function renderSheet() {
   ctx.beginPath();
   ctx.rect(mx0, my0, mapPx, mapPx);
   ctx.clip();
-  const sheetPoly = (pts, width, dash) => {
-    ctx.strokeStyle = '#000'; ctx.lineWidth = width;
-    ctx.setLineDash(dash || []);
-    ctx.beginPath();
-    pts.forEach((p, i) => i ? ctx.lineTo(X(p.x), Y(p.z)) : ctx.moveTo(X(p.x), Y(p.z)));
-    ctx.stroke();
-    ctx.setLineDash([]);
-  };
-  for (const r of WORLD.roads) sheetPoly(r, 1.5);
-  for (const p of WORLD.paths) sheetPoly(p, 0.8, [5, 4]);
-  ctx.font = 'bold 10px Consolas, monospace';
-  ctx.textAlign = 'left';
-  for (const f of WORLD.facilities) {
-    const fx = X(f.x), fz = Y(f.z);
-    if (f.kind === 'airfield') {
-      const ux = Math.sin(f.th), uz = -Math.cos(f.th);
-      const l = f.len / 2 / def.size * mapPx, hw = 24 / def.size * mapPx + 1.5;
-      ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(fx - ux * l - uz * hw, fz - uz * l + ux * hw);
-      ctx.lineTo(fx + ux * l - uz * hw, fz + uz * l + ux * hw);
-      ctx.moveTo(fx - ux * l + uz * hw, fz - uz * l - ux * hw);
-      ctx.lineTo(fx + ux * l + uz * hw, fz + uz * l - ux * hw);
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(fx - 2.5, fz - 2.5, 5, 5);
-    }
-    ctx.fillStyle = '#000';
-    ctx.fillText(f.name, fx + 6, fz - 4);
-  }
-  for (const v of WORLD.villages) {
-    ctx.fillStyle = '#000';
-    for (const hh of v.huts)
-      ctx.fillRect(X(hh.x) - 1.8, Y(hh.z) - 1.8, 3.6, 3.6);
-    ctx.fillText(v.name, X(v.x) + 8, Y(v.z) + 4);
-  }
+  // E5: identical symbology to the [M] map — one function, one WORLD, two inks.
+  const sheetOpt = MAPOPT_SHEET(ctx, mapPx, def.size);
+  drawWorldLayer(ctx, X, Y, sheetOpt);
   ctx.restore();
 
   // grid + edge labels
@@ -4649,7 +4827,7 @@ function renderSheet() {
   ctx.fillText('METERS', bx0 + barSegs * barSeg * pxPerM + 14, by + 10);
   ctx.fillText('READ GRIDS RIGHT, THEN UP. 6-DIGIT GRID = 100 M PRECISION (ARTILLERY).', bx0, by + 48);
   ctx.fillText('SHEET GENERATED FROM THE SIM HEIGHTFIELD H(x,z) — PAPER AND WORLD CORRELATE EXACTLY.', bx0, by + 66);
-  ctx.fillText('PERMANENT STRUCTURES, ROADS, AND VILLAGES ARE PLOTTED — USE THEM FOR TERRAIN ASSOCIATION AND RESECTION.', bx0, by + 84);
+  ctx.fillText('PERMANENT STRUCTURES AND ROADS ARE PLOTTED — ENEMY POSITIONS ARE NOT. FINDING THEM IS THE EXERCISE.', bx0, by + 84);
   // declination diagram
   const dcx = W - 330, dcy = by + 10;
   ctx.strokeStyle = '#000'; ctx.lineWidth = 1.4;
@@ -4665,31 +4843,31 @@ function renderSheet() {
   ctx.fillText('GN', dcx - 22, dcy + 8);
   ctx.fillText('MN', dcx + 12, dcy + 8);
   ctx.fillText('GM ANGLE 2°E (≈36 MILS)', dcx - 60, dcy + 74);
-  // legend
-  const lx = W - 330, ly = by + 100;
+  /* E5 — symbol legend. Every symbol on the sheet is in here, and every entry
+     draws its own sample through the same code that drew the map body, so a
+     legend row and the thing it explains cannot drift apart. Two columns of
+     mission symbols on the left, the shared permanent-detail rows to their
+     right, all line art — nothing a monochrome laser has to dither. */
+  const ly = by + 122;
+  ctx.font = '11px Consolas, monospace';
+  ctx.fillStyle = '#000';
+  ctx.textAlign = 'left';
+  ctx.fillText('LEGEND', bx0, ly - 14);
   ctx.beginPath();
-  ctx.moveTo(lx + 6, ly - 8); ctx.lineTo(lx, ly + 4); ctx.lineTo(lx + 12, ly + 4);
-  ctx.closePath(); ctx.fillStyle = '#000'; ctx.fill();
-  ctx.fillText('OBSERVATION POST', lx + 22, ly + 2);
+  ctx.moveTo(bx0 + 13, ly - 7); ctx.lineTo(bx0 + 6, ly + 5); ctx.lineTo(bx0 + 20, ly + 5);
+  ctx.closePath(); ctx.fill();
+  ctx.fillText('OBSERVATION POST', bx0 + 34, ly + 4);
   ctx.beginPath();
-  ctx.moveTo(lx, ly + 14); ctx.lineTo(lx + 12, ly + 26);
-  ctx.moveTo(lx, ly + 26); ctx.lineTo(lx + 12, ly + 14);
+  ctx.moveTo(bx0 + 7, ly + 12); ctx.lineTo(bx0 + 19, ly + 24);
+  ctx.moveTo(bx0 + 7, ly + 24); ctx.lineTo(bx0 + 19, ly + 12);
   ctx.strokeStyle = '#000'; ctx.lineWidth = 1.8; ctx.stroke();
-  ctx.fillText('KNOWN / REGISTRATION POINT', lx + 22, ly + 24);
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(lx, ly + 40); ctx.lineTo(lx + 14, ly + 40); ctx.stroke();
-  ctx.fillText('ROAD', lx + 22, ly + 44);
-  ctx.setLineDash([5, 4]);
-  ctx.lineWidth = 0.8;
-  ctx.beginPath(); ctx.moveTo(lx, ly + 58); ctx.lineTo(lx + 14, ly + 58); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillText('TRACK / DIRT PATH', lx + 22, ly + 62);
-  ctx.fillRect(lx + 4, ly + 72, 5, 5);
-  ctx.fillText('BUILDING / FACILITY (NAMED)', lx + 22, ly + 80);
-  ctx.fillText('VILLAGE = HUT CLUSTER (CIVILIAN — NO-STRIKE)', lx + 22, ly + 98);
-  ctx.fillText('ENEMY POSITIONS NOT PLOTTED', lx + 22, ly + 116);
+  ctx.fillText('KNOWN / REGISTRATION POINT', bx0 + 34, ly + 22);
+  const legEnd = drawLegend(ctx, LEGEND_ROWS, bx0 + 340, ly, 300, 18, 2,
+                            sheetOpt, '10px Consolas, monospace', '#000');
   ctx.font = '10px Consolas, monospace';
+  ctx.fillStyle = '#000';
   ctx.fillText(`TERRAIN SEED ${CONFIG.SEED.terrain} · MISSION SEED ${CONFIG.SEED.mission} · SHITFIRE FO TRAINER`, mx0, PH - 18);
+  return { legEnd, by, my0, mapPx, mx0, X, Y };
 }
 
 function toggleLibrary(force) {
