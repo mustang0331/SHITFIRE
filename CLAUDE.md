@@ -11,7 +11,7 @@ A single-file browser trainer for the FORWARD OBSERVER (not the gun crew). Full 
 - Target 60 fps. Preallocate; no per-frame allocation in the render loop.
 
 ## Keep these interfaces stable (later stages depend on them)
-`H(x,z)` · `fireMission(targetLocation)` · `applyCorrection(otFrameDelta)` · `FDC.say(msg)` · `Scenario` · `gradeMission(metrics) → stars` (stage 9+)
+`H(x,z)` · `fireMission(targetLocation)` · `applyCorrection(otFrameDelta)` · `FDC.say(msg)` · `Scenario` · `gradeMission(metrics) → stars` (stage 9+) · **TLOG** (session transcript — logs comms, parse classification, impacts, and AAR outcomes; exportable text/JSON from the mission menu, persisted) used for dialogue review/correction — treat its entry format as stable so exports stay diffable across stages
 
 ## Domain facts — get these right
 - **Ballistics = direct-impact model.** `impact = aimpoint + error`. NEVER simulate a trajectory, drag, or firing tables.
@@ -27,7 +27,8 @@ A single-file browser trainer for the FORWARD OBSERVER (not the gun crew). Full 
 - **FDC deviation policy:** doctrinal scripts are guidelines, flexible not rigid. **Dangerous deviation** (danger close w/o proword, corrections walking toward friendlies/civilians, unresolved-unsafe FFE) → FDC **rant**. **Stupid-but-safe deviation** (wrong element order, malformed-but-unambiguous calls, absurd rounding) → **snide remark**, mission proceeds. Strict mode still enforces format for grading — the rant/snide split is tone, not an extra gate.
 - **Surface-to-surface fires only.** CAS/9-line is future "Volume V" — a locked menu tease at most; never build it unasked.
 
-## Campaign rules (stages 9–11)
+## Campaign rules (stages 9–11 — only stage 11 remains)
+Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed. Only **stage 11 (Epilogue — the three SUNBURN chapters, including SUNLAMP)** remains.
 - Mission menu = **book series**: Volumes → Chapters, per NARRATIVE.md (Foreword tutorial → Volumes I–IV → Epilogue). Chapters are **fixed-seed** missions; `[N]` random generator becomes **Skirmish** mode.
 - **Star grading, original-MW2 style:** 0–5★ per chapter from competency (rounds-to-effect, first-round miss, format, time vs. par), capped by difficulty (Easy 3 / Normal 4 / Hard 5), shown in the mission menu and AAR. Volumes unlock at cumulative star thresholds.
 - The Epilogue's directed-energy mission (SUNLAMP) **still uses the direct-impact model** — only pacing, prowords, visuals, and audio differ.

@@ -37,17 +37,13 @@ After each stage tests clean and is committed, prompt:
 
 Repeat for stages 3–7 (polar+shift → FDC personality+audio → scenarios → map library → real DEMs+polish). **Commit between every stage.**
 
-## 6. World detail & campaign stages (8–11)
+## 6. Epilogue (stage 11)
 
-Stages 1–7 are complete. Stage 8 populates the islands themselves — structures, roads, villages — before the campaign wraps a story around them. Prompt pattern:
+Stages 1–10 are complete and committed: real-DEM polish, world detail & population (structures, roads, villages, convoy pit stops, the FDC rant/snide deviation policy), the campaign skeleton (chapter data model, bookshelf volume/chapter menu, star grading, unlocks, persistence, Skirmish mode), and the narrative layer (chapter briefings, the Foreword tutorial with GUNNY BOTTLECAP, per-volume islands, Volume IV strict-net + 60mm mortars, named known points, commendations, and continuity quips). Only stage 11 remains. Prompt pattern:
 
-> Read SPEC.md and CLAUDE.md. Build **BUILD ORDER stage 8 only**: seeded, terrain-aware structures/roads/dirt-paths/landmarks (military: ammo depot, fuel point, airfield strip, radio mast, coastal-gun emplacement, watchtower; civilian: huts, villages), low-poly/instanced/merged geometry (60 fps rule stands); permanent structures + roads on the printable map sheets and the [M] map with symbols + a legend for terrain association (never enemy positions); civilian villages with wandering civilians, rendered distinctly — civilian casualties are an automatic mission fail, same as fratricide; convoy pit stops (seeded 1–3 minutes at fuel/ammo/airfield facilities); the FDC deviation policy (scripts are guidelines — dangerous deviation triggers the rant system, stupid-but-safe deviation gets a snide remark and the mission proceeds; strict mode still enforces format for grading). Stop after stage 8.
+> Read SPEC.md, CLAUDE.md, and NARRATIVE.md. Build **BUILD ORDER stage 11 only**: the three SUNBURN Epilogue chapters (E.1 THE GREAT CHOW RAID, E.2 CLAWS OUT, E.3 SUNLAMP ACTUAL), including the SUNLAMP directed-energy call for fire — **same direct-impact model**, `impact = aimpoint + error`, only TOF pacing (charging whine), prowords (DISCHARGE / SOLAR EVENT), beam visual, and audio differ; the locked "VOLUME V: ON WINGS" CAS tease stays a locked menu spine, do not build it. Finish with a balance pass on star pars across the campaign. Stop after stage 11 and commit.
 
-Then the campaign phase adds the volume/chapter story mode on top of the now-populated islands — **read NARRATIVE.md alongside SPEC.md** for these. Prompt pattern:
-
-> Read SPEC.md, CLAUDE.md, and NARRATIVE.md. Build **BUILD ORDER stage 9 only**: chapter data model (fixed seeds), bookshelf volume/chapter mission menu with MW2-style 0–5 star display, `gradeMission(metrics)` with difficulty caps, sequential + star-gated unlocks, persistence, and [N] as Skirmish mode. Surface-to-surface only — Volume V (CAS) is a locked tease, do not build it. Stop after stage 9.
-
-Then stage 10 (narrative layer: briefings, Foreword tutorial, per-volume islands, strict-mode Volume IV, 60mm chapters, humor per NARRATIVE.md) and stage 11 (Epilogue incl. the SUNLAMP directed-energy mission — same direct-impact model — plus balance pass). **Commit between every stage.**
+**Commit when it tests clean.**
 
 ## Testing notes
 - **Voice**: needs mic permission on a real Chrome tab (won't work in the Artifact sandbox).

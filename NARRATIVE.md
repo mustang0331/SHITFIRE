@@ -12,7 +12,7 @@ The campaign is presented as a **book series: Volumes with Chapters**, opened by
 
 - **MUSTANG 12** — the player. Never voiced except by the player's own transmissions.
 - **HELLHOUND FIRES** — the FDC. Sardonic, profane, doctrinally perfect. Personality already implemented; the campaign adds *continuity*: quips reference earlier chapters and the player's track record ("MUSTANG 12, HELLHOUND — last time you said grid you hit a reef. Proceed.").
-- **GUNNY BOTTLECAP** (Foreword only) — schoolhouse instructor voice for the tutorial chapters. Patient the way a man holding a coffee he hates is patient. Delivered through the same briefing/hint text pipeline; no new voice tech.
+- **GUNNY BOTTLECAP** (Foreword only) — schoolhouse instructor voice for the tutorial chapters. Patient the way a man holding a coffee he hates is patient. Delivered through the same briefing/hint text pipeline; no new voice tech. *Implemented (stage 10) as an event-driven step engine, guns cold for F.1/F.2.*
 - **SUNLAMP ACTUAL** (Epilogue only) — the fire direction "center" of an intergalactic directed-energy space cannon satellite of mass destruction. Speaks in cheerful corporate-orbital jargon. Still demands a proper call for fire.
 
 ## Structure, grading, and unlocks
@@ -20,14 +20,14 @@ The campaign is presented as a **book series: Volumes with Chapters**, opened by
 - **Menu theme:** a bookshelf. Volumes are spines/tabs; chapters list title, one-line blurb, and best stars per difficulty. Locked volumes show star requirement. `[N]` random missions live in a separate **SKIRMISH** mode outside the campaign.
 - **Stars (original-MW2 style):** each chapter is graded **0–5★** on competency — rounds-to-effect, first-round accuracy, format correctness, time vs. par — with difficulty caps: **Easy ≤ 3★, Normal ≤ 4★, Hard = 5★ possible**. Stars display on the chapter row in the menu. Fratricide = mission fail = 0★.
 - **Unlocks:** chapters within a volume unlock in order (completing, not starring); the next volume unlocks at a cumulative star threshold, so replaying for stars matters.
-- **Briefings:** each chapter opens with a short brief (text + optional `SpeechSynthesis` read, skippable) and closes with a one-line narrative beat in the AAR.
+- **Briefings:** each chapter opens with a short brief (text + optional `SpeechSynthesis` read, skippable) and closes with a one-line narrative beat in the AAR. *Implemented (stage 10) as a skippable chapter briefing overlay + narrative AAR outro on pass.*
 - Every chapter is a **fixed-seed mission** — reproducible, comparable star runs.
 
 ---
 
 ## FOREWORD — THE SCHOOLHOUSE *(tutorial — always unlocked)*
 
-Stateside, a training beach, plywood targets. GUNNY BOTTLECAP teaches; guided hint overlays are on; failure is impossible, only slower.
+Stateside, a training beach, plywood targets. GUNNY BOTTLECAP teaches; guided hint overlays are on; failure is impossible, only slower. *Implemented (stage 10): all three chapters playable end to end.*
 
 | Ch. | Title | Teaches |
 |---|---|---|
@@ -55,8 +55,8 @@ Coral ridges and defilade — an island that hides things. Polar and shift-from-
 | Ch. | Title | Scenario / skill |
 |---|---|---|
 | 2.1 | **Numbers on a Compass** | Polar mission: direction + distance off your own position. |
-| 2.2 | **Old Friends** | Shift from known point; registered KPs with campaign names (KP BREWERY, KP LATRINE). |
-| 2.3 | **Defilade Blues** | Crest-masked target — burst heard, not seen; adjust off the map and sound. |
+| 2.2 | **Old Friends** | Shift from known point; registered KPs with campaign names (KP BREWERY, KP LATRINE). *Named KPs shipped (BREWERY, LATRINE, SAWMILL, CHAPEL, DERBY, ICEBOX); shown on maps/logs, and the parser accepts "shift BREWERY" as well as "shift known point 1001."* |
+| 2.3 | **Defilade Blues** | Crest-masked target — burst heard, not seen; adjust off the map and sound. *Implemented (stage 10): crest-masked from the OP, no LOS, fought off the map.* |
 | 2.4 | **The Perimeter** | Position under attack, harder: pick the right location method under pressure. |
 
 ## VOLUME III — THUNDER RUN *(dynamic fires · danger close · friendlies everywhere)*
@@ -67,20 +67,20 @@ The big push. Everything on the island is moving, and half of it is friendly.
 |---|---|---|
 | 3.1 | **Rolling Stock** | Convoy: lead a moving column, time the FFE — or catch it during its seeded 1–3 minute pit stop at a fuel point/ammo depot/airfield instead of chasing it down the coast road. |
 | 3.2 | **Close Enough to Smell It** | Danger close (inside 600 m of friendlies): proword required or HELLHOUND challenges the call. Teaches **creeping fire** — corrections of 100 m or less, walked in from the safe side. |
-| 3.3 | **Uninvited Guests** | Raiders hitting a civilian village at first light; fire on the raiders without putting a round in the huts. Collateral damage is a fail, same as fratricide, no matter whose side of the fence it lands on. Applies 3.2's creeping fire against a discrimination problem instead of a friendly perimeter. |
+| 3.3 | **Uninvited Guests** | Raiders hitting a civilian village at first light; fire on the raiders without putting a round in the huts. Collateral damage is a fail, same as fratricide, no matter whose side of the fence it lands on. Applies 3.2's creeping fire against a discrimination problem instead of a friendly perimeter. *Implemented (stage 10): raiders placed 130–200 m off a real civilian village, huts no-strike; falls back to a masked-village variant if the OP has no line of sight.* |
 | 3.4 | **Everyone's Moving** | Combined-arms assault; shifting target, friendlies advancing. |
-| 3.5 | **The Wrong Kind of Famous** | Fratricide-avoidance stress mission — friendlies interleaved with targets. The chapter title is the threat. |
+| 3.5 | **The Wrong Kind of Famous** | Fratricide-avoidance stress mission — friendlies interleaved with targets. The chapter title is the threat. *Implemented (stage 10): friendlies start inside 520 m and advance through the mission.* |
 
 ## VOLUME IV — BLACK SAND *(mastery · strict mode · 60mm precision · final exam)*
 
-A black-sand fortress island. Strict doctrine mode is forced on — this is the Veteran tier.
+A black-sand fortress island. Strict doctrine mode is forced on — this is the Veteran tier. *Per-volume islands are implemented (stage 10): each volume runs its own procedural terrain seed behind `H(x,z)` (Foreword/Vol I: 1337, II: 9021, III: 5150, IV: 66600 with a black-sand palette); a user-loaded DEM always wins, and the world rebuilds on volume change.*
 
 | Ch. | Title | Scenario / skill |
 |---|---|---|
-| 4.1 | **Strict Net** | Any prior mission type, but doctrine per DOCTRINE.md is enforced: three-transmission structure, MTO readback, OT direction with the first correction, rounding standards, "CORRECTION" proword. Malformed calls get rejected like a real FDC would. |
-| 4.2 | **Ten Meters** | 60mm mortars: 8-digit / 10 m grids, tighter dispersion, precision targets. |
+| 4.1 | **Strict Net** | Any prior mission type, but doctrine per DOCTRINE.md is enforced: three-transmission structure, MTO readback, OT direction with the first correction, rounding standards, "CORRECTION" proword. Malformed calls get rejected like a real FDC would. *Implemented (stage 10) as STRICT NET: callsigns, warning order, target description, and OVER required or the call is rejected with a doctrinal challenge; corrections must be rounded (deviation tens, range fifties/hundreds); end of mission must carry a surveillance term, one challenge then it passes.* |
+| 4.2 | **Ten Meters** | 60mm mortars: 8-digit / 10 m grids, tighter dispersion, precision targets. *Implemented (stage 10): 8-digit grid demanded (6-digit gets a challenge), 0.55x dispersion, section MTO wording, 30 m effect radius.* |
 | 4.3 | **No Second Chances** | Hard, timed, one adjusting round budgeted above par. |
-| 4.4 | **The Meat Grinder** | Final exam: multi-phase mission chaining grid, polar, shift, danger close, and a moving element. Pass this and HELLHOUND says something almost kind. Almost. |
+| 4.4 | **The Meat Grinder** | Final exam: multi-phase mission chaining grid, polar, shift, danger close, and a moving element. Pass this and HELLHOUND says something almost kind. Almost. *Shipped (stage 10) as a single mission — strict + hard + assault/danger close — not the multi-phase chain described above. True multi-phase chaining is tracked as future polish (see README backlog).* |
 
 ## EPILOGUE — SUNBURN *(unlocked by finishing Volume IV · the goofy-ass shit)*
 

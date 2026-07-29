@@ -6,6 +6,7 @@
 - One `index.html`. No build step, no server, no npm, no API keys. Three.js via CDN import map only.
 - Voice via the browser Web Speech API (push-to-talk + spoken FDC); **typed input always works without it**.
 - Printable 1:50,000 topo sheets generated from the same heightfield as the 3D world — print one and do real mapwork alongside the sim.
+- OP watchtower (+50 ft) raises the observer's eye height, feeding every line-of-sight check. Every mission logs to a **TLOG** transcript (comms, parse classification, impacts, AAR outcome), exportable as text/JSON from the mission menu, for reviewing or correcting FDC dialogue.
 
 ## Run it
 
@@ -25,7 +26,7 @@ Open `index.html` in **Chrome or Edge (desktop)**. That's it. Voice needs mic pe
 
 ## Current state
 
-Build stages 1–7 of [SPEC.md](SPEC.md) are complete: core typed loop, voice layer, all three location methods (grid / polar / shift-from-known-point), FDC personality + radio audio, the five scenario templates with difficulties and danger close, the printable map library, and real-DEM ingestion with adaptive quality and mobile/gamepad controls. Stage 8 (world detail & population) and the campaign stages (9–11) are next — see the backlog below.
+Build stages 1–10 of [SPEC.md](SPEC.md) are complete: core typed loop, voice layer, all three location methods (grid / polar / shift-from-known-point), FDC personality + radio audio, the five scenario templates with difficulties and danger close, the printable map library, real-DEM ingestion with adaptive quality and mobile/gamepad controls, world detail & population (structures, roads, villages, convoy pit stops, FDC rant/snide deviation policy), the campaign skeleton (volumes/chapters/stars, bookshelf menu, Skirmish mode), and the narrative layer (Foreword tutorial with GUNNY BOTTLECAP, skippable chapter briefings + narrative AAR outros, per-volume islands, Volume IV strict-net + 60mm mortars, named known points, AAR commendations, career-counter continuity quips). Two extras shipped alongside spec: an OP watchtower and a TLOG session transcript (see above). **Stage 11 (Epilogue)** is next — see the backlog below.
 
 ## Scope: surface-to-surface only (for now)
 
@@ -49,16 +50,16 @@ Each chapter is graded **0–5 stars, original-MW2 style**, displayed right on t
 
 ## Suggestions / design backlog
 
-Everything below is drawn from the existing spec, code, and project files. Items marked **(planned)** are folded into the build-order stages; the rest are candidates.
+Everything below is drawn from the existing spec, code, and project files. Items marked **(shipped)** landed in the stage noted; items marked **(planned)** are folded into remaining build-order stages; the rest are candidates.
 
-**World detail & population (planned — stage 8)**
+**World detail & population (shipped — stage 8)**
 1. **Structures, roads & landmarks** — seeded, terrain-aware placement of military (ammo depot, fuel point/gas station, airfield strip, radio mast, coastal-gun emplacement, watchtower) and civilian (huts, sheds, a dock) structures plus a road/dirt-path network, all low-poly/flat-shaded/vertex-colored and instanced or merged so the 60 fps rule holds.
 2. **Map symbols + legend for terrain association** — permanent structures and roads drawn on the printable map sheets and the `[M]` map with a small symbol set and legend, so the FO can resect/orient off known landmarks. Enemy positions still never plotted.
 3. **Civilian villages** — hut clusters with wandering civilian figures, rendered distinctly from military/enemy models. Civilian casualties (collateral damage) are an automatic mission fail, same as fratricide.
 4. **Convoy pit stops** — moving convoys make seeded 1–3 minute stops at gas stations, ammo depots, or airfields along their route; teaches catching a column halted versus leading it on the move.
 5. **FDC deviation policy (rant vs. snide)** — the doctrinal scripts are guidelines, not gates: dangerous deviations (danger close w/o proword, corrections walking toward friendlies/civilians, unresolved-unsafe FFE) trigger the FDC's rant system; stupid-but-safe deviations (wrong element order, malformed-but-unambiguous calls, absurd rounding) get a snide remark and the mission proceeds. Strict mode still enforces format for grading.
 
-**Campaign & progression (planned — stages 9–10)**
+**Campaign & progression (shipped — stages 9–10)**
 6. **5-star grading engine** — derive stars from the metrics the AAR already tracks (adjusting rounds, first-round miss, format grade, time vs. par); difficulty caps (3/4/5★) plus star-gated volume unlocks, MW2 Spec-Ops style.
 7. **Volume/chapter mission menu** — replace the flat scenario grid with a book-shelf menu: volumes as tabs/spines, chapters listed with title, blurb, best stars per difficulty, and lock state. Keep `[N]` random missions as a separate **Skirmish** mode.
 8. **Fixed per-chapter seeds** — every chapter is a reproducible seeded mission (the seeded PRNG already guarantees this), so star runs are comparable and shareable.
@@ -68,13 +69,13 @@ Everything below is drawn from the existing spec, code, and project files. Items
 12. **Strict mode = Veteran** — Volume IV forces the existing strict-doctrine toggle on, making it the "Veteran" difficulty tier rather than a buried option.
 13. **One island per volume** — lean on stage-7 DEM ingestion: each volume moves to a new island (procedural stand-in → Peleliu-like ridges → Saipan-like → Iwo-like black sand), so terrain difficulty escalates with the story.
 
-**Fires content (planned — stage 10)**
+**Fires content (shipped — stage 10)**
 14. **60mm mortar chapters** — the spec already defines 8-digit/10 m precision for mortars; Volume IV introduces them as a second surface-to-surface asset, teaching precision grids on a tighter dispersion model.
 15. **Named registration points with story flavor** — known points for shift missions get campaign names (KP BREWERY, KP LATRINE) that the narrative references.
 16. **Commendations** — funny AAR medals for feats: one-adjustment neutralization, sub-50 m first round, full-format call in strict mode ("ACTUALLY READ THE MANUAL").
 
-**Humor & epilogue (planned — stage 11)**
-17. **Sprinkled mission humor** — occasional absurd target descriptions, chapter-specific FDC quip pools that escalate in familiarity as the campaign progresses (HELLHOUND remembers your screw-ups), rare one-in-N radio gags. Never at the cost of the doctrinal readback.
+**Humor (shipped — stage 10) & Epilogue (planned — stage 11)**
+17. **Sprinkled mission humor** *(shipped)* — chapter-specific FDC quip pools, continuity call-outs to career counters (fratricides/collateral/missions), and AAR commendations (GODDAMN HOLE IN ONE, EAGLE EYE, ACTUALLY READ THE MANUAL, FAST MOVER, IRON NET, TEN-METER MAN). Never at the cost of the doctrinal readback.
 18. **Epilogue: directed-energy call for fire** — orbital weapon **SUNLAMP** (an intergalactic space cannon satellite of mass destruction). Same doctrine, same direct-impact model — `impact = aimpoint + error` — but TOF becomes a charging whine, SPLASH becomes "SOLAR EVENT," the beam is a sky-to-ground column, and the FDC has completely run out of patience with the 10-digit grid you think you need.
 19. **Epilogue side chapters** — a fire mission on the seagull flock raiding the general's barbecue (no-fire line: the cooks), and a B-movie kaiju crab assaulting the beach. Full doctrinal traffic throughout, which is the joke.
 
@@ -83,6 +84,7 @@ Everything below is drawn from the existing spec, code, and project files. Items
 21. **Smoke and illumination missions** — still surface-to-surface; strong training value (marking, screening, night shoots) and the impact-effect hooks already exist in the spec.
 22. **Printable campaign log** — a training-record sheet (chapters, stars, dates) rendered through the same print pipeline as the map library.
 23. **Night/dawn chapters** — cheap palette + fog changes for atmosphere; pairs with illumination if #21 lands.
+24. **Multi-phase Meat Grinder chaining** — 4.4 THE MEAT GRINDER currently ships as a single hard mission (strict + hard + assault/danger close) rather than a chained grid → polar → shift → danger-close → moving-element sequence. Revisit as a true multi-phase mission once the single-mission version has been played and balanced.
 
 ## Files
 

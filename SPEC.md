@@ -115,7 +115,7 @@ Recognize spoken numerals, "left/right", "add/drop", "direction/distance/grid", 
 
 The FDC is deterministic JS logic, voiced by `SpeechSynthesis` with a slightly radio-filtered delivery (see AUDIO). Callsigns per [Q10]. Flow, each transmission acknowledged over the net:
 
-1. **Readback of each CFF transmission**, then the **Message to Observer (MTO)** per DOCTRINE.md: units to fire, changes (if any), rounds per tube, and an assigned **target number** (e.g. "MUSTANG 12, HELLHOUND — battery, 4 rounds, target AB2001, over"). In strict mode require the observer to read the MTO back, and require **OT direction before or with the first correction** on grid missions.
+1. **Readback of each CFF transmission**, then the **Message to Observer (MTO)** per DOCTRINE.md, opening with the proword "Message to observer": units to fire, changes (if any), rounds per tube, and an assigned **target number** (e.g. "Message to observer, battery, 4 rounds, target AB2001, over"). In strict mode require the observer to read the MTO back, and require **OT direction before or with the first correction** on grid missions.
 2. **"SHOT, OVER"** at the moment of firing.
 3. **"SPLASH, OVER"** ~5 seconds before impact.
 4. After the observer's correction: brief acknowledgement, then repeat 2–3.
