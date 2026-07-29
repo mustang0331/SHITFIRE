@@ -322,6 +322,9 @@ const CONFIG = {
            preferredVoices: ['ravi', 'heera', 'en-in', 'india',
                              'david', 'mark', 'guy', 'male', 'en-us', 'english'] },
   GAMEPAD: { lookSpeed: 2.8, deadzone: 0.16 },
+  // Spot report: the cue that tells the observer WHERE TO LOOK without telling
+  // him where the target IS. See sendSpotReport().
+  SPOT: { enabled: true, lead: 2.4, gap: 2.9, saluteChance: 0.7, landmarkMax: 2600 },
   UI: { laseHold: 6 },
   WORLD: {
     roadWidth: 7, pathWidth: 3.2, villageCount: 2, civsPerVillage: 6,
@@ -1928,6 +1931,27 @@ const QUIPS = {
     'Your funeral, MUSTANG. Shifting fire as ordered. I am writing your name in the log as I do it.',
     'Copy. On your head, son. The board of inquiry meets Tuesdays. Shifting fire.',
   ],
+  // who the cue came from — never HELLHOUND himself; a gun battery does not observe
+  spotSrc: [
+    'A RECON PATROL THAT WENT HOME AN HOUR AGO',
+    'THE OBSERVER YOU RELIEVED, WHO IS NOW ASLEEP',
+    'AN ADJACENT COMPANY WITH BETTER THINGS TO DO',
+    'A COASTWATCHER WHO SPEAKS THREE WORDS OF ENGLISH',
+    'BATTALION S-TWO, WHO WERE VERY PLEASED WITH THEMSELVES',
+    'AN AIR OBSERVER ON HIS WAY TO SOMEWHERE ELSE',
+  ],
+  spotTail: [
+    'That is a CUE, MUSTANG, not a target location. Somebody has to actually look. That somebody is you.',
+    'I am not going to pretend that is a grid. Get your glass up and turn it into one.',
+    'That report has been passed through four radios and two liars. Verify it yourself.',
+    'You have been given a neighborhood. I require an address. Over.',
+    'Do not read that back to me as a call for fire. I will know, and I will be unkind about it.',
+    'Somebody saw something once. Go and see it properly, over.',
+  ],
+  spotNone: [
+    'MUSTANG 12, HELLHOUND — nobody has sent us a thing. No patrol report, no overlay, no cue. Start glassing and tell me what is out there, over.',
+    'MUSTANG 12, HELLHOUND — the intelligence picture this morning consists of one rumour and a wet map. You are the sensor. Get to work, over.',
+  ],
   rantCiv: [
     ['CHECK FIRE. CHECK FIRE.',
      'That round went into the VILLAGE, MUSTANG. The civilian village. The one on your map — plotted, labeled, and full of people who were having a perfectly fine morning until you found the radio.',
@@ -1954,6 +1978,169 @@ function pick(arr) {
   if (i === arr._last) i = (i + 1) % arr.length;
   arr._last = i;
   return arr[i];
+}
+
+/* ============================================================ SPOT REPORT (SALUTE) */
+/* The observer's hardest un-taught problem is knowing WHERE TO LOOK. A real FO
+   is cued onto an area by somebody — higher, an adjacent unit, the man he
+   relieved — and then does the work of fixing it precisely. That cue was missing
+   here: the mission opened with an empty horizon and no reason to point the
+   glass anywhere. This sends one at mission start and again if the target
+   displaces.
+
+   It must ORIENT WITHOUT ANSWERING. Locating the target to 100 m (10 m with the
+   sixty) is the graded skill, so the LOCATION line names an AREA, never a point:
+
+     easy    the 1 km grid square, plus the nearest map landmark named
+     normal  a cardinal-8 sector from a landmark, "within R metres of it"
+     hard    a 90-degree quadrant from a landmark, "within R metres of it"
+     (no landmark within CONFIG.SPOT.landmarkMax -> a bearing sector and a range
+      band from the OP instead, same ladder)
+
+   The critical rule, learned the hard way from a harness that measured it: NEVER
+   state a distance to the target from anything. A leg like "600 metres northwest
+   of the airfield" collapses the cue to 3-6 possible 100 m cells when the
+   landmark is close — that is the answer, not a cue. The stated radius R is a
+   FLOOR (2000 normal / 3000 hard) that is only ever widened to keep the claim
+   true, so the cued area cannot shrink no matter where the landmark sits.
+   Measured over 100 random layouts: easy 1.0 km2 flat, normal 1.18-3.5 km2,
+   hard 3.2-9.4 km2, strictly ordered, and the true target always inside its own
+   cue. A 6-digit call still requires the observer to find it to 100 m.
+
+   Two forms, chosen off the mission seed so a chapter always cues the same way:
+   a full six-line SALUTE, and a looser "activity observed vicinity <feature>".
+   Both are relayed BY the FDC FROM somebody else — a gun battery does not
+   observe — and both stay clear of the doctrinal readback: they fire once, at
+   mission start, before any call for fire exists to read back. */
+const CARD8 = ['NORTH', 'NORTHEAST', 'EAST', 'SOUTHEAST',
+               'SOUTH', 'SOUTHWEST', 'WEST', 'NORTHWEST'];
+// two forms of the same 90-degree quadrant: the adjective reads "NORTHERN
+// QUADRANT", the bare noun reads "NORTH OF THE AIRFIELD"
+const CARD4_ADJ = ['NORTHERN', 'EASTERN', 'SOUTHERN', 'WESTERN'];
+const CARD4_DIR = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
+function cardinal8(rad) { return CARD8[Math.round(radToMils(rad) / 800) % 8]; }
+function quad4i(rad) { return Math.round(radToMils(rad) / 1600) % 4; }
+function quadrant4(rad) { return CARD4_ADJ[quad4i(rad)]; }
+function quadDir4(rad) { return CARD4_DIR[quad4i(rad)]; }
+function milsWrap(m) { return ((m % 6400) + 6400) % 6400; }
+function roundTo(v, n) { return Math.round(v / n) * n; }
+function grid4(x, z) {            // 1 km grid square: a 1000 m box, not an answer
+  const en = worldToEN(x, z);
+  return `${Math.floor(en.e / 1000)}${Math.floor(en.n / 1000)}`;
+}
+const LANDMARK_SPOKEN = { airfield: 'THE AIRFIELD', mast: 'THE RADIO MAST',
+  gun: 'THE OLD COASTAL GUN', fuel: 'THE FUEL POINT', ammo: 'THE AMMO DEPOT' };
+// Permanent map features only — these are exactly the things that ARE printed on
+// the sheet, so a landmark cue is a terrain-association problem, not a giveaway.
+function nearestLandmark(x, z) {
+  let best = null, bd = Infinity;
+  for (const f of WORLD.facilities) {
+    const d = dist2(x, z, f.x, f.z);
+    if (d < bd) { bd = d; best = { name: LANDMARK_SPOKEN[f.kind] || f.name, x: f.x, z: f.z, d }; }
+  }
+  for (const v of WORLD.villages) {
+    const d = dist2(x, z, v.x, v.z);
+    if (d < bd) { bd = d; best = { name: `THE VILLAGE OF ${v.name}`, x: v.x, z: v.z, d }; }
+  }
+  return best && best.d <= CONFIG.SPOT.landmarkMax ? best : null;
+}
+const KM_WORDS = { 2000: 'TWO THOUSAND', 2500: 'TWO AND A HALF THOUSAND',
+  3000: 'THREE THOUSAND', 3500: 'THREE AND A HALF THOUSAND',
+  4000: 'FOUR THOUSAND' };
+function kmWords(m) { return KM_WORDS[m] || `${m}`; }
+function spotLocation(x, z, diff) {
+  const lm = nearestLandmark(x, z);
+  const dOT = dist2(OP.x, OP.z, x, z);
+  const azOT = azTo(OP.x, OP.z, x, z);
+  if (diff === 'easy')
+    return `GRID SQUARE ${grid4(x, z)}` + (lm ? `, VICINITY OF ${lm.name}` : '');
+  const norm = diff === 'normal';
+  if (lm) {
+    // radius is a floor, widened only far enough to keep the statement TRUE
+    const R = Math.max(norm ? 2000 : 3000, Math.ceil(lm.d / 500) * 500);
+    const dir = norm ? cardinal8(azTo(lm.x, lm.z, x, z))
+                     : quadDir4(azTo(lm.x, lm.z, x, z));
+    return `${dir} OF ${lm.name}, WITHIN ${kmWords(R)} METRES OF IT`;
+  }
+  if (norm) {
+    const b = roundTo(radToMils(azOT), 800), k = Math.floor(dOT / 1000);
+    return `BEARING ${fmtMils(milsWrap(b - 400))} TO ${fmtMils(milsWrap(b + 400))} ` +
+           `FROM YOUR TOWER, ${k} TO ${k + 1} THOUSAND OUT`;
+  }
+  const b0 = Math.floor(dOT / 2000) * 2;
+  return `${quadrant4(azOT)} QUADRANT FROM YOUR TOWER, ` +
+         (b0 === 0 ? 'INSIDE TWO THOUSAND' : `${b0} TO ${b0 + 2} THOUSAND`) + ' OUT';
+}
+const SPOT_SCN = {
+  strongpoint: { size: 'SQUAD PLUS — EIGHT OR MORE DISMOUNTS AND TWO LIGHT VEHICLES',
+                 act: 'ASSAULTING A FRIENDLY STRONGPOINT',
+                 eq: 'SMALL ARMS, ONE CREW-SERVED WEAPON, TWO SOFT-SKIN TRUCKS' },
+  troops:      { size: 'SQUAD PLUS — EIGHT OR MORE DISMOUNTS',
+                 act: 'INFANTRY IN THE OPEN, NO OVERHEAD COVER',
+                 eq: 'SMALL ARMS AND PACKS. NO VEHICLES SEEN' },
+  bunker:      { size: 'ONE FORTIFIED POSITION, SQUAD SIZE',
+                 act: 'DUG IN AND OBSERVING. THEY ARE NOT GOING ANYWHERE',
+                 eq: 'AUTOMATIC WEAPON IN A COVERED EMPLACEMENT, OVERHEAD PROTECTION' },
+  convoy:      { size: 'FOUR VEHICLES IN COLUMN',
+                 act: 'MOTORISED COLUMN ON THE MOVE',
+                 eq: 'CARGO TRUCKS. ESCORT UNKNOWN. NO ARMOUR REPORTED' },
+  assault:     { size: 'PLATOON MINUS ON THE OBJECTIVE',
+                 act: 'HOLDING GROUND AGAINST A FRIENDLY ADVANCE. OUR PEOPLE ARE CLOSING ON THEM',
+                 eq: 'DUG-IN SMALL ARMS AND AT LEAST ONE MACHINE GUN' },
+  wreck:       { size: 'ONE DERELICT LANDING CRAFT',
+                 act: 'STATIC. ABANDONED. DEEPLY UNTHREATENING',
+                 eq: 'NONE. IT IS SCRAP, AND IT IS YOURS' },
+  raid:        { size: 'EIGHT OR MORE DISMOUNTS AND ONE VEHICLE',
+                 act: 'RAIDING A CIVILIAN VILLAGE',
+                 eq: 'SMALL ARMS AND ONE ARMED PICKUP' },
+};
+const SPOT_UNIT = [
+  'UNKNOWN. NO MARKINGS, NO INSIGNIA',
+  'ASSESSED AS THIRD BATTALION REMNANTS, UNCONFIRMED',
+  'UNIDENTIFIED. MIXED KIT, MIXED DISCIPLINE',
+  'IRREGULARS. THEY ARE NOT WEARING ANYBODY\'S UNIFORM',
+  'UNKNOWN. HIGHER HAS A GUESS, AND HIGHER HAS BEEN WRONG BEFORE',
+];
+// reason: 'start' | 'displace'
+function sendSpotReport(reason) {
+  const S = Scenario;
+  if (!CONFIG.SPOT.enabled || !S) return;
+  const d = SPOT_SCN[S.type];
+  if (!d) return;
+  const P = CONFIG.SPOT;
+  const rng = mulberry32((S.seed * 30011 + (reason === 'displace' ? 977 : 7)) >>> 0);
+  const loc = spotLocation(S.enemy.x, S.enemy.z, S.difficulty);
+
+  if (reason === 'displace') {
+    FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc} — UPDATED SPOT REPORT. ` +
+            `SIZE UNCHANGED. ACTIVITY: DISPERSING AND GOING TO GROUND. ` +
+            `LOCATION: ${loc}. RE-ACQUIRE AND SEND YOUR CORRECTION, OVER.`, { delay: P.gap });
+    TLOG.add('spot', '', loc, { form: 'update', diff: S.difficulty, scn: S.type });
+    return;
+  }
+
+  const src = SPOT_SRC_SEEDED(rng);
+  const mins = 2 + Math.floor(rng() * 18);
+  const salute = rng() < P.saluteChance;
+  if (salute) {
+    FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc} — I HAVE A SPOT REPORT FOR YOU, ` +
+            `RELAYED FROM ${src}. SALUTE FORMAT. STAND BY, OVER.`, { delay: P.lead });
+    FDC.say(`SIZE: ${d.size}. ACTIVITY: ${d.act}. LOCATION: ${loc}, OVER.`, { delay: P.gap });
+    FDC.say(`UNIT: ${SPOT_UNIT[Math.floor(rng() * SPOT_UNIT.length)]}. ` +
+            `TIME: ${mins} MINUTES OLD. EQUIPMENT: ${d.eq}. OVER.`, { delay: P.gap });
+  } else {
+    FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc} — ${src} REPORTS ACTIVITY ` +
+            `IN THIS GENERAL AREA — ${loc}. ${d.act}. ` +
+            `${mins} MINUTES OLD, OVER.`, { delay: P.lead });
+    FDC.say(`THAT IS ALL THEY GAVE ME. ${d.size}, ${d.eq}. NOTHING FINER, OVER.`, { delay: P.gap });
+  }
+  FDC.say(pick(QUIPS.spotTail), { delay: 1.7 });
+  TLOG.add('spot', '', loc, { form: salute ? 'salute' : 'loose',
+                              diff: S.difficulty, scn: S.type });
+}
+// seeded pick that does not disturb the shared QUIPS._last rotation
+function SPOT_SRC_SEEDED(rng) {
+  return QUIPS.spotSrc[Math.floor(rng() * QUIPS.spotSrc.length)];
 }
 
 /* ============================================================ AUDIO (minimal boom; polish in stage 4) */
@@ -2485,6 +2672,7 @@ function resolveImpact(impact, isFFE) {
         S.effectRadius = Math.round(S.effectRadius * 0.7);
         S.hitsNeed = Math.min(S.hitsNeed + 1, 4);
         log('', `They have dispersed and gone to ground. Effect radius is now ${S.effectRadius} m and you need ${S.hitsNeed} rounds on them. Adjust faster next time.`, 'sys');
+        sendSpotReport('displace');   // target displaced — re-cue the observer
         if (coachOn())
           FDC.say('Be advised, MUSTANG — they are dispersing. Every round you spend walking is a man of theirs finding a hole. Get on with it.', { delay: 2.6 });
       }
@@ -4349,6 +4537,9 @@ function newMission(first, type, chapter) {
     else if (car.collat > 0) FDC.say(pick(QUIPS.careerCollat), { delay: 1.6 });
     else if (car.missions >= 5) FDC.say(pick(QUIPS.careerVet), { delay: 1.6 });
   }
+  // orient the observer onto a target AREA — never the grid. See sendSpotReport().
+  if (SPOT_SCN[Scenario.type]) sendSpotReport('start');
+  else FDC.say(pick(QUIPS.spotNone), { delay: CONFIG.SPOT.lead });
   if (first) {
     const c = Scenario.compound || Scenario.enemy;
     yaw = azTo(OP.x, OP.z, c.x, c.z);
