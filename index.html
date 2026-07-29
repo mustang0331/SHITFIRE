@@ -66,6 +66,16 @@
   #aarbox td:last-child { text-align: right; color: #ffe9a8; }
   #aarbox ul { margin: 4px 0 10px; padding-left: 18px; color: #d8b08a; }
   #aarbox .foot { color: #8fa387; font-style: italic; }
+
+  /* Map */
+  #map { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.45); z-index: 9; }
+  #map.on { display: flex; }
+  #mapbox { padding: 14px 16px; }
+  #maptitle { display: flex; justify-content: space-between; font-size: 14px;
+    letter-spacing: .14em; color: #dfe8c8; margin-bottom: 8px; }
+  #mapcv { display: block; background: #1E5A7A; border: 1px solid #39442e; }
+  #maplegend { margin-top: 8px; font-size: 11.5px; color: #9fb08c; line-height: 1.5; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -100,9 +110,16 @@
 </div>
 
 <div id="hint">
-  CLICK TO LOOK &middot; [ENTER] RADIO<br>
-  [B] BINOS &middot; [L] LASE &middot; [N] NEW MISSION
+  CLICK TO LOOK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
+  [B] BINOS &middot; [L] LASE &middot; [M] MAP &middot; [N] NEW MISSION
 </div>
+
+<div id="map"><div id="mapbox" class="panel">
+  <div id="maptitle"><span>TACTICAL MAP</span><span>1 SQUARE = 1 KM</span></div>
+  <canvas id="mapcv" width="560" height="560"></canvas>
+  <div id="maplegend">&#9650; OP &middot; &#9632; FRIENDLY STRONGPOINT &middot; &#9679; FIRING BATTERY (155MM)<br>
+  Enemy positions are not plotted — locating them is your job. [M] or [ESC] to close.</div>
+</div></div>
 
 <div id="aar"><div id="aarbox" class="panel"></div></div>
 
@@ -322,6 +339,41 @@ function findOP() {
 const OP = findOP();
 const eye = { x: OP.x, y: OP.h + CONFIG.CAMERA.eyeHeight, z: OP.z };
 camera.position.set(eye.x, eye.y, eye.z);
+
+/* ============================================================ FIRING BATTERY */
+// Fixed emplacement on flat low ground behind the OP. Cosmetic + map marker +
+// time-of-flight range; the gun line itself stays a black box per spec.
+function findBattery() {
+  let best = null, bestScore = 1e9;
+  for (let x = -3400; x <= 3400; x += 150)
+    for (let z = -3400; z <= 3400; z += 150) {
+      const h = H(x, z);
+      if (h < 4 || h > 30) continue;
+      const d = dist2(OP.x, OP.z, x, z);
+      if (d < 1200 || d > 2800) continue;
+      if (Math.abs(H(x + 40, z) - h) > 3 || Math.abs(H(x, z + 40) - h) > 3) continue;
+      const score = Math.abs(d - 1800);
+      if (score < bestScore) { bestScore = score; best = { x, z }; }
+    }
+  return best || { x: OP.x + 800, z: OP.z + 800 };
+}
+const BATTERY = findBattery();
+{
+  const gunMat = new THREE.MeshLambertMaterial({ color: 0x3E4A34, flatShading: true });
+  const gunGeo = new THREE.BoxGeometry(1.6, 1.4, 5.8);
+  for (let i = 0; i < 2; i++) {
+    const x = BATTERY.x + i * 16 - 8, z = BATTERY.z + i * 7;
+    const m = new THREE.Mesh(gunGeo, gunMat);
+    m.position.set(x, H(x, z) + 0.8, z);
+    m.rotation.y = 0.5 + i * 0.15;
+    scene.add(m);
+  }
+  const tent = new THREE.Mesh(new THREE.BoxGeometry(6, 2.6, 4.5),
+    new THREE.MeshLambertMaterial({ color: 0x6B6A52, flatShading: true }));
+  const tx = BATTERY.x - 14, tz = BATTERY.z + 10;
+  tent.position.set(tx, H(tx, tz) + 1.3, tz);
+  scene.add(tent);
+}
 
 /* ============================================================ UNITS (friendly compound + enemy) */
 const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [], flag: null };
@@ -561,6 +613,9 @@ function spawnBurst(x, y, z) {
   b.active = true; b.t0 = sim.now; b.seen = seen;
   b.group.visible = true;
   b.group.position.set(x, y, z);
+  const water = H(x, z) < 0;
+  b.dust.material.color.setHex(water ? 0xDCE9E6 : 0xB9A98C);
+  for (const p of b.puffs) p.material.color.setHex(water ? 0xCFDEDD : 0x8A877E);
   b.debris.forEach(d => {
     const a = Math.random() * Math.PI * 2, sp = 8 + Math.random() * 22;
     d.vx = Math.sin(a) * sp; d.vz = Math.cos(a) * sp; d.vy = 14 + Math.random() * 18;
@@ -695,8 +750,10 @@ function doLase() {
 /* ============================================================ MISSION STATE MACHINE */
 let mission = null;
 let state = 'OBSERVING';
+let stateSince = 0, stateHinted = false;
 const statusEl = document.getElementById('status');
 function setState(s) {
+  if (s !== state) { stateSince = sim.now; stateHinted = false; }
   state = s;
   const rd = mission ? mission.rounds.length : 0;
   statusEl.textContent = `STATE ${s}  |  RDS ${rd}  |  MSN SEED ${CONFIG.SEED.mission}`;
@@ -722,7 +779,7 @@ function followUpError(rng, otAz) {
 }
 function tofFor(aim) {
   const B = CONFIG.BALLISTICS;
-  const range = dist2(OP.x, OP.z, aim.x, aim.z);
+  const range = dist2(BATTERY.x, BATTERY.z, aim.x, aim.z);
   return clamp(range / B.tofDivisor + B.tofBase, B.tofMin, B.tofMax);
 }
 
@@ -853,7 +910,20 @@ function parseMessage(raw) {
     const stop = new Set(['over', 'out', 'break']);
     const descToks = [];
     for (let i = di; i < toks.length && !stop.has(toks[i]); i++) descToks.push(toks[i]);
-    return { type: 'cff', warno, digits, desc: descToks.join(' '), raw: t, toks };
+    return { type: 'cff', method: 'grid', warno, digits, desc: descToks.join(' '), raw: t, toks };
+  }
+  // polar: "direction 4400, distance 2100"
+  const mDir = t.match(/\bdirection\s+(\d+)\b/);
+  const mDist = t.match(/\bdistance\s+(\d+)\b/);
+  if (mDir && mDist) {
+    const warno = ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none');
+    let di = toks.indexOf('distance') + 1;
+    while (di < toks.length && /^\d+$/.test(toks[di])) di++;
+    const stop = new Set(['over', 'out', 'break']);
+    const descToks = [];
+    for (let i = di; i < toks.length && !stop.has(toks[i]); i++) descToks.push(toks[i]);
+    return { type: 'cff', method: 'polar', warno, dirMils: parseInt(mDir[1]),
+             distM: parseInt(mDist[1]), desc: descToks.join(' '), raw: t, toks };
   }
   const corr = { right: 0, add: 0 };
   let any = false;
@@ -873,7 +943,7 @@ function formatNotes(p) {
     notes.push('Open with both callsigns: "HELLHOUND FIRES, THIS IS MUSTANG 12".');
   if (p.warno === 'none')
     notes.push('No warning order — say ADJUST FIRE or FIRE FOR EFFECT.');
-  if (p.digits.length === 8)
+  if (p.method === 'grid' && p.digits.length === 8)
     notes.push('8-digit grid is 60mm mortar precision; artillery works in hundreds (6-digit).');
   if (!p.desc)
     notes.push('No target description ("infantry in the open", etc.).');
@@ -888,15 +958,25 @@ function handleCFF(p) {
     FDC.say('MUSTANG 12, we are mid-mission. Adjust, fire for effect, or send end of mission, over.', { delay: 1 });
     return;
   }
-  // grid -> world
-  let e3, n3, cx, cz;
-  if (p.digits.length === 6) {
-    e3 = parseInt(p.digits.slice(0, 3)); n3 = parseInt(p.digits.slice(3));
+  // target location -> world point, either method
+  let cx, cz, locStr;
+  if (p.method === 'polar') {
+    if (p.distM < 100 || p.distM > 12000) {
+      FDC.say(pick(QUIPS.badGrid), { delay: 1 });
+      return;
+    }
+    const az = (p.dirMils % 6400) / MILS_PER_RAD;
+    cx = OP.x + Math.sin(az) * p.distM;
+    cz = OP.z - Math.cos(az) * p.distM;
+    locStr = `DIRECTION ${fmtMils(p.dirMils % 6400)}, DISTANCE ${p.distM}`;
+  } else if (p.digits.length === 6) {
+    const e3 = parseInt(p.digits.slice(0, 3)), n3 = parseInt(p.digits.slice(3));
     const w = enToWorld(e3 * 100 + 50, n3 * 100 + 50); cx = w.x; cz = w.z;
+    locStr = `GRID ${e3} ${n3}`;
   } else if (p.digits.length === 8) {
     const e4 = parseInt(p.digits.slice(0, 4)), n4 = parseInt(p.digits.slice(4));
     const w = enToWorld(e4 * 10 + 5, n4 * 10 + 5); cx = w.x; cz = w.z;
-    e3 = Math.floor(e4 / 10); n3 = Math.floor(n4 / 10);
+    locStr = `GRID ${p.digits}`;
   } else {
     FDC.say(pick(QUIPS.badGrid), { delay: 1 });
     return;
@@ -909,20 +989,23 @@ function handleCFF(p) {
   }
   const notes = formatNotes(p);
   const warno = p.warno === 'none' ? 'adjust' : p.warno;
-  const gridStr = p.digits.length === 8 ? p.digits : `${e3} ${n3}`;
   const warnoText = warno === 'ffe' ? 'FIRE FOR EFFECT' : 'ADJUST FIRE';
-  FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, GRID ${gridStr}` +
+  FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
           (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
           { delay: CONFIG.FDC.readbackDelay });
   FDC.say('MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
           { delay: 1.4 });
   if (H(cx, cz) < 0) FDC.say(pick(QUIPS.water), { delay: 1 });
   setState('MISSION SENT');
-  fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr });
+  fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr });
 }
 
 function handleAdjust(p) {
-  if (!mission || mission.done) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  if (!mission || mission.done) {
+    FDC.say(pick(QUIPS.noMission), { delay: 1 });
+    sysHint();
+    return;
+  }
   if (state === 'EOM?') {
     FDC.say('MUSTANG 12, rounds are complete. Send end of mission, over.', { delay: 1 });
     return;
@@ -948,6 +1031,20 @@ function handleEOM(p) {
   schedule(FDC.lastT + 1.6, showAAR);
 }
 
+function expectedHint() {
+  switch (state) {
+    case 'ADJUSTING':
+      return 'Send an OT-line correction, e.g. "right 50, add 100, over" — or "fire for effect, over" once rounds are on target.';
+    case 'EOM?':
+      return 'Send "end of mission, target neutralized, over" with your assessment.';
+    case 'SHOT': case 'MISSION SENT': case 'FIRE FOR EFFECT':
+      return 'Rounds are in progress — wait for SPLASH, observe the burst, then correct.';
+    default:
+      return 'Send a call for fire — grid: "adjust fire, grid 245523, infantry in the open, over" — or polar: "adjust fire, direction 4400, distance 2100, troops in the open, over".';
+  }
+}
+function sysHint() { log('', 'HINT: ' + expectedHint(), 'sys'); }
+
 function onPlayerMessage(raw) {
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
   const p = parseMessage(raw);
@@ -961,10 +1058,12 @@ function onPlayerMessage(raw) {
     case 'repeat':
       if (mission && !mission.done && state === 'ADJUSTING') {
         FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
-      } else FDC.say(pick(QUIPS.noMission), { delay: 1 });
+      } else { FDC.say(pick(QUIPS.noMission), { delay: 1 }); sysHint(); }
       break;
     case 'eom': handleEOM(p); break;
-    default: FDC.say(pick(QUIPS.unknown), { delay: 1 });
+    default:
+      FDC.say(pick(QUIPS.unknown), { delay: 1 });
+      sysHint();
   }
 }
 
@@ -1002,9 +1101,115 @@ function showAAR() {
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
     `</table>` +
     (m.notes.length ? `<div>Format coaching:</div><ul>${m.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
-    `<div class="foot">[N] — new mission &middot; seed ${CONFIG.SEED.mission}</div>`;
+    `<div class="foot">[N] — new mission &middot; [ESC] — back to the OP &middot; seed ${CONFIG.SEED.mission}</div>`;
+  if (document.exitPointerLock) document.exitPointerLock();
   aarEl.classList.add('on');
   setState('AAR');
+}
+
+/* ============================================================ MAP [M] */
+const mapEl = document.getElementById('map');
+const mapCv = document.getElementById('mapcv');
+const miniCv = document.createElement('canvas');
+(function buildMinimap() {
+  const N = 280;
+  miniCv.width = N; miniCv.height = N;
+  const ctx = miniCv.getContext('2d');
+  const img = ctx.createImageData(N, N);
+  for (let py = 0; py < N; py++) {
+    for (let px = 0; px < N; px++) {
+      const x = px / N * 10000 - 5000, z = py / N * 10000 - 5000;
+      const h = H(x, z);
+      let r, g, b;
+      if (h < -8)       { r = 30; g = 90; b = 122; }
+      else if (h < 0)   { r = 46; g = 125; b = 160; }
+      else if (h < 4)   { r = 216; g = 200; b = 154; }
+      else if (h > 110) { r = 110; g = 102; b = 92; }
+      else {
+        const t = Math.min(h / 100, 1);
+        r = 78 - 19 * t; g = 122 - 28 * t; b = 61 - 15 * t;
+      }
+      if (h > 0) {  // crude west-lit hillshade
+        const sh = clamp(1 - (H(x + 35, z) - h) * 0.012, 0.78, 1.15);
+        r *= sh; g *= sh; b *= sh;
+      }
+      const o = (py * N + px) * 4;
+      img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+})();
+function mapMarkerLabel(ctx, text, x, y) {
+  ctx.font = 'bold 11px Consolas, monospace';
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 2.5;
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = '#10150c';
+  ctx.fillText(text, x, y);
+}
+function drawMap() {
+  const W = mapCv.width, ctx = mapCv.getContext('2d');
+  const wpx = x => (x + 5000) / 10000 * W;
+  const wpz = z => (z + 5000) / 10000 * W;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(miniCv, 0, 0, W, W);
+  // 1 km grid with principal-digit labels
+  ctx.strokeStyle = 'rgba(0,0,0,0.30)';
+  ctx.lineWidth = 1;
+  ctx.font = '10px Consolas, monospace';
+  ctx.textAlign = 'left';
+  for (let i = 0; i <= 10; i++) {
+    const p = Math.round(i / 10 * W) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(p, 0); ctx.lineTo(p, W);
+    ctx.moveTo(0, p); ctx.lineTo(W, p);
+    ctx.stroke();
+    if (i < 10) {
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      ctx.fillText(String(CONFIG.MAP.originE / 1000 + i), p + 2, W - 4);
+      ctx.fillText(String(CONFIG.MAP.originN / 1000 + 10 - i), 3, p + 11);
+    }
+  }
+  // friendly strongpoint
+  const c = Scenario.compound;
+  ctx.fillStyle = '#2E5FA0';
+  ctx.fillRect(wpx(c.x) - 5, wpz(c.z) - 5, 10, 10);
+  mapMarkerLabel(ctx, 'FRIENDLY', wpx(c.x) + 8, wpz(c.z) + 4);
+  // firing battery
+  ctx.fillStyle = '#2E5FA0';
+  ctx.beginPath();
+  ctx.arc(wpx(BATTERY.x), wpz(BATTERY.z), 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#dfe8c8';
+  ctx.beginPath();
+  ctx.arc(wpx(BATTERY.x), wpz(BATTERY.z), 2, 0, Math.PI * 2);
+  ctx.fill();
+  mapMarkerLabel(ctx, 'BTRY 155', wpx(BATTERY.x) + 9, wpz(BATTERY.z) + 4);
+  // OP
+  const ox = wpx(OP.x), oz = wpz(OP.z);
+  ctx.fillStyle = '#10150c';
+  ctx.beginPath();
+  ctx.moveTo(ox, oz - 7); ctx.lineTo(ox - 6, oz + 5); ctx.lineTo(ox + 6, oz + 5);
+  ctx.closePath(); ctx.fill();
+  mapMarkerLabel(ctx, 'OP', ox + 9, oz + 4);
+  // north arrow
+  ctx.strokeStyle = '#10150c';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(W - 24, 46); ctx.lineTo(W - 24, 16);
+  ctx.moveTo(W - 24, 16); ctx.lineTo(W - 29, 25);
+  ctx.moveTo(W - 24, 16); ctx.lineTo(W - 19, 25);
+  ctx.stroke();
+  mapMarkerLabel(ctx, 'N', W - 28, 60);
+}
+function toggleMap(force) {
+  const on = force !== undefined ? force : !mapEl.classList.contains('on');
+  if (on) {
+    drawMap();
+    if (document.exitPointerLock) document.exitPointerLock();
+  }
+  mapEl.classList.toggle('on', on);
 }
 
 /* ============================================================ NEW MISSION */
@@ -1025,7 +1230,7 @@ function newMission(first) {
     `Locate the attackers and destroy them. Do NOT drop rounds on the friendlies.`, 'sys');
   log('', `Your OP: grid ${gridOf(OP.x, OP.z)}, elev ${Math.round(OP.h)} m. ` +
     `Friendly strongpoint bearing ~${fmtMils(brgRounded)} mils. ` +
-    `Use [B] binos and [L] laser to fix the enemy grid, then send your call for fire.`, 'sys');
+    `Use [B] binos and [L] laser to fix the enemy grid ([M] for the map), then send your call for fire — grid or polar (direction/distance).`, 'sys');
   FDC.say(pick(QUIPS.greet), { delay: 1.5 });
   if (first) {
     yaw = azTo(OP.x, OP.z, c.x, c.z);
@@ -1049,8 +1254,14 @@ document.addEventListener('keydown', e => {
     return;
   }
   const k = e.key.toLowerCase();
+  if (k === 'escape') {
+    aarEl.classList.remove('on');
+    mapEl.classList.remove('on');
+    return;
+  }
   if (k === 'b') setBinos(!binos);
   else if (k === 'l') doLase();
+  else if (k === 'm') toggleMap();
   else if (k === 'n') newMission(false);
   else if (k === 'enter') { e.preventDefault(); txInput.focus(); }
 });
@@ -1072,6 +1283,16 @@ function animate(tMs) {
   lastFrame = t;
   sim.now = t;
   runEvents();
+  // idle coaching: nudge once if the net has gone quiet mid-mission
+  if (!stateHinted) {
+    const idle = sim.now - stateSince;
+    if ((state === 'ADJUSTING' && idle > 25) ||
+        (state === 'EOM?' && idle > 15) ||
+        (state === 'OBSERVING' && idle > 60)) {
+      stateHinted = true;
+      sysHint();
+    }
+  }
   // camera
   lookDir(_dir);
   _tgt.set(eye.x + _dir.x, eye.y + _dir.y, eye.z + _dir.z);
@@ -1103,7 +1324,7 @@ requestAnimationFrame(animate);
 
 // Debug / stable interface exposure
 window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC,
-  get Scenario() { return Scenario; }, get mission() { return mission; }, OP };
+  get Scenario() { return Scenario; }, get mission() { return mission; }, OP, BATTERY };
 </script>
 </body>
 </html>
