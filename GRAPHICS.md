@@ -408,6 +408,57 @@ correctness fix, and it establishes the `CONFIG.GFX` block that everything else 
 
 ---
 
+## ⚠ Open visual QA backlog — 15 items awaiting eyes in Chrome
+
+**This is the standing to-do list for anything that can only be confirmed by looking at it.**
+Moved here from ROADMAP.md §5 on 2026-07-29 at the user's direction; ROADMAP now points here.
+
+Why it exists: every row below shipped with an *executable* harness (real arithmetic run through
+`cscript //E:JScript`) and a headless-Chrome **parse** gate. Neither can see a picture. So for these
+items the maths is proven and the code is proven to parse, and nothing more. Track E is almost
+entirely about appearance — legibility, night optics, road classes, settlement scale, map symbols —
+so a harness proving an outcrop is 1780 triangles at the right grid says nothing about whether it
+reads as a landmark at 2 km.
+
+Every row is marked `DONE ⚠` on the board. **The ⚠ comes off only when a human confirms it.**
+Roughly 15 minutes in one sitting on the default island (terrain seed 1337). Not blocking: none of
+the current parser work (G22+) touches rendering. Worth clearing before more *visual* rows land, so
+a regression is attributed to the row that caused it instead of surfacing five rows later.
+
+Anything that fails becomes a Track F row on ROADMAP — **not** a silent revert.
+
+### Renderer (Track A)
+
+| # | Row | Look at | Regression if |
+|---|---|---|---|
+| 1 | 13c | The horizon | A visible band or seam where the Preetham sky meets the authored fog |
+| 2 | 13b/13c | `[M]`, then `[P]` and print-preview a sheet | Any colour tint bleeding onto map or sheet — separate 2D canvases, *should* be untouched, but "should" is not checked |
+
+### Observation and target acquisition (Track E)
+
+| # | Row | Look at | Regression if |
+|---|---|---|---|
+| 3 | E1 | Troops at 1500 m and 3200 m through binos | Cannot count figures; **or civilians and soldiers get harder to tell apart** — hard fail, not a nit: collateral damage is an instant mission fail |
+| 4 | E3 | `[O]` through DAY → NVG → THERMAL, at night **and** in daylight | Discrimination lost in any mode; either device useless at night; either device *better* than the naked eye in full day |
+| 5 | E4 | An asphalt route beside a dirt track, from the OP | The two classes not obviously different at range |
+| 6 | E4/E3 | Asphalt in THERMAL after dark | Sealed road not reading warm against cool ground — this is a real teachable cue and the likeliest of these to be wrong |
+| 7 | E5 | A road bend on `[M]` vs the same bend in the world | Paper and world disagreeing about where a road goes (transform is verified arithmetically; this confirms it visually) |
+| 8 | E6 | The town from ~2–3 km | Not unmistakably a *town* rather than a big village; civilian areas not obvious |
+| 9 | E7 | A boulder field at 1500–3200 m, and its symbol on both surfaces | Piles reading as noise instead of one identifiable feature; symbol illegible at `[M]` scale; symbol confusable with the fuel-point circle |
+| 10 | E7 | A named outcrop in a SALUTE report vs its label on the sheet | Net name and sheet label disagreeing |
+
+### UI, optics and instruments (Track G-A)
+
+| # | Row | Look at | Regression if |
+|---|---|---|---|
+| 11 | G1 | Look down over the deck edge from the OP | Near ground still hidden; or the tower no longer reads as a structure |
+| 12 | G4 | `[Z]`/wheel through 4X → 7X → 14X, glassing a truck | Reticle sparse or clipped at any power; graduations not visibly rescaling |
+| 13 | G2 | `MAG` in the topbar; the sheet's new declination diagram | Diagram illegible in black and white; `MAG` mistaken for the old `AZ` at a glance |
+| 14 | G5 | Open the mil card `[R]` with the comms panel up | Card still overlapped, or fighting the touch bar in a small window |
+| 15 | G6 | Drag the comms header, resize from the corner, double-click to reset | Resize corner invisible against the border; transcript clipped instead of resized; scroll not pinned to bottom |
+
+---
+
 ## Verification checklist
 
 Run after every stage, in Chrome desktop:

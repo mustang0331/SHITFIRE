@@ -41,6 +41,7 @@ Confusion in this project comes from asking the wrong file. One question, one au
 | What is doctrinally correct? | **DOCTRINE.md** | SPEC, vibes |
 | Story, chapters, characters, humor | **NARRATIVE.md** | — |
 | Graphics implementation detail | **GRAPHICS.md** (detail for stage 13) | SPEC |
+| **What still needs looking at in Chrome** | **GRAPHICS.md** §Open visual QA backlog | ROADMAP §5 (pointer only) |
 | Dialogue rewrite text | **DIALOGUE_REVISIONS.md** (detail for stage 14) | NARRATIVE |
 | Training-objective crosswalk | **TLO.md** | — |
 | Real-world dispersion / lethality figures | **BALLISTICS_RESEARCH.md** (reference only — nothing in it is applied, and it does **not** license a trajectory sim) | — |
@@ -383,32 +384,19 @@ already; README's control table is not yet updated.
 
 ---
 
-## 5. ⚠ Needs-Chrome visual QA — the open gate on Tracks A and E
+## 5. ⚠ Visual QA — lives in GRAPHICS.md
 
-Nine shipped rows are gated on something no harness can check. Everything below was verified by
-measurement or by parse; **none of it has been seen running.** This is one pass in Chrome, ~15 minutes,
-and it closes all of it. Take a mission on the default island (terrain seed 1337) and check, in order:
+**The 15-item needs-Chrome list moved to [GRAPHICS.md](GRAPHICS.md) §Open visual QA backlog**
+(user direction, 2026-07-29). It is a graphics to-do list, so it belongs with the graphics spec, and
+§1 of this file says one question gets one authority.
 
-| # | Row | What to look at | What would be a regression |
-|---|---|---|---|
-| 1 | 13c | The horizon | A visible band or seam where the sky meets the fog |
-| 2 | 13b/13c | Open `[M]`, then `[P]` and print-preview a sheet | Any colour tint bleeding onto the map or the sheet — they are separate 2D canvases and should be untouched |
-| 3 | E1 | Troops at 1500 m and at 3200 m through binos | Cannot count figures; **or civilians and soldiers becoming harder to tell apart** — that one is a hard fail, not a nit |
-| 4 | E3 | `[O]` through DAY → NVG → THERMAL, at night and in daylight | Civ/mil discrimination lost in any mode; either device useless at night; either device *better* than the naked eye in full day |
-| 5 | E4 | An asphalt route beside a dirt track, from the OP | The two classes not obviously different at range |
-| 6 | E4/E3 | Asphalt in THERMAL after dark | Sealed road not reading warm against cool ground — it is meant to be a teachable cue |
-| 7 | E5 | Compare a road bend on `[M]` against the same bend in the world | The paper and the world disagreeing about where a road goes |
-| 8 | E6 | The town from ~2–3 km | Not unmistakably a *town* rather than a big village; civilian areas not obvious |
-| 9 | E7 | A boulder field at 1500–3200 m, and its symbol on both surfaces | Piles reading as noise instead of one identifiable feature; symbol illegible at `[M]` scale; symbol confusable with the fuel-point circle |
-| 10 | E7 | A named outcrop in a SALUTE report vs. its label on the sheet | Net name and sheet label disagreeing |
-| 11 | G1 | Look down over the deck edge from the OP | Near ground still hidden; or the tower no longer reads as a structure |
-| 12 | G4 | `[Z]` / wheel through 4X → 7X → 14X, glassing a truck | Reticle sparse or clipped at any power; mil graduations not visibly rescaling |
-| 13 | G2 | `MAG` in the topbar, and a printed sheet's new declination diagram | Diagram illegible in black and white; MAG mistaken for the old AZ |
-| 14 | G5 | Open the mil card `[R]` with the comms panel up | Card still overlapped, or fighting the touch bar on a small window |
-| 15 | G6 | Drag the comms header, resize from the corner, double-click to reset | Resize corner invisible; transcript clipped instead of resized; scroll not pinned to bottom |
+What stays here: the rows it gates. Every row marked **DONE ⚠** in the tables above has landed and
+been verified by harness and by parse, but has **not been seen running**. The ⚠ comes off a row only
+when the matching item in GRAPHICS.md is confirmed by eye. A failure there becomes a Track F row, not
+a revert.
 
-Anything that fails here becomes a Track F row, not a silent revert. Anything that passes flips its ⚠
-off in the tables above.
+Currently 15 open items covering 13b/13c, E1, E3–E7 and G1–G6. Not blocking — the active parser
+work does not touch rendering.
 
 ---
 
