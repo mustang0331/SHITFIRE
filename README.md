@@ -94,5 +94,6 @@ Everything below is drawn from the existing spec, code, and project files. Items
 | [SPEC.md](SPEC.md) | Full build spec + BUILD ORDER (the authority) |
 | [NARRATIVE.md](NARRATIVE.md) | Campaign storyline: volumes, chapters, characters, humor rules |
 | [DOCTRINE.md](DOCTRINE.md) | CFF formats, prowords, protocols — distilled from JFIRE 2019 + the JFO Student Handout |
+| [TLO.md](TLO.md) | Terminal/Enabling Learning Objectives and star-grading crosswalk for the campaign |
 | [CLAUDE.md](CLAUDE.md) | Project rules for the coding agent |
 | [QUICKSTART.md](QUICKSTART.md) | Stage-by-stage build workflow |
