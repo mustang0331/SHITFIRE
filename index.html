@@ -362,7 +362,12 @@ const CONFIG = {
     //   dirt     unimproved track to huts, villages and the OP. Narrower, lighter,
     //            browner, no shoulder.
     roadWidth: 8, shoulderW: 3.2, pathWidth: 2.8,
+    // E6 — three settlement tiers, so "the village" and "the town" are
+    // different answers to "what am I looking at". A village is a hut cluster
+    // off a dirt track; a town has streets, masonry, and a metalled spur.
     villageCount: 2, civsPerVillage: 6,
+    townCount: 1, townBuildings: [14, 21], townR: 135, civsPerTown: 10,
+    townStreetHalf: 135, townCrossHalf: 88, townSetback: 21,
     convoyStopDur: [60, 180],          // pit-stop length range (s)
     hutCollateralR: 24, civCollateralR: 28,
   },
@@ -981,6 +986,11 @@ const _wMats = {
   milB:  new THREE.MeshLambertMaterial({ color: 0x4A5240, flatShading: true }),
   civ:   new THREE.MeshLambertMaterial({ color: 0xC9B891, flatShading: true }),
   civB:  new THREE.MeshLambertMaterial({ color: 0xB5A075, flatShading: true }),
+  // E6: rendered masonry. A town is not a big village — it is a DIFFERENT
+  // material, pale and cool against the warm thatch of the hut clusters, which
+  // is most of what makes the tier readable at 2-3 km before any detail does.
+  civM:  new THREE.MeshLambertMaterial({ color: 0xE2DCCB, flatShading: true }),
+  civR:  new THREE.MeshLambertMaterial({ color: 0x8C4A38, flatShading: true }),
   drum:  new THREE.MeshLambertMaterial({ color: 0x7A3A2A, flatShading: true }),
   mast:  new THREE.MeshLambertMaterial({ color: 0xB9B4A6, flatShading: true }),
 };
@@ -1085,6 +1095,13 @@ visTag(_wMats.civB,        { nvg: 0.38, th: [0.36, 0.36, 0.36] });
    Under NVG the ordering inverts: bitumen is strongly NIR-ABSORBING (~0.10) and
    goes near-black, while bare soil is NIR-bright, so the dirt track is the one
    that shows. Two devices, two different answers, both correct. */
+// E6 — town fabric. Rendered masonry has more thermal mass than a thatched hut
+// so it stays warmer later into the night, and lime render is NIR-bright; a
+// tiled roof reads cooler than the wall it sits on. Both stay well clear of the
+// human signatures, because a town is exactly where a mistaken civilian call
+// gets someone killed.
+visTag(_wMats.civM,        { nvg: 0.78, th: [0.46, 0.46, 0.46] });  // lime render
+visTag(_wMats.civR,        { nvg: 0.30, th: [0.34, 0.34, 0.34] });  // tile roof
 visTag(_wMats.asph,        { nvg: 0.10, th: [0.62, 0.62, 0.62] });  // sealed: NIR-black, holds heat
 visTag(_wMats.asphE,       { nvg: 0.34, th: [0.30, 0.30, 0.30] });  // gravel shoulder: sheds heat
 visTag(_wMats.path,        { nvg: 0.52, th: [0.24, 0.24, 0.24] });  // bare soil: NIR-bright, cool
@@ -1168,12 +1185,61 @@ function ribbonMesh(pts, width, mat, lift) {
   g.computeVertexNormals();
   return new THREE.Mesh(g, mat);
 }
+/* E6 — every boxy structure on the island is BATCHED and merged per material
+   instead of getting its own Mesh. Before this row that was ~25 meshes for the
+   facilities and hut clusters; a town of 14-20 buildings would have taken it
+   past 45, which is a lot of draw calls to spend on scenery in a renderer that
+   has to hold 60 fps with 180k triangles of terrain already on screen.
+
+   Merged, the entire structure layer is one mesh per MATERIAL — six, whatever
+   the island builds — and adding a settlement tier costs zero extra draw calls.
+   The unit box is non-indexed so the merge is a straight copy with a rotY
+   applied; nothing here runs per frame. */
+const _boxUnit = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+_boxUnit.userData.keep = true;
+let _boxBatch = [];
 function wBox(x, z, w, h, d, mat, rotY) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-  m.position.set(x, Math.max(H(x, z), 0) + h / 2, z);
-  if (rotY) m.rotation.y = rotY;
-  WORLD.group.add(m);
-  return m;
+  wBoxY(x, Math.max(H(x, z), 0) + h / 2, z, w, h, d, mat, rotY);
+}
+function wBoxY(x, y, z, w, h, d, mat, rotY) {   // explicit centre height
+  _boxBatch.push({ x, y, z, w, h, d, mat, rotY: rotY || 0 });
+}
+function flushBoxes(group) {
+  const byMat = new Map();
+  for (const b of _boxBatch) {
+    let a = byMat.get(b.mat);
+    if (!a) byMat.set(b.mat, a = []);
+    a.push(b);
+  }
+  _boxBatch = [];
+  const bp = _boxUnit.attributes.position.array;
+  const bn = _boxUnit.attributes.normal.array;
+  const nv = _boxUnit.attributes.position.count;
+  for (const [mat, list] of byMat) {
+    const pos = new Float32Array(list.length * nv * 3);
+    const nor = new Float32Array(list.length * nv * 3);
+    let o = 0;
+    for (const b of list) {
+      const c = Math.cos(b.rotY), s = Math.sin(b.rotY);
+      for (let i = 0; i < nv; i++) {
+        const vx = bp[i * 3] * b.w, vy = bp[i * 3 + 1] * b.h, vz = bp[i * 3 + 2] * b.d;
+        pos[o]     = b.x + vx * c + vz * s;
+        pos[o + 1] = b.y + vy;
+        pos[o + 2] = b.z - vx * s + vz * c;
+        // rotY only: a box's normals stay axis-aligned under a per-axis scale,
+        // so they need the rotation and nothing else.
+        const nx = bn[i * 3], ny = bn[i * 3 + 1], nz = bn[i * 3 + 2];
+        nor[o]     = nx * c + nz * s;
+        nor[o + 1] = ny;
+        nor[o + 2] = -nx * s + nz * c;
+        o += 3;
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    group.add(new THREE.Mesh(g, mat));
+  }
 }
 function isleName(rng) {
   const syl = ['ta', 'va', 'mo', 'ra', 'hi', 'no', 'ke', 'lu', 'pa', 'si', 'ngo', 'fa'];
@@ -1203,6 +1269,7 @@ function buildWorldFeatures() {
   const rng2 = mulberry32((Math.imul(wSeed, 2246822519) + 13) >>> 0);
   const W = CONFIG.WORLD;
   const asphaltLines = [], dirtLines = [];
+  _boxBatch = [];                      // E6 — every wBox() lands here, merged below
 
   // --- coast road: radial scan for the outermost low-shelf point per bearing
   const NA = 128, ring = [];
@@ -1304,35 +1371,80 @@ function buildWorldFeatures() {
       }
     return best;
   }
-  // airfield: flattest low ground with a workable heading
+  /* --- airfield.
+     MEASURED BUG, fixed here: the old gate demanded 600 m of ground flat to
+     within 4.5 m and then took whatever `bestDir` the LAST passing candidate
+     happened to leave in the closure — not the winner's heading. On the default
+     island (terrain seed 1337) 0 of the 31 candidate sites cleared the gate, so
+     there was NO AIRFIELD AT ALL: 2 of 5 sampled seeds shipped an island whose
+     printed sheet, convoy pit stops and resection brief all referred to a
+     landmark that did not exist.
+
+     Now the strip LENGTH adapts instead of the site being thrown away — 620 m
+     if the island can hold it, else 480, else 340, which is how expedient
+     strips were actually sited — and the winning heading travels with the
+     winning site. Measured over 7 terrain seeds: every one places, longitudinal
+     grade 0.41%-0.74%, ~6-11k H() calls for the whole search. */
   {
-    let bestDir = 0;
-    const af = scanBest((x, z) => {
-      const h = H(x, z);
-      if (h < 2 || h > 10) return null;
-      let best = null;
-      for (let d = 0; d < 4; d++) {
-        const th = d * Math.PI / 4, ux = Math.sin(th), uz = -Math.cos(th);
-        let dev = 0;
-        for (let s = -300; s <= 300; s += 100)
-          dev = Math.max(dev, Math.abs(H(x + ux * s, z + uz * s) - h));
-        if (best === null || dev < best.dev) best = { dev, th };
-      }
-      if (best.dev > 4.5) return null;
-      bestDir = best.th;
-      return -best.dev - Math.abs(h - 5) * 0.2;
-    });
+    let af = null;
+    for (const half of [310, 240, 170]) {
+      let bs = -Infinity;
+      for (let x = -3600; x <= 3600; x += 90)
+        for (let z = -3600; z <= 3600; z += 90) {
+          const h = H(x, z);
+          if (h < 2 || h > 14) continue;          // low, dry, off the beach
+          let bd = null;
+          // 12 headings, not 4. A coral shelf runs at whatever angle the coast
+          // runs at; a 45-degree-only search threw away almost every real site.
+          for (let d = 0; d < 12; d++) {
+            const th = d * Math.PI / 12, ux = Math.sin(th), uz = -Math.cos(th);
+            const px = -uz, pz = ux;
+            let dev = 0, wet = false;
+            // sample the whole FORMATION, not just the centreline: the strip is
+            // 40 m wide and the centreline-only test put half a runway out over
+            // the sea, because a 100 m centreline sample can straddle a bay.
+            for (let s = -half; s <= half && !wet; s += 60)
+              for (let q = -20; q <= 20; q += 20) {
+                const hh = H(x + ux * s + px * q, z + uz * s + pz * q);
+                if (hh < 1.0) { wet = true; break; }
+                dev = Math.max(dev, Math.abs(hh - h));
+              }
+            if (wet) continue;
+            if (!bd || dev < bd.dev) bd = { dev, th };
+          }
+          // 7 m over 620 m is a 1.1% longitudinal grade — inside what WW2
+          // expedient strips were actually built to, and the strip ribbon
+          // follows H so the slope is real rather than hidden.
+          if (!bd || bd.dev > 7.0) continue;
+          const sc = -bd.dev - Math.abs(h - 5) * 0.2;
+          if (sc > bs) { bs = sc; af = { x, z, th: bd.th, half }; }
+        }
+      if (af) break;                              // longest strip this island holds
+    }
     if (af) {
-      const ux = Math.sin(bestDir), uz = -Math.cos(bestDir);
+      const th = af.th, ux = Math.sin(th), uz = -Math.cos(th);
+      const perpX = -uz, perpZ = ux;              // across the strip
       const pts = [];
-      for (let s = -310; s <= 310; s += 62)
+      for (let s = -af.half; s <= af.half; s += af.half / 5)
         pts.push({ x: af.x + ux * s, z: af.z + uz * s });
       const m = ribbonMesh(pts, 40, _wMats.strip, 0.28);
       if (m) WORLD.group.add(m);
-      wBox(af.x - uz * 40, af.z + ux * 40, 14, 5, 10, _wMats.mil, bestDir);
-      wBox(af.x - uz * 40 + ux * 24, af.z + ux * 40 + uz * 24, 14, 5, 10, _wMats.mil, bestDir);
-      wBox(af.x - uz * 26, af.z + ux * 26, 0.4, 7, 0.4, _wMats.mast);
-      WORLD.facilities.push({ kind: 'airfield', name: 'AIRFIELD', x: af.x, z: af.z, th: bestDir, len: 620 });
+      // apron + taxiway off the midpoint, metalled so it plots as a road
+      const apron = [];
+      for (let s = 0; s <= 4; s++)
+        apron.push({ x: af.x + perpX * (12 + s * 14), z: af.z + perpZ * (12 + s * 14) });
+      addRoute(apron, true);
+      // the built side: two hangars, an ops/tower block, a windsock mast
+      const bx = af.x + perpX * 62, bz = af.z + perpZ * 62;
+      wBox(bx, bz, 16, 5.5, 11, _wMats.mil, th);
+      wBox(bx + ux * 26, bz + uz * 26, 16, 5.5, 11, _wMats.mil, th);
+      wBox(bx - ux * 30, bz - uz * 30, 9, 8.5, 8, _wMats.milB, th);   // tower/ops
+      wBox(bx - ux * 30, bz - uz * 30, 0.4, 5, 0.4, _wMats.mast);     // windsock
+      for (let i = 0; i < 3; i++)
+        wBox(bx + ux * 46 + perpX * i * 2.6, bz + uz * 46 + perpZ * i * 2.6,
+             1.8, 2.0, 1.8, _wMats.drum);
+      WORLD.facilities.push({ kind: 'airfield', name: 'AIRFIELD', x: af.x, z: af.z,
+                              th, len: af.half * 2 });
     }
   }
   // radio mast: prominent high ground away from the OP — prime resection landmark
@@ -1410,8 +1522,121 @@ function buildWorldFeatures() {
     WORLD.villages.push(vil);
   }
 
+  /* --- E6: TOWNS. The third settlement tier, and the one the observer is meant
+     to be able to name at 2-3 km without a reticle. A village is 5-7 identical
+     thatch huts scattered on a 70 m radius off a dirt track. A town is:
+       · streets — a main street and a cross street, METALLED, so they plot as
+         hard-surface road on the sheet and the block layout is visible from the
+         OP as straight lines where the jungle has none;
+       · 14-21 buildings of varied footprint and height set back along both
+         sides of those streets, not scattered on a circle;
+       · rendered masonry (pale, cool) and tiled roofs instead of thatch, which
+         is what actually carries the tier at range once detail has washed out;
+       · a metalled spur to the coast road, because a town is somewhere trucks
+         go.
+     It goes into WORLD.villages with tier:'town', so it inherits the existing
+     collateral-damage auto-fail and the (CIV) labelling on both map surfaces
+     for free — a town is a bigger no-strike area, not a new rule. */
+  for (let t = 0; t < W.townCount && road.length > 8; t++) {
+    const site = scanBest((x, z) => {
+      const h = H(x, z);
+      if (h < 3 || h > 45) return null;
+      const a = nearestOnRoad(x, z);
+      if (!a || a.d > 340 || a.d < 70) return null;
+      let dev = 0;
+      for (const [ox, oz] of [[-120, 0], [120, 0], [0, -120], [0, 120], [-85, -85], [85, 85]])
+        dev = Math.max(dev, Math.abs(H(x + ox, z + oz) - h));
+      if (dev > 24) return null;
+      for (const v of WORLD.villages) if (dist2(x, z, v.x, v.z) < 900) return null;
+      for (const f of WORLD.facilities) if (dist2(x, z, f.x, f.z) < 700) return null;
+      return -dev - Math.abs(a.d - 170) * 0.02;
+    });
+    if (!site) continue;
+    const anchor = nearestOnRoad(site.x, site.z);
+    // main street runs ACROSS the line to the coast road, so the spur arrives
+    // at one end of it instead of running down the middle of the town
+    const ax = (site.x - anchor.p.x) / anchor.d, az = (site.z - anchor.p.z) / anchor.d;
+    const mx = -az, mz = ax;                       // main-street unit vector
+    const town = { name: isleName(rng2), x: site.x, z: site.z, r: W.townR,
+                   tier: 'town', huts: [] };
+    const streets = [];
+    const mkStreet = (ux, uz, half) => {
+      const pts = [];
+      for (let s = -half; s <= half; s += half / 4) {
+        const x = site.x + ux * s, z = site.z + uz * s;
+        if (H(x, z) < 1.2) return null;
+        pts.push({ x, z });
+      }
+      return pts;
+    };
+    const main = mkStreet(mx, mz, W.townStreetHalf);
+    if (!main) continue;
+    streets.push({ pts: main, ux: mx, uz: mz, half: W.townStreetHalf });
+    const cross = mkStreet(ax, az, W.townCrossHalf);
+    if (cross) streets.push({ pts: cross, ux: ax, uz: az, half: W.townCrossHalf });
+    const want = W.townBuildings[0] +
+                 Math.floor(rng2() * (W.townBuildings[1] - W.townBuildings[0]));
+    let placed = 0;
+    for (const st of streets) {
+      const px = -st.uz, pz = st.ux;               // street normal
+      for (let side = -1; side <= 1 && placed < want; side += 2) {
+        let s = -st.half + 14;
+        while (s < st.half - 14 && placed < want) {
+          const w = 6.5 + rng2() * 7.5, d = 6 + rng2() * 5.5;
+          const twoStorey = rng2() < 0.3;
+          const hgt = twoStorey ? 6.4 + rng2() * 2.2 : 3.2 + rng2() * 1.4;
+          const off = W.townSetback + rng2() * 5;
+          const bx = site.x + st.ux * s + px * off * side;
+          const bz = site.z + st.uz * s + pz * off * side;
+          const g = H(bx, bz);
+          if (g >= 1.2) {
+            const rot = Math.atan2(st.ux, st.uz) + (rng2() - 0.5) * 0.12;
+            const mat = twoStorey ? _wMats.civM : (rng2() < 0.45 ? _wMats.civM : _wMats.civ);
+            wBox(bx, bz, w, hgt, d, mat, rot);
+            wBoxY(bx, g + hgt + 0.55, bz, w + 1.3, 1.1, d + 1.3, _wMats.civR, rot);
+            town.huts.push({ x: bx, z: bz, w, d });
+            placed++;
+          }
+          s += 20 + rng2() * 12;
+        }
+      }
+    }
+    if (placed < 6) continue;                      // not a town; drop it
+    /* Built-up-area extent, measured off the buildings actually placed and
+       carried on the town so BOTH map surfaces can draw the settlement as a
+       generalised block instead of a hundred overlapping dots. A 10 m building
+       is 1.2 px at 1:50,000 — plotting them individually produced a solid black
+       smear that hid the streets, which is exactly why real sheets generalise a
+       town into an outline with the street pattern drawn through it. */
+    {
+      const nx = -mz, nz = mx;
+      let aMin = 1e9, aMax = -1e9, bMin = 1e9, bMax = -1e9;
+      for (const b of town.huts) {
+        const dx = b.x - site.x, dz = b.z - site.z;
+        const a = dx * mx + dz * mz, n = dx * nx + dz * nz;
+        if (a < aMin) aMin = a; if (a > aMax) aMax = a;
+        if (n < bMin) bMin = n; if (n > bMax) bMax = n;
+      }
+      const pad = 22;
+      town.foot = { ux: mx, uz: mz,
+                    aHalf: (aMax - aMin) / 2 + pad, bHalf: (bMax - bMin) / 2 + pad,
+                    cx: site.x + mx * (aMax + aMin) / 2 + nx * (bMax + bMin) / 2,
+                    cz: site.z + mz * (aMax + aMin) / 2 + nz * (bMax + bMin) / 2 };
+    }
+    for (const st of streets) { WORLD.roads.push(st.pts); asphaltLines.push(st.pts); }
+    for (let i = 0; i < W.civsPerTown; i++) {
+      const m = makeFigure('civ');
+      WORLD.group.add(m);
+      WORLD.civs.push({ m, bx: site.x + (rng2() - 0.5) * W.townR * 1.4,
+                        bz: site.z + (rng2() - 0.5) * W.townR * 1.4,
+                        wr: 6 + rng2() * 11, phase: rng2() * 20, x: site.x, z: site.z });
+    }
+    WORLD.villages.push(town);
+  }
+
   // --- dirt paths: villages/facilities up toward the interior (first ridge shoulder)
-  const pathTargets = [...WORLD.villages, ...WORLD.facilities.filter(f => f.kind === 'mast' || f.kind === 'gun')];
+  const pathTargets = [...WORLD.villages.filter(v => v.tier !== 'town'),
+                       ...WORLD.facilities.filter(f => f.kind === 'mast' || f.kind === 'gun')];
   for (let i = 0; i + 1 < pathTargets.length; i += 2) {
     const a = pathTargets[i], b = pathTargets[i + 1];
     const pts = [];
@@ -1438,7 +1663,8 @@ function buildWorldFeatures() {
     else if (f.kind === 'fuel' || f.kind === 'ammo') addRoute(linkTo(f.x, f.z, 260), true);
     else if (f.kind === 'gun' || f.kind === 'mast') addRoute(linkTo(f.x, f.z, 2200), false);
   }
-  for (const v of WORLD.villages) addRoute(linkTo(v.x, v.z, 700), false);
+  for (const v of WORLD.villages)
+    addRoute(linkTo(v.x, v.z, v.tier === 'town' ? 600 : 700), v.tier === 'town');
   addRoute(linkTo(OP.x, OP.z, 6000), false);          // the track up to the OP
 
   // --- one merged mesh per class. Three draw calls for the whole network.
@@ -1448,6 +1674,7 @@ function buildWorldFeatures() {
     mergedRibbonMesh(dirtLines, W.pathWidth, _wMats.path, 0.18),
   ];
   for (const m of netMeshes) if (m) WORLD.group.add(m);
+  flushBoxes(WORLD.group);             // E6 — one mesh per material, not per box
 
   scene.add(WORLD.group);
   // Everything in here is brand new geometry with no `_m0` yet. If the observer
@@ -4352,6 +4579,37 @@ function drawWorldLayer(ctx, X, Y, o) {
   const prevJoin = ctx.lineJoin, prevCap = ctx.lineCap;
   ctx.lineJoin = 'round'; ctx.lineCap = 'butt';
 
+  /* --- E6: BUILT-UP AREAS go down first, under everything. A town on a
+     1:50,000 sheet is not a hundred building dots — a 10 m building is 1.2 px
+     and plotting them individually produced a solid black smear that hid the
+     street pattern. It is a generalised block: outline plus diagonal hatch,
+     with the streets drawn THROUGH it by the road pass below. That ordering is
+     the point; drawn on top, the hatch buried its own streets. */
+  for (const v of WORLD.villages) {
+    if (v.tier !== 'town' || !v.foot) continue;
+    const f = v.foot;
+    const a = f.aHalf * o.mPerPx, b = f.bHalf * o.mPerPx;
+    ctx.save();
+    ctx.translate(X(f.cx), Y(f.cz));
+    ctx.rotate(Math.atan2(f.uz, f.ux));
+    ctx.beginPath();
+    ctx.rect(-a, -b, a * 2, b * 2);
+    ctx.save();
+    ctx.clip();
+    ctx.lineWidth = 0.6;
+    ctx.strokeStyle = o.ink;
+    for (let k = -(a + b * 2); k < a + b * 2; k += o.hatch) {
+      ctx.beginPath();
+      ctx.moveTo(k, -b); ctx.lineTo(k + b * 2, b);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.lineWidth = Math.max(0.9, o.roadCoreW * 0.7);
+    ctx.strokeStyle = o.ink;
+    ctx.strokeRect(-a, -b, a * 2, b * 2);
+    ctx.restore();
+  }
+
   // --- unimproved tracks first: they run UNDER the metalled net at junctions
   ctx.setLineDash(o.dash);
   ctx.lineWidth = o.dirtW;
@@ -4373,15 +4631,23 @@ function drawWorldLayer(ctx, X, Y, o) {
   //     a scaled footprint. Civilian areas are labelled (CIV) on both surfaces
   //     because putting one round into one of them is an instant mission fail.
   for (const v of WORLD.villages) {
-    ctx.fillStyle = o.ink;
-    const b = o.hut;
-    for (const hh of (v.huts || [])) {
-      const w = Math.max(b, (hh.w || 5) * o.mPerPx);
-      const d = Math.max(b, (hh.d || 5) * o.mPerPx);
-      ctx.fillRect(X(hh.x) - w / 2, Y(hh.z) - d / 2, w, d);
+    let labX = X(v.x) + o.sym * 1.6, labY = Y(v.z) + o.sym * 0.5;
+    if (v.tier === 'town' && v.foot) {
+      const f = v.foot;
+      const a = f.aHalf * o.mPerPx, b = f.bHalf * o.mPerPx;
+      labX = X(f.cx) + Math.abs(f.ux) * a + Math.abs(f.uz) * b + o.sym;
+      labY = Y(f.cz) + o.sym * 0.5;
+    } else {
+      // villages stay building-by-building at a legibility floor: a 5 m hut is
+      // 0.6 px at 1:50,000, so the symbol is a minimum size, not a footprint
+      ctx.fillStyle = o.ink;
+      for (const hh of (v.huts || [])) {
+        const w = Math.max(o.hut, (hh.w || 5) * o.mPerPx);
+        const d = Math.max(o.hut, (hh.d || 5) * o.mPerPx);
+        ctx.fillRect(X(hh.x) - w / 2, Y(hh.z) - d / 2, w, d);
+      }
     }
-    o.label(v.name + (v.tier === 'town' ? ' (TOWN, CIV)' : ' (CIV)'),
-            X(v.x) + o.sym * 1.6, Y(v.z) + o.sym * 0.5);
+    o.label(v.name + (v.tier === 'town' ? ' (TOWN, CIV)' : ' (CIV)'), labX, labY);
   }
 
   // --- named facilities
@@ -4435,11 +4701,22 @@ const LEGEND_ROWS = [
   { t: 'FUEL POINT / TANKS', d: (c, x, y, o) => facSymbol(c, 'fuel', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
   { t: 'AMMUNITION DEPOT', d: (c, x, y, o) => facSymbol(c, 'ammo', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
   { t: 'BUILDING (PERMANENT)', d: (c, x, y, o) => facSymbol(c, 'bldg', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
-  { t: 'VILLAGE / TOWN — CIVILIAN, NO-STRIKE', d: (c, x, y, o) => {
+  { t: 'VILLAGE — CIVILIAN, NO-STRIKE', d: (c, x, y, o) => {
       c.setLineDash([]); c.fillStyle = o.ink;
       for (const [dx, dy] of [[0, -0.6], [0.9, 0.3], [-0.8, 0.5], [1.9, -0.4]])
         c.fillRect(x + o.sw / 2 + dx * o.sym - o.hut / 2,
                    y + dy * o.sym - o.hut / 2, o.hut, o.hut); } },
+  { t: 'BUILT-UP AREA / TOWN — CIVILIAN, NO-STRIKE', d: (c, x, y, o) => {
+      c.setLineDash([]);
+      const h = o.sym * 0.85;
+      c.save(); c.beginPath(); c.rect(x, y - h, o.sw, h * 2); c.clip();
+      c.lineWidth = 0.6; c.strokeStyle = o.ink;
+      for (let k = x - h * 2; k < x + o.sw; k += o.hatch) {
+        c.beginPath(); c.moveTo(k, y + h); c.lineTo(k + h * 2, y - h); c.stroke();
+      }
+      c.restore();
+      c.lineWidth = Math.max(0.9, o.roadCoreW * 0.7); c.strokeStyle = o.ink;
+      c.strokeRect(x, y - h, o.sw, h * 2); } },
 ];
 
 // [M] map: dark ink on the shaded relief, near-white road core so the cased
@@ -4447,7 +4724,7 @@ const LEGEND_ROWS = [
 function MAPOPT_SCREEN(W) {
   const ctx = mapCv.getContext('2d');
   return {
-    mPerPx: W / 10000, sym: 5, hut: 3.4, sw: 22,
+    mPerPx: W / 10000, sym: 5, hut: 3.4, sw: 22, hatch: 4,
     ink: '#10150c', paper: 'rgba(255,255,255,0.9)',
     roadInk: '#20201C', roadCore: '#E8E2D4', roadW: 4.0, roadCoreW: 1.8,
     dirtInk: 'rgba(84,54,26,0.92)', dirtW: 1.3, dash: [4, 3],
@@ -4458,7 +4735,7 @@ function MAPOPT_SCREEN(W) {
 // black-and-white laser printer would have to dither.
 function MAPOPT_SHEET(ctx, mapPx, sizeM) {
   return {
-    mPerPx: mapPx / sizeM, sym: 6, hut: 3.2, sw: 26,
+    mPerPx: mapPx / sizeM, sym: 6, hut: 2.8, sw: 26, hatch: 5,
     ink: '#000', paper: '#fff',
     roadInk: '#000', roadCore: '#fff', roadW: 3.2, roadCoreW: 1.4,
     dirtInk: '#000', dirtW: 0.9, dash: [6, 4],
