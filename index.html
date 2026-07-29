@@ -36,6 +36,15 @@
     font: inherit; padding: 9px 10px; outline: none; }
   #txinput::placeholder { color: #7d7455; }
 
+  /* Touch controls */
+  #touchbar { position: fixed; right: 10px; top: 50%; transform: translateY(-50%);
+    display: none; flex-direction: column; gap: 8px; z-index: 5; }
+  body.touch #touchbar { display: flex; }
+  .tbtn { width: 60px; height: 46px; background: rgba(12,16,10,.8);
+    border: 1px solid #39442e; color: #cfe0bd; font: inherit; font-size: 11px;
+    letter-spacing: .08em; }
+  .tbtn:active { background: #39482a; }
+
   /* Push-to-talk indicator */
   #ptt { position: fixed; left: 12px; bottom: 232px; width: min(600px, 62vw);
     display: none; padding: 8px 12px; font-size: 12.5px; color: #ffb3a0;
@@ -155,6 +164,15 @@
   </form>
 </div>
 
+<div id="touchbar">
+  <button class="tbtn" id="tb-talk">TALK</button>
+  <button class="tbtn" data-act="binos">BINO</button>
+  <button class="tbtn" data-act="lase">LASE</button>
+  <button class="tbtn" data-act="map">MAP</button>
+  <button class="tbtn" data-act="menu">MENU</button>
+  <button class="tbtn" data-act="new">NEW</button>
+</div>
+
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
   [B] BINOS &middot; [L] LASE &middot; [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] VOICE &middot; [N] RANDOM MSN
@@ -227,6 +245,7 @@ const CONFIG = {
            ttsEnabled: true,
            preferredVoices: ['ravi', 'heera', 'en-in', 'india',
                              'david', 'mark', 'guy', 'male', 'en-us', 'english'] },
+  GAMEPAD: { lookSpeed: 2.8, deadzone: 0.16 },
   UI: { laseHold: 6 },
 };
 let DIFFICULTY = 'normal';
@@ -2315,6 +2334,80 @@ addEventListener('resize', () => {
   if (binos) drawReticle();
 });
 
+/* ============================================================ GAMEPAD */
+let padIndex = null;
+const padPrev = new Array(17).fill(false);
+window.addEventListener('gamepadconnected', e => {
+  padIndex = e.gamepad.index;
+  log('', `Controller connected (${e.gamepad.id}). Right stick — look · hold RB — talk · Y — binos · A — lase · LB — map · START — menu · BACK — map library · B — close · D-pad up — new mission.`, 'sys');
+});
+window.addEventListener('gamepaddisconnected', e => {
+  if (padIndex === e.gamepad.index) padIndex = null;
+});
+function pollGamepad(dt) {
+  if (padIndex === null || !navigator.getGamepads) return;
+  const gp = navigator.getGamepads()[padIndex];
+  if (!gp) return;
+  const dz = CONFIG.GAMEPAD.deadzone;
+  let rx = gp.axes[2] || 0, ry = gp.axes[3] || 0;
+  rx = Math.abs(rx) > dz ? rx * Math.abs(rx) : 0;
+  ry = Math.abs(ry) > dz ? ry * Math.abs(ry) : 0;
+  const s = CONFIG.GAMEPAD.lookSpeed * (binos ? CONFIG.CAMERA.binoFov / CONFIG.CAMERA.fov : 1);
+  yaw += rx * s * dt;
+  pitch = clamp(pitch - ry * s * dt, -CONFIG.CAMERA.pitchClamp, CONFIG.CAMERA.pitchClamp);
+  const press = i => { const b = gp.buttons[i]; return !!(b && b.pressed); };
+  const edge = i => press(i) && !padPrev[i];
+  if (edge(3)) setBinos(!binos);      // Y / triangle
+  if (edge(0)) doLase();              // A / cross
+  if (edge(4)) toggleMap();           // LB
+  if (edge(9)) toggleMenu();          // START
+  if (edge(8)) toggleLibrary();       // BACK / select
+  if (edge(12)) newMission(false);    // D-pad up
+  if (edge(1)) {                      // B / circle — close overlays
+    aarEl.classList.remove('on');
+    mapEl.classList.remove('on');
+    menuEl.classList.remove('on');
+    libEl.classList.remove('on');
+  }
+  if (edge(5)) startPTT();            // RB hold-to-talk
+  if (!press(5) && padPrev[5]) endPTT();
+  for (let i = 0; i < padPrev.length; i++) padPrev[i] = press(i);
+}
+
+/* ============================================================ TOUCH */
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches;
+if (IS_TOUCH) document.body.classList.add('touch');
+document.querySelectorAll('#touchbar [data-act]').forEach(b => {
+  b.addEventListener('click', () => {
+    const a = b.dataset.act;
+    if (a === 'binos') setBinos(!binos);
+    else if (a === 'lase') doLase();
+    else if (a === 'map') toggleMap();
+    else if (a === 'menu') toggleMenu();
+    else if (a === 'new') newMission(false);
+  });
+});
+{
+  const tbTalk = document.getElementById('tb-talk');
+  tbTalk.addEventListener('touchstart', e => { e.preventDefault(); startPTT(); });
+  tbTalk.addEventListener('touchend', e => { e.preventDefault(); endPTT(); });
+}
+let lastTouch = null;
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 1)
+    lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+});
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!lastTouch || e.touches.length !== 1) return;
+  const tx = e.touches[0].clientX, ty = e.touches[0].clientY;
+  const s = 0.0045 * (binos ? CONFIG.CAMERA.binoFov / CONFIG.CAMERA.fov : 1);
+  yaw += (tx - lastTouch.x) * s;
+  pitch = clamp(pitch - (ty - lastTouch.y) * s, -CONFIG.CAMERA.pitchClamp, CONFIG.CAMERA.pitchClamp);
+  lastTouch.x = tx; lastTouch.y = ty;
+}, { passive: false });
+canvas.addEventListener('touchend', () => { lastTouch = null; });
+
 /* ============================================================ MAIN LOOP */
 const headingEl = document.getElementById('heading');
 const binoHdgEl = document.getElementById('binohdg');
@@ -2326,6 +2419,7 @@ function animate(tMs) {
   lastFrame = t;
   sim.now = t;
   runEvents();
+  pollGamepad(dt);
   // idle coaching: nudge once if the net has gone quiet mid-mission
   if (!stateHinted) {
     const idle = sim.now - stateSince;
