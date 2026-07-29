@@ -191,7 +191,7 @@
     RANGE (m) = SIZE (m) &divide; MILS &times; 1000<br>
     DEVIATION (m) = MILS &times; OT FACTOR (OT range &divide; 1000)<br>
     <span class="ref">KNOWN SIZES: hut 3 m high &middot; truck 5 m long &middot;
-    watchtower 15 m &middot; radio mast 26 m &middot; man 1.8 m</span><br>
+    watchtower 100 m &middot; radio mast 26 m &middot; man 1.8 m</span><br>
     <span class="ref">Example: mast subtends 5 mils &rarr; 26 &divide; 5 &times; 1000 = 5200 m</span>
     <span class="ref">[R] closes this card</span>
   </div>
@@ -300,7 +300,7 @@ const CONFIG = {
     massifX: -520, massifZ: -360, oceanFloor: -30,
     demRes: 512, demMaxElev: 240, demSeaLum: 10,
   },
-  CAMERA: { fov: 60, binoFov: 9, eyeHeight: 2.2, towerHeight: 15.2,   // 50 ft OP watchtower
+  CAMERA: { fov: 60, binoFov: 9, eyeHeight: 2.2, towerHeight: 300,   // 50 ft OP watchtower
             mouseSens: 0.0022, pitchClamp: 1.35 },
   BALLISTICS: {
     tofDivisor: 300, tofBase: 8, tofMin: 15, tofMax: 40, splashLead: 5,
@@ -1931,6 +1931,10 @@ function setBinos(on) {
   toolEl.textContent = on ? 'BINOS 7X' : 'EYES';
   if (on) drawReticle();
   if (!on) { laseEl.textContent = ''; milcardEl.classList.remove('on'); }
+  // pin to tier 0 while glassing, restore the stepped tier on exit. Also restarts the step
+  // cooldown, so the higher cost of rendering at tier 0 can't slam the tier down the instant
+  // binos come back down.
+  applyQuality(sim.now);
 }
 
 const laseEl = document.getElementById('lase');
@@ -4245,9 +4249,15 @@ const headingEl = document.getElementById('heading');
 const binoHdgEl = document.getElementById('binohdg');
 // adaptive quality: frame-time EMA steps pixel ratio down before anything else
 const QUALITY = { tiers: [1.75, 1.4, 1.1, 0.85], tier: 0, ema: 0.016, lastChange: 0 };
+// Binoculars pin the renderer to tier 0. A 2 m figure at 3000 m subtends ~0.67 mrad, which
+// through the 9° bino FOV is ~4 px tall at full resolution and ~2 px at the bottom tier — so a
+// step-down taken while glassing can make a target unresolvable exactly when the observer is
+// trying to resolve it. That is a training-fidelity bug, not a performance trade. The stepped
+// tier is retained, not reset, and re-applies on exit.
 function applyQuality(t) {
   QUALITY.lastChange = t;
-  renderer.setPixelRatio(Math.min(devicePixelRatio, QUALITY.tiers[QUALITY.tier]));
+  const tier = binos ? 0 : QUALITY.tier;
+  renderer.setPixelRatio(Math.min(devicePixelRatio, QUALITY.tiers[tier]));
 }
 let lastFrame = 0, lastHdg = -1;
 function animate(tMs) {
@@ -4259,7 +4269,8 @@ function animate(tMs) {
   runEvents();
   pollGamepad(dt);
   QUALITY.ema = QUALITY.ema * 0.94 + dt * 0.06;
-  if (t - QUALITY.lastChange > 2.5) {
+  // frozen while glassing — see applyQuality; the tier resumes stepping once binos come down
+  if (!binos && t - QUALITY.lastChange > 2.5) {
     if (QUALITY.ema > 0.024 && QUALITY.tier < QUALITY.tiers.length - 1) {
       QUALITY.tier++; applyQuality(t);
     } else if (QUALITY.ema < 0.013 && QUALITY.tier > 0) {
