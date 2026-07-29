@@ -906,12 +906,27 @@ const towerMeshes = [];
   const deck = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.3, 4.6), deckMat);
   scene.add(deck);
   towerMeshes.push({ m: deck, ox: 0, oz: 0, oy: tH });
-  for (let i = 0; i < 4; i++) {  // railing
-    const m = new THREE.Mesh(new THREE.BoxGeometry(i < 2 ? 4.6 : 0.12, 0.9, i < 2 ? 0.12 : 4.6), legMat);
-    scene.add(m);
-    towerMeshes.push({ m, ox: i < 2 ? 0 : (i === 2 ? -2.24 : 2.24),
-                       oz: i < 2 ? (i === 0 ? -2.24 : 2.24) : 0, oy: tH + 0.75 });
-  }
+  /* G1 — NO RAILING, deliberately. There were four BoxGeometry(4.6, 0.9, 0.12)
+     panels here, which is not a handrail but a SOLID 0.9 m parapet ringing the
+     deck, and it was blinding the observer downward.
+
+     Measured. The parapet's top edge sat 1.00 m below eye level and 2.18 m out,
+     so it masked everything more than 24.6 deg below horizontal. From an eye
+     302 m above the OP's own ground that hid every piece of ground inside 659 m
+     horizontal range. Worse in binoculars: to observe ground 600 m out the
+     observer pitches down 26.7 deg, and at 9 deg of field the parapet then
+     filled 73% of the picture. Even looking dead level it ate the bottom 8.9%
+     of the screen.
+
+     The deck alone still masks below 41.7 deg (it hides ground inside 339 m, and
+     it must — the observer is standing on it), so removing the parapet gives
+     back a full ring of ground from 339 m out to 659 m. The tower still reads as
+     a structure from its legs, braces and deck edge.
+
+     Do not put a railing back without re-checking those numbers. A real OP tower
+     would have one; this trainer's tower is 300 m tall, which no real one is,
+     and at that height a parapet stops being a safety feature and becomes a
+     blindfold over the near half of the observer's sector. */
 }
 function placeOP() {
   const b = findOP();
