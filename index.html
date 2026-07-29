@@ -851,86 +851,101 @@ function speakFDC(msg) {
 
 const QUIPS = {
   greet: [
-    'HELLHOUND FIRES on this net. Guns are laid, crew is bored. Find us some work, over.',
-    'HELLHOUND FIRES up on this net. Coffee is cold, tubes are warm. Send your traffic, over.',
-    'HELLHOUND FIRES. The guns are hot and the war is not going to fight itself. Send traffic, over.',
-    'HELLHOUND FIRES on the net. We were told there would be targets. We remain optimistic, over.',
-    'HELLHOUND FIRES. Somewhere out there is a grid square that deserves everything that is about to happen to it. Find it, over.',
+    'HELLHOUND FIRES on this net. The guns are hot, the coffee is cold, and I am surrounded by men who could not find their own ass with a compass and a head start. Give me a target, over.',
+    'HELLHOUND FIRES. We have been sitting in this goddamn gun pit since dawn watching the flies fight. Send us some work, over.',
+    'HELLHOUND FIRES up. Somewhere on this miserable rock is a grid square God has given up on. Point me at it, over.',
+    'HELLHOUND FIRES on the net. I have six guns, a full ammo rack, and no patience whatsoever. Impress me, over.',
+    'HELLHOUND FIRES. Speak clearly, speak correctly, and nobody has to get embarrassed today, over.',
   ],
   readbackTail: [
-    'And MUSTANG — do try to hit the correct island this time.',
-    'Rounds are cheap. Your credibility is not. Standing by.',
-    'The battery thanks you for the work order.',
-    'Copy all. If anything friendly is standing on that grid, now would be the moment to mention it.',
-    'Outstanding. The tubes were getting cold and the crew was getting philosophical.',
+    'And MUSTANG — do try to hit the correct fucking island this time.',
+    'Rounds are cheap. My patience is a finite and dwindling resource. Standing by.',
+    'If anything friendly is standing on that grid, now is the moment to confess.',
+    'Copy all. This had better be worth the powder, son.',
+    'Outstanding. The tubes were getting cold and the crew had started a book club.',
   ],
   corrSnark: [
-    'That is quite a walk, MUSTANG. Did the first one land in a different time zone?',
-    'Copy that correction. The gun did not move — I want the record to show whose math this was.',
-    'A bold adjustment. Somewhere a map sheet is being held upside down.',
-    'Shifting fire. The fish thank you for your earlier contribution.',
+    'That is one HELL of a walk, MUSTANG. Did the first round land in a different fucking hemisphere?',
+    'Copy. For the record: the gun did not move. Your math moved.',
+    'A bold correction. Somewhere out there a map is being held upside down, and I believe I know by whom.',
+    'Shifting fire. The fish send their regards for your earlier donation.',
   ],
   ffeAck: [
-    'FIRE FOR EFFECT. Now it is a party.',
-    'FIRE FOR EFFECT. This is the only part of the job the battery actually enjoys.',
-    'Copy FIRE FOR EFFECT. Somebody downrange is about to have the worst day of their life.',
-    'FIRE FOR EFFECT. Six rounds, one grid, no hard feelings.',
+    'FIRE FOR EFFECT. Now THIS is the part of the job I love.',
+    'FIRE FOR EFFECT. God help whatever is standing on that grid, because nothing else will.',
+    'Copy FIRE FOR EFFECT. Six guns, one grid, zero fucking sympathy.',
+    'FIRE FOR EFFECT. Drink it up, MUSTANG. Drriiink it up.',
   ],
   completeTail: [
-    'That grid square has been thoroughly redecorated.',
-    'Rounds complete. The landscape can bill somebody else.',
-    'Whatever was standing there is now a matter for the historians.',
-    'Tubes cooling. Send your assessment when you finish admiring the smoke.',
+    'That grid square has been redecorated down to the bedrock.',
+    'Rounds complete. Whatever stood there is now a fine mist and somebody else\'s paperwork.',
+    'Rounds complete. I have looked upon that smoke and found it good.',
+    'Tubes cooling. Take a long look, son. That is what competence smells like.',
   ],
   eomGood: [
-    'Good effect, MUSTANG. We will pretend the first round was a warning shot.',
-    'Target neutralized. Frame this one — it will not happen twice.',
-    'Clean mission. The battery is mildly impressed, which is as impressed as they get.',
-    'End of mission logged. Somewhere a gunnery sergeant sheds a single proud tear.',
+    'Good effect. I will be goddamned — the observer can actually observe.',
+    'Target neutralized. Mark this day, MUSTANG. It will not come again.',
+    'A clean kill. I had frankly abandoned all hope of seeing one from you.',
+    'End of mission logged. There is a competence in you, boy, and today it finally showed up for work.',
   ],
   eomBad: [
-    'End of mission logged. The target, regrettably, is still filing complaints.',
-    'Copy end of mission. We converted a great deal of ammunition into noise out there.',
-    'Logged. We will call that one suppressive and never speak of it again.',
-    'End of mission. The enemy remains. So, unfortunately, does our paperwork.',
+    'End of mission. The target is alive and well and telling this story at dinner parties. We converted the taxpayers\' money into noise and regret.',
+    'Logged. We will call that one "suppressive" and never, ever speak of it again.',
+    'End of mission. The enemy remains. My disappointment, however, is total, permanent, and load-bearing.',
+    'Copy end of mission. You abandoned that fire mission, MUSTANG. You ABANDONED it.',
   ],
   badGrid: [
-    'MUSTANG 12, that grid is not on anybody\'s map. Say again your target location, over.',
-    'MUSTANG 12, negative copy on that grid — it does not exist. Say again, over.',
-    'MUSTANG 12, I plotted that location and it is either wrong or classified. Say again, over.',
-    'Negative copy. That target location does not survive contact with a map. Say again, over.',
+    'MUSTANG 12, that grid is not on anybody\'s goddamn map. Say again your target location, over.',
+    'Negative copy. That location does not exist on this or any other earth. Say again, over.',
+    'I plotted that grid twice, and both times it insulted me. Say again, over.',
+    'That is not a grid, MUSTANG, that is a cry for help. Say again, over.',
   ],
   water: [
-    'Be advised, that grid is in the ocean. Engaging the fish as requested.',
-    'That grid is wet, MUSTANG. Hope the target brought a snorkel. Firing anyway.',
-    'Copy. Engaging the Pacific Ocean. Historically a bold choice.',
+    'Be advised, that grid is in the goddamn ocean. Engaging the fish as requested.',
+    'That grid is wet, MUSTANG. We are now shelling the Pacific, which never did a thing to us. Firing.',
+    'Copy. Naval gunfire it is. Bold fucking choice.',
   ],
   noMission: [
-    'MUSTANG 12, there is no mission on this net. Send a call for fire first, over.',
-    'MUSTANG 12, you are adjusting rounds we never fired. Send a call for fire, over.',
-    'MUSTANG 12, you are correcting fire that exists only in your heart. Send a call for fire first, over.',
+    'MUSTANG 12, there is no mission on this net. You are adjusting fire that exists only in your heart. Send a call for fire, over.',
+    'MUSTANG 12, you are correcting rounds we never fired. I admire the confidence. Send a call for fire first, over.',
+    'There is no mission, MUSTANG. There is only you, me, and this dead air you keep filling. Call for fire, over.',
   ],
   inFlight: [
-    'MUSTANG 12, rounds are still in the air. Patience. Wait for splash, over.',
-    'Rounds are in the air, MUSTANG. Physics is doing its part — do yours and wait for splash, over.',
-    'Still flying, MUSTANG. If you can steer a shell mid-flight you are wasted in that hole. Wait for splash, over.',
+    'Rounds are in the air, MUSTANG. Physics is doing its part. Do yours — wait for splash, over.',
+    'Still flying. Unless you can steer a shell with your mind, wait for the goddamn splash, over.',
+    'Patience, MUSTANG. The rounds arrive when they arrive. Much like your competence, over.',
   ],
   unknown: [
-    'MUSTANG 12, HELLHOUND FIRES, say again, over. Slower this time.',
-    'MUSTANG 12, that transmission was noise with a callsign. Say again, over.',
-    'MUSTANG 12, that had the structure of poetry and the content of static. Say again, over.',
-    'Say again, over. And this time pretend the radio is graded.',
+    'Say again, over. Slower, and in English this time.',
+    'That transmission had a callsign and then a stroke. Say again, over.',
+    'MUSTANG, I have heard clearer traffic from a dying radio at the bottom of a well. Say again, over.',
+    'Say again, over. And this time pretend the radio is graded — because it is. By me.',
   ],
   complete: [
     'MUSTANG 12, mission is complete. Send end of mission with your BDA, over.',
   ],
   dangerClose: [
-    'MUSTANG 12, that target is DANGER CLOSE to friendlies and I did not hear the proword. Say again the full call with DANGER CLOSE, or we are not shooting, over.',
-    'Negative, MUSTANG. Friendlies are close enough to read the fuze stamps. Resend with DANGER CLOSE, over.',
+    'MUSTANG 12, that target is DANGER CLOSE to friendly infantry and you did not say the fucking proword. I do not drop shells next to our own people on a mumble. Say again the full call with DANGER CLOSE, over.',
+    'Negative. Friendlies are close enough to that grid to read the lot numbers off the fuzes. You want this mission? Say DANGER CLOSE like you mean it, over.',
   ],
-  frat: [
-    'CHECK FIRE. CHECK FIRE. MUSTANG 12, you just put steel on the friendly position. End of mission. Somebody\'s career is over today, and it is not mine.',
-    'CHECK FIRE. That was the FRIENDLY position, MUSTANG. They have radios too, and they are using them right now to say your callsign with feeling. End of mission.',
+  wrongWay: [
+    'MUSTANG. The rounds are getting FARTHER from the target. You are adjusting fire like a blind man swatting bees. Look at your burst. Look at your target. THINK. Then talk, over.',
+    'Wrong way, son. WRONG WAY. Every correction you send wounds me personally. Left is left. Add is away. It is not fucking calculus, over.',
+  ],
+  rantLost: [
+    'STOP. Just — stop. MUSTANG, I have drunk deep of your transmissions and found NOTHING. No grid. No direction. No sense. You are a forward observer. So OBSERVE something, and then TELL ME ABOUT IT in the format God and the field manual intended. Warning order. Location. Description. OVER.',
+    'MUSTANG, listen to me very carefully, because I will say this once. I do not know what you are doing on that hill, but it is not calling for fire. Take a breath. Look at your map. Send: warning order, target location, description. In that order. Like a professional. Over.',
+  ],
+  rantFrat: [
+    ['CHECK FIRE. CHECK FIRE. CHECK FIRE.',
+     'You just dropped one-five-five on the FRIENDLY position, MUSTANG. Do you understand me? Those are OUR people in that smoke. I am looking at the plot, and the plot says YOU did this.',
+     'I told them not to hand you a map. I TOLD them. You are done on this net, son. Get off my radio and go practice on a lake. END OF MISSION.'],
+    ['CHECK FIRE. GOD DAMN IT, CHECK FIRE.',
+     'That was the friendly position, you catastrophic son of a bitch. Men with radios are standing in that smoke right now saying your callsign with FEELING.',
+     'I have seen bad observers. I have TRAINED bad observers. But you — you are a whole new church of wrong. END OF MISSION.'],
+    ['CHECK FIRE. CHECK FIRE.',
+     'MUSTANG, you walked artillery onto our own infantry. There are two kinds of people in this war — those who read grids, and casualties. Today you manufactured the second kind out of the first.',
+     'When this is over, you and I will have a conversation about maps, and you will not enjoy it. END OF MISSION. Get off my net.'],
   ],
 };
 function pick(arr) {
@@ -1231,7 +1246,8 @@ function fireMission(targetLocation, warno, meta) {
   mission = {
     aim: { x: targetLocation.x, z: targetLocation.z },
     rounds: [], ffeRounds: [], adjustRounds: 0,
-    firstMiss: null, notes: (meta && meta.notes) || [],
+    firstMiss: null, lastAdjDist: null, wrongWay: 0,
+    notes: (meta && meta.notes) || [],
     desc: (meta && meta.desc) || '', gridStr: (meta && meta.gridStr) || '',
     tStart: sim.now, tEnd: null, done: false, failReason: null, hits: 0,
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
@@ -1316,15 +1332,27 @@ function resolveImpact(impact, isFFE) {
   }
   if (mission.firstMiss === null)
     mission.firstMiss = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
-  // Fratricide vs any friendly element — automatic mission fail.
+  // Fratricide vs any friendly element — automatic mission fail + full rant.
   for (const f of friendlyPositions()) {
     if (dist2(impact.x, impact.z, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius)) {
       mission.done = true; mission.failReason = 'fratricide'; mission.tEnd = sim.now;
-      FDC.say(pick(QUIPS.frat), { delay: 1.2 });
+      const rant = pick(QUIPS.rantFrat);
+      FDC.say(rant[0], { delay: 1.0 });
+      FDC.say(rant[1], { delay: 2.2 });
+      FDC.say(rant[2], { delay: 2.8 });
       setState('CHECK FIRE');
-      schedule(sim.now + 4.5, showAAR);
+      schedule(sim.now + 16, showAAR);
       return;
     }
+  }
+  // walking rounds the WRONG direction twice earns a tirade
+  if (!isFFE) {
+    const dTgt = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
+    if (mission.lastAdjDist !== null && dTgt > mission.lastAdjDist + 40) {
+      mission.wrongWay++;
+      if (mission.wrongWay === 2) FDC.say(pick(QUIPS.wrongWay), { delay: 2.2 });
+    }
+    mission.lastAdjDist = dTgt;
   }
   // easy mode: spot the burst for the observer
   if (!isFFE && DIFFICULTY === 'easy') {
@@ -1601,10 +1629,12 @@ function expectedHint() {
 }
 function sysHint() { log('', 'HINT: ' + expectedHint(), 'sys'); }
 
+let unknownStreak = 0;
 function onPlayerMessage(raw) {
   squelch();
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
   const p = parseMessage(raw);
+  if (p.type !== 'unknown' && p.type !== 'empty') unknownStreak = 0;
   switch (p.type) {
     case 'empty': break;
     case 'sayagain':
@@ -1619,7 +1649,13 @@ function onPlayerMessage(raw) {
       break;
     case 'eom': handleEOM(p); break;
     default:
-      FDC.say(pick(QUIPS.unknown), { delay: 1 });
+      unknownStreak++;
+      if (unknownStreak >= 3) {
+        unknownStreak = 0;
+        FDC.say(pick(QUIPS.rantLost), { delay: 1 });
+      } else {
+        FDC.say(pick(QUIPS.unknown), { delay: 1 });
+      }
       sysHint();
   }
 }
