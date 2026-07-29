@@ -122,6 +122,14 @@
   .chstars { color: #ffe9a8; font-size: 12px; white-space: nowrap; letter-spacing: 1.5px; }
   .aarstars { color: #ffe9a8; font-size: 22px; letter-spacing: 6px; margin: 6px 0 10px; }
 
+  /* Mil-relation reference card (binos) */
+  #milcard { display: none; position: absolute; left: 24px; bottom: 96px;
+    max-width: 340px; padding: 10px 13px; background: rgba(12,16,9,.86);
+    border: 1px solid #4d5a3c; color: #cfe0bd; font-size: 11.5px; line-height: 1.6; }
+  #milcard.on { display: block; }
+  #milcard b { display: block; color: #ffe9a8; letter-spacing: .1em; margin-bottom: 4px; }
+  #milcard .ref { color: #9fb08c; font-style: italic; }
+
   /* Chapter briefing */
   #brief { position: fixed; inset: 0; display: none; align-items: center;
     justify-content: center; background: rgba(0,0,0,.6); z-index: 13; }
@@ -174,6 +182,15 @@
   <canvas id="reticle"></canvas>
   <div id="vignette"></div>
   <div id="binoinfo"><span id="binohdg">AZ 0000</span><div id="lase"></div></div>
+  <div id="milcard">
+    <b>MIL RELATION — RANGE BY RETICLE</b>
+    RANGE (m) = SIZE (m) &divide; MILS &times; 1000<br>
+    DEVIATION (m) = MILS &times; OT FACTOR (OT range &divide; 1000)<br>
+    <span class="ref">KNOWN SIZES: hut 3 m high &middot; truck 5 m long &middot;
+    watchtower 15 m &middot; radio mast 26 m &middot; man 1.8 m</span><br>
+    <span class="ref">Example: mast subtends 5 mils &rarr; 26 &divide; 5 &times; 1000 = 5200 m</span>
+    <span class="ref">[R] closes this card</span>
+  </div>
 </div>
 
 <div id="ptt" class="panel">&#9679; TRANSMITTING — release [SPACE] to send<br><span class="live" id="pttlive"></span></div>
@@ -198,7 +215,7 @@
 
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
-  [B] BINOS &middot; [L] LASE &middot; [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] VOICE &middot; [N] RANDOM MSN
+  [B] BINOS &middot; [L] LASE &middot; [R] MIL CARD &middot; [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] VOICE &middot; [N] RANDOM MSN
 </div>
 
 <div id="map"><div id="mapbox" class="panel">
@@ -1907,13 +1924,27 @@ function setBinos(on) {
   crosshairEl.style.display = on ? 'none' : 'block';
   toolEl.textContent = on ? 'BINOS 7X' : 'EYES';
   if (on) drawReticle();
-  if (!on) laseEl.textContent = '';
+  if (!on) { laseEl.textContent = ''; milcardEl.classList.remove('on'); }
 }
 
 const laseEl = document.getElementById('lase');
 let laseToken = 0;
+let lastLase = null;   // most recent laser return — source of the OT factor
+const milcardEl = document.getElementById('milcard');
+function toggleMilCard(force) {
+  const on = force !== undefined ? force : !milcardEl.classList.contains('on');
+  milcardEl.classList.toggle('on', on && binos);
+}
 function doLase() {
   if (!binos) { log('', 'Lasing requires binoculars up — press [B] first.', 'sys'); return; }
+  // degraded-optics drill: some chapters kill the laser so the observer must
+  // estimate range by mil relation off known object sizes
+  if (activeChapter && activeChapter.noLaser) {
+    laseEl.textContent = 'LRF FAULT — NO RETURN';
+    log('', 'LASER RANGEFINDER IS DEAD (battery). Estimate range by MIL RELATION: press [R] for the card — measure a known object in the reticle, then SIZE ÷ MILS × 1000 = range.', 'sys');
+    toggleMilCard(true);
+    return;
+  }
   const tok = ++laseToken;
   laseTick();
   laseEl.textContent = 'LASING…';
@@ -1924,7 +1955,12 @@ function doLase() {
     laseEl.textContent = hit
       ? `RNG ${Math.round(hit.dist)} M   GRID ${gridOf(hit.x, hit.z)}`
       : 'NO RETURN';
-    if (hit) tutEvent('lase', hit);
+    if (hit) {
+      // the lase also gives the observer his OT factor for mil relation
+      lastLase = { range: hit.dist, t: sim.now };
+      laseEl.textContent += `   OT FACTOR ${otFactor(hit.dist)}`;
+      tutEvent('lase', hit);
+    }
     schedule(sim.now + CONFIG.UI.laseHold, () => { if (tok === laseToken) laseEl.textContent = ''; });
   });
 }
@@ -1951,6 +1987,30 @@ function gauss(rng) {
 }
 // Doctrinal coaching is a training aid: on for Easy/Normal, silent on Hard.
 function coachOn() { return DIFFICULTY !== 'hard'; }
+
+// --- MIL RELATION / OT FACTOR ------------------------------------------
+// The observer MEASURES deviation with the reticle (mils) and converts to
+// meters with the OT factor (OT distance / 1000, whole number per doctrine).
+// Range error cannot be measured angularly — it is spotted over/short and
+// bracketed. These helpers drive the lase readout, binos HUD, and spotting.
+function otFactor(range) { return Math.max(1, Math.round(range / 1000)); }
+function spotBurst(impact) {
+  const S = Scenario;
+  const azT = azTo(OP.x, OP.z, S.enemy.x, S.enemy.z);
+  const azB = azTo(OP.x, OP.z, impact.x, impact.z);
+  let d = azB - azT;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  const otRange = dist2(OP.x, OP.z, S.enemy.x, S.enemy.z);
+  const otf = otFactor(otRange);
+  const mils = d * MILS_PER_RAD;                       // + = burst right of target
+  const overShort = dist2(OP.x, OP.z, impact.x, impact.z) - otRange;  // + = over
+  // doctrinal deviation correction: mils x OT factor, nearest 10 m, opposite
+  // the spotting; under 30 m for HE it is not called at all
+  let devCorr = -Math.round(mils * otf / 10) * 10;
+  if (Math.abs(devCorr) < 30) devCorr = 0;
+  return { mils, otf, otRange, overShort, devCorr };
+}
 
 // 60mm mortars (Volume IV): much tighter dispersion than the 155 battery
 function assetScale() {
@@ -2140,16 +2200,34 @@ function resolveImpact(impact, isFFE) {
     mission.bracketed = nowBracketed;
     mission.lastAdjDist = dTgt;
   }
-  // easy mode: spot the burst for the observer
-  if (!isFFE && DIFFICULTY === 'easy') {
-    const otAz = azTo(OP.x, OP.z, S.enemy.x, S.enemy.z);
-    const fx = Math.sin(otAz), fz = -Math.cos(otAz);
-    const rx = Math.cos(otAz), rz = Math.sin(otAz);
-    const dx = S.enemy.x - impact.x, dz = S.enemy.z - impact.z;
-    const add = Math.round((dx * fx + dz * fz) / 10) * 10;
-    const right = Math.round((dx * rx + dz * rz) / 10) * 10;
-    schedule(sim.now + 1.5, () => log('',
-      `SPOT (EASY): try ${right >= 0 ? 'RIGHT ' + right : 'LEFT ' + (-right)}, ${add >= 0 ? 'ADD ' + add : 'DROP ' + (-add)}.`, 'sys'));
+  // Spotting aid, tiered so the observer climbs the skill ladder:
+  //   EASY   — the measurement AND the worked mil-relation arithmetic
+  //   NORMAL — the measurement only; the observer does the math
+  //   HARD   — nothing; measure it off your own reticle
+  if (!isFFE && DIFFICULTY !== 'hard') {
+    const sp = spotBurst(impact);
+    const seen = hasLOS(eye.x, eye.y, eye.z, impact.x, Math.max(H(impact.x, impact.z), 0) + 2, impact.z);
+    schedule(sim.now + 1.5, () => {
+      if (!seen) {
+        log('', 'SPOTTING: burst not observed — masked by terrain. Adjust off the map and the sound.', 'sys');
+        return;
+      }
+      const lr = sp.mils >= 0 ? 'RIGHT' : 'LEFT';
+      const os = sp.overShort >= 0 ? 'OVER' : 'SHORT';
+      if (DIFFICULTY === 'normal') {
+        log('', `SPOTTING: burst ${Math.abs(sp.mils).toFixed(0)} mils ${lr} of target, spotting ${os}. ` +
+          `OT range ${Math.round(sp.otRange)} m → OT factor ${sp.otf}. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.`, 'sys');
+      } else {
+        const devTxt = sp.devCorr === 0
+          ? `${Math.abs(sp.mils).toFixed(0)} mils × ${sp.otf} is under the 30 m minimum — deviation is good, do not call it`
+          : `${Math.abs(sp.mils).toFixed(0)} mils × ${sp.otf} = ${Math.abs(Math.round(sp.mils * sp.otf))} → call ${sp.devCorr > 0 ? 'RIGHT' : 'LEFT'} ${Math.abs(sp.devCorr)}`;
+        const brk = mission.sides.long && mission.sides.short
+          ? 'You have a bracket — halve your last range correction'
+          : `Spotting ${os} — bracket it: ${os === 'SHORT' ? 'ADD' : 'DROP'} enough to land on the far side`;
+        log('', `SPOTTING (EASY): burst ${Math.abs(sp.mils).toFixed(0)} mils ${lr}, ${os}. ` +
+          `OT factor ${sp.otf} (${Math.round(sp.otRange)} m ÷ 1000). Deviation: ${devTxt}. Range: ${brk}.`, 'sys');
+      }
+    });
   }
   if (!isFFE) setState('ADJUSTING');
   else setState('FIRE FOR EFFECT');
@@ -3250,9 +3328,9 @@ const CAMPAIGN = [
       outro: 'HELLHOUND, grudging: "Log shows a professional worked this net today. I have started an investigation."' },
   ]},
   { id: 'V2', tab: 'II', name: 'VOLUME II — THE RIDGE LINE', need: 6, tseed: 9021, chapters: [
-    { id: '2.1', title: 'NUMBERS ON A COMPASS', blurb: 'polar mission required', impl: true, type: 'troops', seed: 201, par: 300, method: 'polar',
-      story: 'A new island — coral ridges, dead ground, terrain that hides things. The map is still in a crate somewhere, so today you are the datum: POLAR. Direction and distance off your own position. The FDC knows where you are. Use it.',
-      outro: 'No map, no grid, dead targets. The compass forgives no one.' },
+    { id: '2.1', title: 'NUMBERS ON A COMPASS', blurb: 'polar — dead laser, estimate by mil relation', impl: true, type: 'troops', seed: 201, par: 330, method: 'polar', noLaser: true,
+      story: 'A new island — coral ridges, dead ground, terrain that hides things. The map is in a crate somewhere and the rangefinder battery died in the surf, so today YOU are the instrument: POLAR, off your own position. Direction from the compass. Distance by MIL RELATION — measure a known object in the reticle, size over mils times a thousand. [R] for the card.',
+      outro: 'Direction and distance out of a reticle and a memory. That is the oldest trick in the trade.' },
     { id: '2.2', title: 'OLD FRIENDS', blurb: 'shift from a known point required', impl: true, type: 'bunker', seed: 202, par: 360, method: 'shift',
       story: 'The registration points on this island have names — the kind of names positions earn. The guns already know them cold. SHIFT from a known point: direction, lateral, range. Ride on data somebody already paid for.',
       outro: 'The known points hold. That is why we register them before we need them.' },
@@ -3733,6 +3811,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (k === 'b') setBinos(!binos);
+  else if (k === 'r') toggleMilCard();
   else if (k === 'l') doLase();
   else if (k === 'm') toggleMap();
   else if (k === 'k') toggleMenu();
