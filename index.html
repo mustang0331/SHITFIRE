@@ -97,7 +97,8 @@
   #menu { position: fixed; inset: 0; display: none; align-items: center;
     justify-content: center; background: rgba(0,0,0,.5); z-index: 11; }
   #menu.on { display: flex; }
-  #menubox { width: 580px; max-width: 92vw; padding: 18px 24px; font-size: 13px; }
+  #menubox { width: 680px; max-width: 92vw; padding: 18px 24px; font-size: 13px;
+    max-height: 92vh; overflow-y: auto; }
   #menubox h2 { margin: 0 0 10px; font-size: 16px; letter-spacing: .15em; color: #dfe8c8; }
   #menubox .mlabel { font-size: 11px; letter-spacing: .14em; color: #8fa387; margin: 6px 0 4px; }
   #menubox .mrow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -107,6 +108,19 @@
   .mbtn.sel { background: #39482a; color: #ffe9a8; border-color: #5a6b42; }
   #mbest { color: #9fb08c; font-size: 11.5px; line-height: 1.6; margin: 8px 0; }
   #menubox .foot { color: #8fa387; font-style: italic; font-size: 11.5px; }
+  /* campaign bookshelf */
+  #mvolname { font-size: 12px; letter-spacing: .1em; color: #cfe0bd; margin: 8px 0 5px; }
+  #mchapters { margin-bottom: 6px; }
+  .chrow { display: flex; align-items: baseline; gap: 9px; padding: 6px 9px;
+    border: 1px solid #2c3521; background: #161c11; margin-bottom: 3px; cursor: pointer; }
+  .chrow:hover { background: #232c19; }
+  .chrow.off { opacity: .45; cursor: default; }
+  .chrow.off:hover { background: #161c11; }
+  .chid { color: #8fa387; font-size: 11px; min-width: 28px; }
+  .chtitle { color: #dfe8c8; font-size: 12px; letter-spacing: .05em; }
+  .chblurb { color: #8fa387; font-size: 10.5px; flex: 1; text-align: right; }
+  .chstars { color: #ffe9a8; font-size: 12px; white-space: nowrap; letter-spacing: 1.5px; }
+  .aarstars { color: #ffe9a8; font-size: 22px; letter-spacing: 6px; margin: 6px 0 10px; }
 
   /* Map library */
   #library { position: fixed; inset: 0; display: none; align-items: center;
@@ -189,10 +203,14 @@
 
 <div id="menu"><div id="menubox" class="panel">
   <h2>MISSION MENU</h2>
-  <div class="mlabel">SCENARIO</div>
-  <div class="mrow" id="mtypes"></div>
+  <div class="mlabel">CAMPAIGN &middot; <span id="mtotal"></span></div>
+  <div class="mrow" id="mvols"></div>
+  <div id="mvolname"></div>
+  <div id="mchapters"></div>
   <div class="mlabel">DIFFICULTY</div>
   <div class="mrow" id="mdiffs"></div>
+  <div class="mlabel">SKIRMISH — RANDOM SEEDED MISSIONS [N]</div>
+  <div class="mrow" id="mtypes"></div>
   <div class="mlabel">TERRAIN</div>
   <div class="mrow">
     <button class="mbtn" id="mdem">LOAD DEM HEIGHTMAP&hellip;</button>
@@ -200,7 +218,7 @@
     <input type="file" id="demfile" accept="image/*" style="display:none">
   </div>
   <div id="mbest"></div>
-  <div class="foot">[K] / [ESC] close &middot; [N] random mission</div>
+  <div class="foot">[K] / [ESC] close &middot; [N] skirmish mission</div>
 </div></div>
 
 <div id="library"><div id="libbox" class="panel">
@@ -1719,7 +1737,9 @@ function setState(s) {
   if (s !== state) { stateSince = sim.now; stateHinted = false; }
   state = s;
   const rd = mission ? mission.rounds.length : 0;
-  statusEl.textContent = `STATE ${s}  |  RDS ${rd}  |  MSN SEED ${CONFIG.SEED.mission}`;
+  statusEl.textContent = `STATE ${s}  |  RDS ${rd}  |  ` +
+    (activeChapter ? `CH ${activeChapter.id}` : 'SKIRMISH') +
+    `  |  MSN SEED ${CONFIG.SEED.mission}`;
 }
 
 function gauss(rng) {
@@ -1754,6 +1774,11 @@ function fireMission(targetLocation, warno, meta) {
     firstMiss: null, lastAdjDist: null, wrongWay: 0,
     notes: (meta && meta.notes) || [],
     desc: (meta && meta.desc) || '', gridStr: (meta && meta.gridStr) || '',
+    method: (meta && meta.method) || null,
+    // initial target-location error: how far the transmitted location was
+    // from truth at send time (JFO standard: within 200 m). Star metric.
+    aimErr0: Scenario.enemy
+      ? dist2(targetLocation.x, targetLocation.z, Scenario.enemy.x, Scenario.enemy.z) : null,
     tStart: sim.now, tEnd: null, done: false, failReason: null, hits: 0,
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
   };
@@ -2083,6 +2108,8 @@ function handleCFF(p) {
   }
   if (dcSent) locStr += ', DANGER CLOSE';
   const notes = formatNotes(p);
+  if (activeChapter && activeChapter.method && p.method !== activeChapter.method)
+    notes.push(`This chapter required a ${activeChapter.method.toUpperCase()} target location — you sent ${p.method.toUpperCase()} (chapter capped at 2★).`);
   const warno = p.warno === 'none' ? 'adjust' : p.warno;
   const warnoText = warno === 'ffe' ? 'FIRE FOR EFFECT' : 'ADJUST FIRE';
   FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
@@ -2101,7 +2128,7 @@ function handleCFF(p) {
   if (minCiv < 250) FDC.say(pick(QUIPS.nearCiv), { delay: 1.2 });
   if (H(cx, cz) < 0) FDC.say(pick(QUIPS.water), { delay: 1 });
   setState('MISSION SENT');
-  fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr });
+  fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr, method: p.method });
 }
 
 function handleAdjust(p) {
@@ -2278,13 +2305,27 @@ function showAAR() {
       BEST.save();
     }
   }
+  // campaign star grading (MW2 style): grade, persist best, show in AAR
+  let starsHtml = '';
+  if (activeChapter) {
+    const s = gradeMission(m);
+    CAMP.record(activeChapter.id, S.difficulty, s);
+    const cap = { easy: 3, normal: 4, hard: 5 }[S.difficulty];
+    starsHtml = `<div class="aarstars">${starStr(s)}</div>` +
+      (s > 0 && s === cap && cap < 5
+        ? `<div style="margin-bottom:8px;color:#9fb08c">Capped at ${cap}★ on ${S.difficulty.toUpperCase()} — full five need HARD.</div>` : '');
+  }
   aarBox.innerHTML =
-    `<h2>AAR — ${SCN_META[S.type].name} (${S.difficulty.toUpperCase()})</h2>` +
+    `<h2>AAR — ${activeChapter
+      ? `CHAPTER ${activeChapter.id}: ${activeChapter.title}`
+      : SCN_META[S.type].name} (${S.difficulty.toUpperCase()})</h2>` +
+    starsHtml +
     `<div class="verdict ${pass ? 'pass' : 'fail'}">${verdict}</div>` +
     (why ? `<div style="margin-bottom:10px">${why}</div>` : '') +
     `<table>` +
     `<tr><td>Adjusting rounds</td><td>${m.adjustRounds}</td></tr>` +
     `<tr><td>First-round miss</td><td>${m.firstMiss === null ? '—' : Math.round(m.firstMiss) + ' m'}</td></tr>` +
+    `<tr><td>Initial location error</td><td>${m.aimErr0 === null ? '—' : Math.round(m.aimErr0) + ' m (JFO standard ≤ 200 m)'}</td></tr>` +
     (isConvoy
       ? `<tr><td>Vehicles destroyed</td><td>${m.hits}/4</td></tr>`
       : `<tr><td>Effect rounds on target</td><td>${m.hits}/${m.ffeRounds.length}</td></tr>`) +
@@ -2292,7 +2333,8 @@ function showAAR() {
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
     `</table>` +
     (m.notes.length ? `<div>Format coaching:</div><ul>${m.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
-    `<div class="foot">[N] — random mission &middot; [K] — mission menu &middot; [ESC] — back to the OP &middot; seed ${CONFIG.SEED.mission}</div>`;
+    (activeChapter ? `<div style="margin-bottom:6px;color:#9fb08c">Replay from the mission menu [K] to improve your stars.</div>` : '') +
+    `<div class="foot">[N] — skirmish mission &middot; [K] — mission menu &middot; [ESC] — back to the OP &middot; seed ${CONFIG.SEED.mission}</div>`;
   if (document.exitPointerLock) document.exitPointerLock();
   aarEl.classList.add('on');
   setState('AAR');
@@ -2788,14 +2830,161 @@ document.getElementById('libprint').addEventListener('click', () => {
   img.src = sheetCv.toDataURL('image/png');
 });
 
+/* ============================================================ CAMPAIGN (stage 9 skeleton) */
+// Volumes -> chapters per NARRATIVE.md. Chapters are fixed-seed missions;
+// impl:false rows are story chapters whose mechanics land in stages 10-11
+// (tutorials, strict mode, 60mm, village raid, epilogue) — shown but not
+// playable, and skipped by the sequential-unlock chain.
+const CAMPAIGN = [
+  { id: 'F',  tab: 'FWD', name: 'FOREWORD — THE SCHOOLHOUSE', need: 0, chapters: [
+    { id: 'F.1', title: 'EYES BEFORE GUNS', blurb: 'optics & mils tutorial — stage 10', impl: false },
+    { id: 'F.2', title: 'THE MAP IS NOT THE TERRITORY', blurb: 'mapwork tutorial — stage 10', impl: false },
+    { id: 'F.3', title: 'SAY IT LIKE YOU MEAN IT', blurb: 'first call for fire — stage 10', impl: false },
+  ]},
+  { id: 'V1', tab: 'I', name: 'VOLUME I — GREEN AS GRASS', need: 0, chapters: [
+    { id: '1.1', title: 'TROOPS IN THE OPEN, BRAINS IN THE REAR', blurb: 'grid fundamentals', impl: true, type: 'troops', seed: 101, par: 300 },
+    { id: '1.2', title: 'KNOCK KNOCK', blurb: 'dug-in bunker — bracket it', impl: true, type: 'bunker', seed: 102, par: 360 },
+    { id: '1.3', title: 'HOLD THE LINE', blurb: 'near the perimeter, not on it', impl: true, type: 'strongpoint', seed: 103, par: 360 },
+    { id: '1.4', title: 'DO IT AGAIN, SLOWER', blurb: 'format discipline on the clock', impl: true, type: 'troops', seed: 104, par: 210 },
+  ]},
+  { id: 'V2', tab: 'II', name: 'VOLUME II — THE RIDGE LINE', need: 6, chapters: [
+    { id: '2.1', title: 'NUMBERS ON A COMPASS', blurb: 'polar mission required', impl: true, type: 'troops', seed: 201, par: 300, method: 'polar' },
+    { id: '2.2', title: 'OLD FRIENDS', blurb: 'shift from a known point required', impl: true, type: 'bunker', seed: 202, par: 360, method: 'shift' },
+    { id: '2.3', title: 'DEFILADE BLUES', blurb: 'crest-masked target — stage 10', impl: false },
+    { id: '2.4', title: 'THE PERIMETER', blurb: 'your choice of method, under pressure', impl: true, type: 'strongpoint', seed: 204, par: 330 },
+  ]},
+  { id: 'V3', tab: 'III', name: 'VOLUME III — THUNDER RUN', need: 14, chapters: [
+    { id: '3.1', title: 'ROLLING STOCK', blurb: 'convoy — lead it, or catch the pit stop', impl: true, type: 'convoy', seed: 301, par: 420 },
+    { id: '3.2', title: 'CLOSE ENOUGH TO SMELL IT', blurb: 'danger close — say it, creep it', impl: true, type: 'assault', seed: 302, par: 420 },
+    { id: '3.3', title: 'UNINVITED GUESTS', blurb: 'raiders in the village — stage 10', impl: false },
+    { id: '3.4', title: "EVERYONE'S MOVING", blurb: 'combined arms, friendlies advancing', impl: true, type: 'assault', seed: 304, par: 390 },
+    { id: '3.5', title: 'THE WRONG KIND OF FAMOUS', blurb: 'fratricide stress — stage 10', impl: false },
+  ]},
+  { id: 'V4', tab: 'IV', name: 'VOLUME IV — BLACK SAND', need: 24, chapters: [
+    { id: '4.1', title: 'STRICT NET', blurb: 'doctrine enforced — stage 10', impl: false },
+    { id: '4.2', title: 'TEN METERS', blurb: '60mm mortars, 8-digit — stage 10', impl: false },
+    { id: '4.3', title: 'NO SECOND CHANCES', blurb: 'hard only. one pass, tight clock.', impl: true, type: 'bunker', seed: 403, par: 240, diffs: ['hard'] },
+    { id: '4.4', title: 'THE MEAT GRINDER', blurb: 'final exam — stage 10', impl: false },
+  ]},
+  { id: 'EP', tab: 'EPI', name: 'EPILOGUE — SUNBURN', need: 32, chapters: [
+    { id: 'E.1', title: 'THE GREAT CHOW RAID', blurb: 'stage 11', impl: false },
+    { id: 'E.2', title: 'CLAWS OUT', blurb: 'stage 11', impl: false },
+    { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'stage 11', impl: false },
+  ]},
+  { id: 'V5', tab: 'V', name: 'VOLUME V — ON WINGS', need: Infinity,
+    tease: 'LOCKED — AWAITING AIRCRAFT. CAS, SOMEDAY.', chapters: [] },
+];
+const ALL_CHAPTERS = CAMPAIGN.flatMap(v => v.chapters);
+let activeChapter = null;
+
+// campaign persistence: best stars per chapter per difficulty
+const CAMP = {
+  data: {},
+  load() {
+    try { this.data = JSON.parse(localStorage.getItem('shitfire_campaign') || '{}'); }
+    catch (e) { this.data = {}; }
+  },
+  save() {
+    try { localStorage.setItem('shitfire_campaign', JSON.stringify(this.data)); }
+    catch (e) { /* in-memory only */ }
+  },
+  stars(chId) {
+    const d = this.data[chId];
+    return d ? Math.max(d.easy || 0, d.normal || 0, d.hard || 0) : 0;
+  },
+  record(chId, diff, stars) {
+    if (stars <= 0) return;
+    const d = this.data[chId] || (this.data[chId] = {});
+    if ((d[diff] || 0) < stars) { d[diff] = stars; this.save(); }
+  },
+  total() {
+    let t = 0;
+    for (const ch of ALL_CHAPTERS) t += this.stars(ch.id);
+    return t;
+  },
+};
+CAMP.load();
+
+function volUnlocked(vol) { return CAMP.total() >= vol.need; }
+function chUnlocked(vol, ch) {
+  if (!ch.impl || !volUnlocked(vol)) return false;
+  const impl = vol.chapters.filter(c => c.impl);
+  const i = impl.indexOf(ch);
+  return i === 0 || CAMP.stars(impl[i - 1].id) > 0;
+}
+function starStr(n) { return '★'.repeat(n) + '☆'.repeat(5 - n); }
+
+// Public interface: metrics -> 0-5 stars, MW2 style. 1★ = completed;
+// bonuses for clean format, <=2 adjusting rounds, initial target location
+// within 200 m (the JFO standard), and beating the chapter par time.
+// Difficulty caps: easy 3 / normal 4 / hard 5. Any fail = 0.
+function gradeMission(m) {
+  const S = Scenario;
+  const isConvoy = S.type === 'convoy';
+  const neutralized = isConvoy ? m.hits >= 3
+    : (m.ffeRounds.length > 0 && m.hits >= S.hitsNeed);
+  if (m.failReason || !neutralized) return 0;
+  let stars = 1;
+  if (m.notes.length === 0) stars++;
+  if (m.adjustRounds <= 2) stars++;
+  if (m.aimErr0 !== null && m.aimErr0 <= 200) stars++;
+  const par = (activeChapter && activeChapter.par) || 300;
+  if ((m.tEnd || sim.now) - m.tStart <= par) stars++;
+  if (activeChapter && activeChapter.method && m.method &&
+      m.method !== activeChapter.method) stars = Math.min(stars, 2);
+  return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
+}
+
 /* ============================================================ MISSION MENU [K] */
 const menuEl = document.getElementById('menu');
+let menuVol = 'V1';
 function renderMenu() {
+  const total = CAMP.total();
+  document.getElementById('mtotal').textContent = `TOTAL ${total}★`;
+  // volume spines
+  const vEl = document.getElementById('mvols');
+  vEl.innerHTML = '';
+  for (const vol of CAMPAIGN) {
+    const b = document.createElement('button');
+    b.className = 'mbtn' + (vol.id === menuVol ? ' sel' : '');
+    b.textContent = vol.tab + (volUnlocked(vol) ? '' : ' \u{1F512}');
+    b.onclick = () => { menuVol = vol.id; renderMenu(); };
+    vEl.appendChild(b);
+  }
+  // chapter shelf for the selected volume
+  const vol = CAMPAIGN.find(v => v.id === menuVol);
+  const unlocked = volUnlocked(vol);
+  document.getElementById('mvolname').textContent = vol.name +
+    (vol.chapters.length && !unlocked ? ` — LOCKED: ${vol.need}★ NEEDED (YOU HAVE ${total}★)` : '');
+  const cEl = document.getElementById('mchapters');
+  cEl.innerHTML = '';
+  if (!vol.chapters.length) {
+    const d = document.createElement('div');
+    d.className = 'chrow off';
+    d.innerHTML = `<span class="chtitle">${vol.tease}</span>`;
+    cEl.appendChild(d);
+  }
+  for (const ch of vol.chapters) {
+    const open = chUnlocked(vol, ch);
+    const row = document.createElement('div');
+    row.className = 'chrow' + (open ? '' : ' off');
+    const best = CAMP.stars(ch.id);
+    row.innerHTML =
+      `<span class="chid">${ch.id}</span>` +
+      `<span class="chtitle">${ch.title}</span>` +
+      `<span class="chblurb">${!ch.impl ? ch.blurb :
+        (open ? ch.blurb + (ch.diffs ? ' (' + ch.diffs.join('/').toUpperCase() + ')' : '')
+              : unlocked ? 'complete the previous chapter' : ch.blurb)}</span>` +
+      `<span class="chstars">${ch.impl ? starStr(best) : '&mdash;'}</span>`;
+    if (open) row.onclick = () => newMission(false, null, ch);
+    cEl.appendChild(row);
+  }
+  // skirmish scenario buttons
   const tEl = document.getElementById('mtypes');
   tEl.innerHTML = '';
   for (const k of SCN_TYPES) {
     const b = document.createElement('button');
-    b.className = 'mbtn' + (k === currentType ? ' sel' : '');
+    b.className = 'mbtn' + (k === currentType && !activeChapter ? ' sel' : '');
     b.textContent = SCN_META[k].name;
     b.onclick = () => newMission(false, k);
     tEl.appendChild(b);
@@ -2810,7 +2999,7 @@ function renderMenu() {
   for (const d of ['easy', 'normal', 'hard']) {
     const b = document.createElement('button');
     b.className = 'mbtn' + (d === DIFFICULTY ? ' sel' : '');
-    b.textContent = d.toUpperCase();
+    b.textContent = d.toUpperCase() + ' (≤' + { easy: 3, normal: 4, hard: 5 }[d] + '★)';
     b.onclick = () => { DIFFICULTY = d; renderMenu(); };
     dEl.appendChild(b);
   }
@@ -2819,7 +3008,7 @@ function renderMenu() {
     const s = BEST.data[k + ':' + DIFFICULTY];
     if (s) rows.push(`${SCN_META[k].name}: ${s.rounds} adj rds, ${fmtTime(s.time)}`);
   }
-  document.getElementById('mbest').textContent = 'BEST (' + DIFFICULTY.toUpperCase() + '): ' +
+  document.getElementById('mbest').textContent = 'SKIRMISH BEST (' + DIFFICULTY.toUpperCase() + '): ' +
     (rows.length ? rows.join(' · ') : 'no passes recorded yet');
 }
 function toggleMenu(force) {
@@ -2845,7 +3034,7 @@ document.getElementById('mdemreset').addEventListener('click', () => {
 });
 
 /* ============================================================ NEW MISSION */
-function newMission(first, type) {
+function newMission(first, type, chapter) {
   aarEl.classList.remove('on');
   menuEl.classList.remove('on');
   clearEvents();
@@ -2853,12 +3042,31 @@ function newMission(first, type) {
   FDC.lastT = 0;
   mission = null;
   bursts.forEach(b => { b.active = false; b.group.visible = false; });
-  if (!first) CONFIG.SEED.mission++;
-  if (type) currentType = type;
-  else if (!first) currentType = SCN_TYPES[Math.floor(Math.random() * SCN_TYPES.length)];
+  activeChapter = chapter || null;
+  if (chapter) {
+    // campaign chapter: fixed seed, fixed scenario, difficulty restrictions
+    CONFIG.SEED.mission = chapter.seed;
+    currentType = chapter.type;
+    if (chapter.diffs && !chapter.diffs.includes(DIFFICULTY)) {
+      DIFFICULTY = chapter.diffs[0];
+      log('', `This chapter is ${chapter.diffs.join('/').toUpperCase()} only — difficulty set to ${DIFFICULTY.toUpperCase()}.`, 'sys');
+    }
+  } else {
+    if (!first) CONFIG.SEED.mission++;
+    if (type) currentType = type;
+    else if (!first) currentType = SCN_TYPES[Math.floor(Math.random() * SCN_TYPES.length)];
+  }
   Scenario = genScenario(currentType, CONFIG.SEED.mission);
   placeUnits();
-  log('', `SCENARIO: ${SCN_META[currentType].name} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
+  if (chapter) {
+    log('', `CHAPTER ${chapter.id} — ${chapter.title} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
+    if (chapter.method)
+      log('', `Chapter requirement: locate the target by ${chapter.method === 'polar' ? 'POLAR (direction + distance)' : 'SHIFT FROM A KNOWN POINT'} — a grid call caps this chapter at 2★.`, 'sys');
+    if (chapter.par)
+      log('', `Par time for full stars: ${fmtTime(chapter.par)}.`, 'sys');
+  } else {
+    log('', `SKIRMISH: ${SCN_META[currentType].name} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
+  }
   log('', `Your OP: watchtower at grid ${gridOf(OP.x, OP.z)}, ground elev ${Math.round(OP.h)} m, deck +${Math.round(CONFIG.CAMERA.towerHeight)} m. ` +
     `Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. ` +
     `Hold [SPACE] to transmit by voice, or type below.`, 'sys');
@@ -3137,6 +3345,7 @@ requestAnimationFrame(animate);
 
 // Debug / stable interface exposure
 window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
+  gradeMission, CAMPAIGN, CAMP,
   get Scenario() { return Scenario; }, get mission() { return mission; }, OP, BATTERY };
 </script>
 </body>
