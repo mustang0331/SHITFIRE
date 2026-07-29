@@ -353,7 +353,14 @@ const CONFIG = {
   },
   UI: { laseHold: 6 },
   WORLD: {
-    roadWidth: 7, pathWidth: 3.2, villageCount: 2, civsPerVillage: 6,
+    // E4 — two road CLASSES, not one ribbon with two widths.
+    //   asphalt  metalled route between the major landmarks. Wide, dark, smooth,
+    //            and laid on a pale gravel shoulder 2*shoulderW wider than the
+    //            carriageway, which is what gives it a defined edge at range.
+    //   dirt     unimproved track to huts, villages and the OP. Narrower, lighter,
+    //            browner, no shoulder.
+    roadWidth: 8, shoulderW: 3.2, pathWidth: 2.8,
+    villageCount: 2, civsPerVillage: 6,
     convoyStopDur: [60, 180],          // pit-stop length range (s)
     hutCollateralR: 24, civCollateralR: 28,
   },
@@ -961,8 +968,12 @@ function strHash(s) {
   return h >>> 0;
 }
 const _wMats = {
-  road:  new THREE.MeshLambertMaterial({ color: 0x8A7452, flatShading: true, side: THREE.DoubleSide }),
-  path:  new THREE.MeshLambertMaterial({ color: 0xA39272, flatShading: true, side: THREE.DoubleSide }),
+  // E4: metalled surface — near-black bitumen, and deliberately NOT flat-shaded.
+  // Flat shading facets a ribbon into visible chevrons as it follows H; a smooth
+  // normal is what sells "graded and sealed" against the faceted dirt track.
+  asph:  new THREE.MeshLambertMaterial({ color: 0x33322D, flatShading: false, side: THREE.DoubleSide }),
+  asphE: new THREE.MeshLambertMaterial({ color: 0x8B8271, flatShading: true, side: THREE.DoubleSide }),
+  path:  new THREE.MeshLambertMaterial({ color: 0xB29A6E, flatShading: true, side: THREE.DoubleSide }),
   strip: new THREE.MeshLambertMaterial({ color: 0x59564E, flatShading: true, side: THREE.DoubleSide }),
   mil:   new THREE.MeshLambertMaterial({ color: 0x5C6650, flatShading: true }),
   milB:  new THREE.MeshLambertMaterial({ color: 0x4A5240, flatShading: true }),
@@ -1061,6 +1072,20 @@ visTag(FIG.mat.civHat,     { nvg: 0.20, th: [0.14, 0.14, 0.14] });  // straw ins
 visTag(FIG.mat.disc,       { nvg: 0.02, th: [0.03, 0.03, 0.03] });
 visTag(_wMats.civ,         { nvg: 0.40, th: [0.38, 0.38, 0.38] });  // hut, cooking fire
 visTag(_wMats.civB,        { nvg: 0.38, th: [0.36, 0.36, 0.36] });
+/* E4 — the road surfaces, and the one genuinely teachable observation cue in
+   this row. Sealed asphalt has a high thermal mass and a low albedo: it takes
+   the whole day's insolation and re-radiates it for hours after dark, so on a
+   night thermal sight the metalled network draws itself as a WARM RIBBON across
+   cold ground. That is a real effect and a real technique — the road net is
+   often the first thing an observer can orient off through a thermal sight at
+   night. Gravel shoulder and dirt track have far less mass and shed their heat
+   early, so they stay near the cold floor and the metalled route stands alone.
+   Under NVG the ordering inverts: bitumen is strongly NIR-ABSORBING (~0.10) and
+   goes near-black, while bare soil is NIR-bright, so the dirt track is the one
+   that shows. Two devices, two different answers, both correct. */
+visTag(_wMats.asph,        { nvg: 0.10, th: [0.62, 0.62, 0.62] });  // sealed: NIR-black, holds heat
+visTag(_wMats.asphE,       { nvg: 0.34, th: [0.30, 0.30, 0.30] });  // gravel shoulder: sheds heat
+visTag(_wMats.path,        { nvg: 0.52, th: [0.24, 0.24, 0.24] });  // bare soil: NIR-bright, cool
 
 function makeFigure(kind) {                 // 'enemy' | 'friendly' | 'civ'
   const civ = kind === 'civ', fr = kind === 'friendly';
@@ -1077,6 +1102,46 @@ function makeFigure(kind) {                 // 'enemy' | 'friendly' | 'civ'
   }
   m.userData.figH = civ ? FIG.h.civ : FIG.h.troop;
   return m;
+}
+
+/* E4 — one merged geometry per road CLASS, not one mesh per polyline.
+   The network is a coast loop + a handful of spurs + a handful of tracks; drawn
+   individually that is a dozen-plus draw calls for a few thousand triangles.
+   Merged it is exactly THREE (asphalt surface, gravel shoulder, dirt track)
+   whatever the island throws up, which is what keeps the 60 fps rule safe as
+   E6 adds settlements to connect. All allocation happens here, at build time —
+   nothing in this path runs per frame. */
+function ribbonInto(pts, width, lift, pos, idx, base) {
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const o = pts[Math.max(i - 1, 0)], q = pts[Math.min(i + 1, n - 1)];
+    let dx = q.x - o.x, dz = q.z - o.z;
+    const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+    const hw = width / 2, px = -dz * hw, pz = dx * hw;
+    const x0 = pts[i].x + px, z0 = pts[i].z + pz;
+    const x1 = pts[i].x - px, z1 = pts[i].z - pz;
+    pos.push(x0, Math.max(H(x0, z0), 0) + lift, z0);
+    pos.push(x1, Math.max(H(x1, z1), 0) + lift, z1);
+    if (i) {
+      const v = base + i * 2;
+      idx.push(v - 2, v - 1, v, v - 1, v + 1, v);
+    }
+  }
+  return base + n * 2;
+}
+function mergedRibbonMesh(lines, width, mat, lift) {
+  const pos = [], idx = [];
+  let base = 0;
+  for (const pts of lines) {
+    if (!pts || pts.length < 2) continue;
+    base = ribbonInto(pts, width, lift, pos, idx, base);
+  }
+  if (!idx.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
 }
 
 function ribbonMesh(pts, width, mat, lift) {
@@ -1129,7 +1194,13 @@ function buildWorldFeatures() {
   WORLD.facilities.length = 0; WORLD.villages.length = 0; WORLD.civs.length = 0;
   const wSeed = (CONFIG.SEED.terrain ^ (DEM ? strHash(DEM.name) : 0)) >>> 0;
   const rng = mulberry32(wSeed);
+  // E4+ placement draws from a SECOND stream derived from the same island seed.
+  // Everything added from E4 onward is seeded and reproducible, but it takes no
+  // draws out of `rng`, so every island built before this row — and every
+  // fixed-seed campaign chapter standing on one — regenerates bit-identically.
+  const rng2 = mulberry32((Math.imul(wSeed, 2246822519) + 13) >>> 0);
   const W = CONFIG.WORLD;
+  const asphaltLines = [], dirtLines = [];
 
   // --- coast road: radial scan for the outermost low-shelf point per bearing
   const NA = 128, ring = [];
@@ -1154,16 +1225,71 @@ function buildWorldFeatures() {
       const a = road[(i + road.length - 1) % road.length], b = road[(i + 1) % road.length];
       return { x: (a.x + p.x * 2 + b.x) / 4, z: (a.z + p.z * 2 + b.z) / 4 };
     });
+  /* The 1-2-1 smoothing above cuts corners, and across a bay that puts the
+     centreline in the water — measured 9 of 127 points below 0.5 m on the
+     default island, one of them 2.9 m UNDER the surface. ribbonMesh clamps y to
+     max(H,0), so those points did not look wrong so much as they looked like a
+     causeway, and they poisoned the connector routing (a spur anchored on one
+     starts underwater and gets rejected). Pull any wet point straight inland
+     until it finds land. Measured: 17 points moved, worst case 60 m, and the
+     minimum centreline elevation goes -2.86 m -> +1.09 m. */
+  for (let i = 0; i < road.length; i++) {
+    const p = road[i];
+    if (H(p.x, p.z) >= 1.0) continue;
+    const l = Math.hypot(p.x, p.z) || 1, ux = p.x / l, uz = p.z / l;
+    for (let d = 20; d <= 260; d += 20) {
+      const nx = p.x - ux * d, nz = p.z - uz * d;
+      if (H(nx, nz) >= 1.0) { road[i] = { x: nx, z: nz }; break; }
+    }
+  }
   if (road.length > 8) {
     road.push(road[0]);                    // close the loop
-    WORLD.roads.push(road);
-    const m = ribbonMesh(road, W.roadWidth, _wMats.road, 0.22);
-    if (m) WORLD.group.add(m);
+    WORLD.roads.push(road);                // the coast road is the metalled route
+    asphaltLines.push(road);
   }
   const roadAt = f => road[Math.floor(f * (road.length - 1))] || { x: 0, z: 0 };
   const inland = (p, d) => {               // step toward island center
     const l = Math.hypot(p.x, p.z) || 1;
     return { x: p.x - p.x / l * d, z: p.z - p.z / l * d };
+  };
+
+  /* E4 — connector routing. A route leaves the metalled coast road at its
+     nearest point and runs to a landmark with a seeded lateral bow so it does
+     not read as a drafting-table straight line. It refuses to enter water: no
+     bridges are modelled, and a road that walks into the sea would be worse
+     than no road on a sheet the observer is meant to resect off. */
+  const nearestOnRoad = (tx, tz) => {
+    let best = null, bd = Infinity;
+    for (const p of road) {
+      const d = dist2(p.x, p.z, tx, tz);
+      if (d < bd) { bd = d; best = p; }
+    }
+    return best && { p: best, d: bd };
+  };
+  const linkTo = (tx, tz, maxLen) => {
+    if (road.length < 9) return null;
+    const a = nearestOnRoad(tx, tz);
+    if (!a || a.d > maxLen || a.d < 8) return null;
+    const n = clamp(Math.round(a.d / 45), 4, 40);
+    const px = -(tz - a.p.z) / a.d, pz = (tx - a.p.x) / a.d;   // unit normal
+    const bow = (rng2() - 0.5) * Math.min(a.d * 0.16, 70);
+    const pts = [];
+    for (let s = 0; s <= n; s++) {
+      const t = s / n, w = Math.sin(t * Math.PI) * bow;
+      const x = lerp(a.p.x, tx, t) + px * w, z = lerp(a.p.z, tz, t) + pz * w;
+      // s === 0 is the junction with the coast road itself, which the loop above
+      // has already guaranteed is on land — testing it again only lets rounding
+      // at the waterline throw away an otherwise good route.
+      if (s && H(x, z) < 0.5) return null; // no bridges, no fords
+      pts.push({ x, z });
+    }
+    return pts;
+  };
+  const addRoute = (pts, asphalt) => {
+    if (!pts) return false;
+    (asphalt ? asphaltLines : dirtLines).push(pts);
+    (asphalt ? WORLD.roads : WORLD.paths).push(pts);
+    return true;
   };
 
   // --- facilities (each with a map name; skipped gracefully if no terrain fits)
@@ -1295,13 +1421,37 @@ function buildWorldFeatures() {
       if (H(x, z) < 0.5) { pts.length = 0; break; }   // refuse water crossings
       pts.push({ x, z });
     }
-    if (pts.length) {
-      WORLD.paths.push(pts);
-      const m = ribbonMesh(pts, W.pathWidth, _wMats.path, 0.18);
-      if (m) WORLD.group.add(m);
-    }
+    if (pts.length) { WORLD.paths.push(pts); dirtLines.push(pts); }
   }
+
+  /* --- E4: the two classes get their own network.
+     ASPHALT reaches the things that need a truck: the airfield, the ammo depot
+     and the fuel point (the three convoy pit stops in SPEC — a column halts
+     where the metalled route lets it). DIRT reaches everything a truck does not
+     need to reach: the villages, the coastal gun, the mast, and the track up to
+     the OP. That split is the terrain-association lesson, not decoration: on the
+     sheet the observer can tell which routes a vehicle column can actually use. */
+  for (const f of WORLD.facilities) {
+    if (f.kind === 'airfield') addRoute(linkTo(f.x, f.z, 3000), true);
+    else if (f.kind === 'fuel' || f.kind === 'ammo') addRoute(linkTo(f.x, f.z, 260), true);
+    else if (f.kind === 'gun' || f.kind === 'mast') addRoute(linkTo(f.x, f.z, 2200), false);
+  }
+  for (const v of WORLD.villages) addRoute(linkTo(v.x, v.z, 700), false);
+  addRoute(linkTo(OP.x, OP.z, 6000), false);          // the track up to the OP
+
+  // --- one merged mesh per class. Three draw calls for the whole network.
+  const netMeshes = [
+    mergedRibbonMesh(asphaltLines, W.roadWidth + W.shoulderW * 2, _wMats.asphE, 0.20),
+    mergedRibbonMesh(asphaltLines, W.roadWidth, _wMats.asph, 0.26),
+    mergedRibbonMesh(dirtLines, W.pathWidth, _wMats.path, 0.18),
+  ];
+  for (const m of netMeshes) if (m) WORLD.group.add(m);
+
   scene.add(WORLD.group);
+  // Everything in here is brand new geometry with no `_m0` yet. If the observer
+  // is on NVG or thermal when an island is rebuilt, re-derive the variants or
+  // the whole world layer renders in daylight colours inside the tube.
+  if (visionReady) applyVision();
 }
 buildWorldFeatures();
 
