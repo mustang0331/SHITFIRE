@@ -368,6 +368,11 @@ const CONFIG = {
     villageCount: 2, civsPerVillage: 6,
     townCount: 1, townBuildings: [14, 21], townR: 135, civsPerTown: 10,
     townStreetHalf: 135, townCrossHalf: 88, townSetback: 21,
+    // E7 — rock outcrops / boulder piles. Terrain-association landmarks on
+    // ground that carries nothing else: the ridges and spurs between the coast
+    // road and the massif, where a jungle island otherwise offers the observer
+    // no named feature to resect off.
+    rock: { count: 14, sep: 460, rMin: 11, rMax: 27, nMin: 4, nMax: 10, named: 3 },
     convoyStopDur: [60, 180],          // pit-stop length range (s)
     hutCollateralR: 24, civCollateralR: 28,
   },
@@ -968,7 +973,10 @@ placeBattery();
 // military facilities, landmarks, and civilian villages. Rebuilt per island
 // (terrain seed ^ DEM name), NOT per mission — permanence is what makes the
 // features usable for terrain association on the printed sheet.
-const WORLD = { roads: [], paths: [], facilities: [], villages: [], civs: [], group: null };
+const WORLD = { roads: [], paths: [], facilities: [], villages: [], civs: [],
+                rocks: [], group: null };
+const ROCK_NAMES = ['THE TEETH', 'ANVIL RK', 'HOGBACK', 'THE KNUCKLES',
+                    'SPLIT RK', 'WIDOW RK', 'THE MOLARS', 'GRAVEYARD'];
 function strHash(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -993,7 +1001,12 @@ const _wMats = {
   civR:  new THREE.MeshLambertMaterial({ color: 0x8C4A38, flatShading: true }),
   drum:  new THREE.MeshLambertMaterial({ color: 0x7A3A2A, flatShading: true }),
   mast:  new THREE.MeshLambertMaterial({ color: 0xB9B4A6, flatShading: true }),
+  // E7 — the whole rock layer is ONE material; the colour variation between
+  // boulders is baked into vertex colours at build time, so a dozen outcrops
+  // cost one draw call and still don't look stamped from one mould.
+  rock:  new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
 };
+const ROCK_PALETTE = [0x6E675C, 0x7E7669, 0x585249, 0x8A8376, 0x655D51];
 
 /* ---- FIGURES: the three families the observer must tell apart ---------------
    GRAPHICS.md's second governing constraint: legibility beats looks. Three
@@ -1105,6 +1118,15 @@ visTag(_wMats.civR,        { nvg: 0.30, th: [0.34, 0.34, 0.34] });  // tile roof
 visTag(_wMats.asph,        { nvg: 0.10, th: [0.62, 0.62, 0.62] });  // sealed: NIR-black, holds heat
 visTag(_wMats.asphE,       { nvg: 0.34, th: [0.30, 0.30, 0.30] });  // gravel shoulder: sheds heat
 visTag(_wMats.path,        { nvg: 0.52, th: [0.24, 0.24, 0.24] });  // bare soil: NIR-bright, cool
+/* E7 — bare rock. On a wet tropical island the jungle canopy is the WARM thing
+   after dark: it is full of water and it transpires all day. An exposed outcrop
+   has nothing over it, a clear view of a cold sky, and radiates straight to it,
+   so it reads COLD against the vegetation around it in thermal. Under NVG the
+   same contrast runs the other way round from the usual: living foliage is
+   strongly NIR-reflective and bare stone is not, so the outcrop is a DARK
+   silhouette in a bright field. Either device, the shape is distinctive and it
+   is always in the same place — which is the entire point of putting it there. */
+visTag(_wMats.rock,        { nvg: 0.14, th: [0.14, 0.14, 0.14] });
 
 function makeFigure(kind) {                 // 'enemy' | 'friendly' | 'civ'
   const civ = kind === 'civ', fr = kind === 'friendly';
@@ -1204,6 +1226,47 @@ function wBox(x, z, w, h, d, mat, rotY) {
 function wBoxY(x, y, z, w, h, d, mat, rotY) {   // explicit centre height
   _boxBatch.push({ x, y, z, w, h, d, mat, rotY: rotY || 0 });
 }
+/* E7 — one merged, vertex-coloured, flat-shaded geometry for EVERY boulder on
+   the island. A 20-face icosahedron per boulder, squashed and rotated so no two
+   read the same, and the whole layer lands as a single draw call. Nothing here
+   runs per frame; the arrays are sized once and filled once. */
+const _rockUnit = new THREE.IcosahedronGeometry(1, 0);   // non-indexed, 60 verts
+_rockUnit.userData.keep = true;
+const _rkM = new THREE.Matrix4(), _rkE = new THREE.Euler(), _rkV = new THREE.Vector3();
+const _rkC = new THREE.Color();
+function mergedRocks(boulders) {
+  if (!boulders.length) return null;
+  const src = _rockUnit.attributes.position.array;
+  const nv = _rockUnit.attributes.position.count;
+  const pos = new Float32Array(boulders.length * nv * 3);
+  const col = new Float32Array(boulders.length * nv * 3);
+  let o = 0;
+  for (const b of boulders) {
+    _rkE.set(b.rx, b.ry, b.rz);
+    _rkM.makeRotationFromEuler(_rkE);
+    _rkM.scale(_rkV.set(b.sx, b.sy, b.sz));
+    _rkC.setHex(b.col);
+    // a little per-boulder value jitter on top of the palette pick, so a pile
+    // reads as weathered stone rather than as one solid mass
+    const k = b.shade;
+    for (let i = 0; i < nv; i++) {
+      _rkV.set(src[i * 3], src[i * 3 + 1], src[i * 3 + 2]).applyMatrix4(_rkM);
+      pos[o]     = b.x + _rkV.x;
+      pos[o + 1] = b.y + _rkV.y;
+      pos[o + 2] = b.z + _rkV.z;
+      col[o]     = _rkC.r * k;
+      col[o + 1] = _rkC.g * k;
+      col[o + 2] = _rkC.b * k;
+      o += 3;
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, _wMats.rock);
+}
+
 function flushBoxes(group) {
   const byMat = new Map();
   for (const b of _boxBatch) {
@@ -1260,6 +1323,7 @@ function buildWorldFeatures() {
   WORLD.group = new THREE.Group();
   WORLD.roads.length = 0; WORLD.paths.length = 0;
   WORLD.facilities.length = 0; WORLD.villages.length = 0; WORLD.civs.length = 0;
+  WORLD.rocks.length = 0;
   const wSeed = (CONFIG.SEED.terrain ^ (DEM ? strHash(DEM.name) : 0)) >>> 0;
   const rng = mulberry32(wSeed);
   // E4+ placement draws from a SECOND stream derived from the same island seed.
@@ -1267,6 +1331,12 @@ function buildWorldFeatures() {
   // draws out of `rng`, so every island built before this row — and every
   // fixed-seed campaign chapter standing on one — regenerates bit-identically.
   const rng2 = mulberry32((Math.imul(wSeed, 2246822519) + 13) >>> 0);
+  /* E7 takes a THIRD stream for the same reason E4 took a second one. The rock
+     block sits upstream of the road-connector routing, which draws its lateral
+     bow from rng2 — so spending rng2 on boulders would have shifted every
+     connector's curve on islands that already shipped. A separate stream keeps
+     E7 additive: roads, villages and facilities all regenerate bit-identically. */
+  const rng3 = mulberry32((Math.imul(wSeed, 3266489917) + 0x9E3779B9) >>> 0);
   const W = CONFIG.WORLD;
   const asphaltLines = [], dirtLines = [];
   _boxBatch = [];                      // E6 — every wBox() lands here, merged below
@@ -1632,6 +1702,114 @@ function buildWorldFeatures() {
                         wr: 6 + rng2() * 11, phase: rng2() * 20, x: site.x, z: site.z });
     }
     WORLD.villages.push(town);
+  }
+
+  /* --- E7: ROCK OUTCROPS.
+     Everything else on this island is man-made, which means every landmark the
+     observer has is something someone chose to build near the water. Inland he
+     has a wall of identical jungle. Outcrops are the natural, permanent, plotted
+     features that make resection work away from the coast road.
+
+     An outcrop wants ground that is STEEP and CONVEX — a spur shoulder or a
+     ridge crest, where weathering strips the soil off and leaves the bedrock
+     standing. Flat ground grows over it; a hollow collects the soil that buries
+     it. So the score is slope x convexity, gated on elevation to keep them out
+     of the surf and off the massif summit.
+
+     MEASURED, and the reason the sector quota exists: terrain score ALONE
+     bunches the whole set onto whichever bearings the ridge fingers run. On the
+     default island that left 2289 mils of empty arc — an observer facing west
+     had no rock to resect off at all. Taking the best candidate in each 800-mil
+     sector before taking any second one closes it to 1288 mils, and does not
+     override the terrain test: a sector with no qualifying ground still gets
+     nothing. Measured over 6 terrain seeds: 14/14 placed on every one. */
+  {
+    const RK = W.rock;
+    const rockScore = (x, z) => {
+      const h = H(x, z);
+      if (h < 18 || h > 150) return null;
+      const d = 55;
+      const hE = H(x + d, z), hW = H(x - d, z), hN = H(x, z - d), hS = H(x, z + d);
+      const slope = Math.hypot(hE - hW, hN - hS) / (2 * d);
+      const conv = h - (hE + hW + hN + hS) / 4;      // > 0 = standing proud
+      if (slope < 0.045 || conv < 0.4) return null;
+      return slope * 26 + conv * 1.5;
+    };
+    const cands = [];
+    for (let x = -3400; x <= 3400; x += 100)
+      for (let z = -3400; z <= 3400; z += 100) {
+        const s = rockScore(x, z);
+        if (s !== null) cands.push({ x, z, s: s + rng3() * 0.9 });
+      }
+    cands.sort((a, b) => b.s - a.s);
+    const tooClose = (x, z) => {
+      if (dist2(x, z, OP.x, OP.z) < 300) return true;
+      for (const r of WORLD.rocks) if (dist2(x, z, r.x, r.z) < RK.sep) return true;
+      for (const f of WORLD.facilities) if (dist2(x, z, f.x, f.z) < 200) return true;
+      for (const v of WORLD.villages) if (dist2(x, z, v.x, v.z) < 220) return true;
+      return false;
+    };
+    const take = c => {
+      if (tooClose(c.x, c.z)) return false;
+      WORLD.rocks.push({ x: c.x, z: c.z, s: c.s, h: H(c.x, c.z),
+                         r: RK.rMin + rng3() * (RK.rMax - RK.rMin), name: null });
+      return true;
+    };
+    const SECT = 8, sMil = 6400 / SECT;
+    for (let s0 = 0; s0 < SECT && WORLD.rocks.length < RK.count; s0++)
+      for (const c of cands) {
+        const mil = (Math.atan2(c.x - OP.x, OP.z - c.z) * MILS_PER_RAD + 6400) % 6400;
+        if (Math.floor(mil / sMil) !== s0) continue;
+        if (take(c)) break;
+      }
+    for (const c of cands) {
+      if (WORLD.rocks.length >= RK.count) break;
+      take(c);
+    }
+    /* The most prominent few get names and a label on both map surfaces. Naming
+       all fourteen would bury the sheet in text and make none of them memorable;
+       three is enough to say "the enemy is 400 short of THE TEETH" and be
+       understood. Named outcrops also join nearestLandmark(), so the SALUTE spot
+       report can cue off them. */
+    const byScore = WORLD.rocks.slice().sort((a, b) => b.s - a.s);
+    const pool = ROCK_NAMES.slice();
+    for (let i = 0; i < RK.named && i < byScore.length && pool.length; i++)
+      byScore[i].name = pool.splice(Math.floor(rng3() * pool.length), 1)[0];
+
+    // --- boulders. One merged, vertex-coloured mesh for the whole island.
+    const boulders = [];
+    for (const rk of WORLD.rocks) {
+      const n = RK.nMin + Math.floor(rng3() * (RK.nMax - RK.nMin + 1));
+      for (let i = 0; i < n; i++) {
+        // i === 0 is the dominant block, dead centre; the rest ring it. A pile
+        // with one clear high point reads as a single feature at 2 km instead of
+        // as scattered noise, which is what makes it identifiable on a bearing.
+        const ang = rng3() * Math.PI * 2;
+        const rad = i ? rk.r * (0.35 + rng3() * 0.65) : 0;
+        const bx = rk.x + Math.cos(ang) * rad, bz = rk.z + Math.sin(ang) * rad;
+        const sz0 = (i ? 0.26 + rng3() * 0.26 : 0.46 + rng3() * 0.14) * rk.r;
+        const sx = sz0 * (0.8 + rng3() * 0.5), sy = sz0 * (0.7 + rng3() * 0.6),
+              szz = sz0 * (0.8 + rng3() * 0.5);
+        // Sit it on the LOWEST ground it covers, then sink it half its own
+        // height. On a 33 m terrain facet a boulder placed on the centre sample
+        // floats off the downhill edge; taking the minimum buries the uphill
+        // side instead, which is what a real block on a slope does.
+        let gy = H(bx, bz);
+        for (let q = 0; q < 4; q++) {
+          const a2 = q * Math.PI / 2;
+          gy = Math.min(gy, H(bx + Math.cos(a2) * sx, bz + Math.sin(a2) * szz));
+        }
+        boulders.push({
+          x: bx, y: Math.max(gy, 0) + sy * 0.5, z: bz,
+          sx, sy, sz: szz,
+          rx: (rng3() - 0.5) * 0.7, ry: rng3() * Math.PI * 2, rz: (rng3() - 0.5) * 0.7,
+          col: ROCK_PALETTE[Math.floor(rng3() * ROCK_PALETTE.length)],
+          shade: 0.82 + rng3() * 0.34,
+        });
+      }
+    }
+    const rm = mergedRocks(boulders);
+    if (rm) WORLD.group.add(rm);
   }
 
   // --- dirt paths: villages/facilities up toward the interior (first ridge shoulder)
@@ -2547,6 +2725,15 @@ function nearestLandmark(x, z) {
   for (const v of WORLD.villages) {
     const d = dist2(x, z, v.x, v.z);
     if (d < bd) { bd = d; best = { name: `THE VILLAGE OF ${v.name}`, x: v.x, z: v.z, d }; }
+  }
+  /* E7 — the named outcrops are landmarks too, and inland they are often the
+     ONLY one: every man-made feature on this island is within a few hundred
+     metres of the coast road, so a target on the far ridge used to get no cue
+     at all. They are plotted on the sheet under the same name the net uses. */
+  for (const r of WORLD.rocks) {
+    if (!r.name) continue;
+    const d = dist2(x, z, r.x, r.z);
+    if (d < bd) { bd = d; best = { name: r.name, x: r.x, z: r.z, d }; }
   }
   return best && best.d <= CONFIG.SPOT.landmarkMax ? best : null;
 }
@@ -4556,6 +4743,28 @@ function facSymbol(ctx, kind, px, py, s, ink, paper, rot) {
       ctx.strokeRect(px - s * 0.8, py - s * 0.8, s * 1.6, s * 1.6);
       ctx.fillRect(px - s * 0.3, py - s * 0.3, s * 0.6, s * 0.6);
       break;
+    /* E7 — rock outcrop. Topographic convention for bare rock is an irregular
+       closed blob, deliberately NOT a circle or a square, so it cannot be
+       confused with the fuel point or a building at a glance. Drawn as a fixed
+       five-lobe outline with two scree dots below it; the shape is hard-coded
+       rather than random so the same outcrop draws identically every redraw
+       and on both surfaces. */
+    case 'rock': {
+      const lobe = [[-1.0, 0.35], [-0.55, -0.75], [0.15, -1.0], [0.9, -0.35], [1.0, 0.55],
+                    [0.3, 0.95], [-0.5, 0.85]];
+      ctx.beginPath();
+      for (let i = 0; i < lobe.length; i++) {
+        const lx = px + lobe[i][0] * s * 0.85, ly = py + lobe[i][1] * s * 0.7;
+        if (i) ctx.lineTo(lx, ly); else ctx.moveTo(lx, ly);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(px - s * 0.15, py + s * 0.05, s * 0.16, 0, Math.PI * 2);
+      ctx.arc(px + s * 0.35, py - s * 0.25, s * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
     case 'dock':                                  // jetty: a T off the shore
       ctx.beginPath();
       ctx.moveTo(px - s, py); ctx.lineTo(px + s, py);
@@ -4650,6 +4859,18 @@ function drawWorldLayer(ctx, X, Y, o) {
     o.label(v.name + (v.tier === 'town' ? ' (TOWN, CIV)' : ' (CIV)'), labX, labY);
   }
 
+  /* --- E7: rock outcrops. Drawn after the roads so a boulder field beside a
+     track is not overprinted by the track's casing, and BEFORE the facilities
+     so a man-made symbol always wins a collision — a fuel point the observer
+     misses because a rock symbol sat on it is a worse failure than a rock he
+     has to look twice for. Only the named few get a label; fourteen labels
+     would bury the sheet and make none of them memorable. */
+  for (const rk of WORLD.rocks) {
+    const rx = X(rk.x), ry = Y(rk.z);
+    facSymbol(ctx, 'rock', rx, ry, o.sym * 0.9, o.ink, o.paper, 0);
+    if (rk.name) o.label(rk.name, rx + o.sym * 1.4, ry + o.sym * 1.1);
+  }
+
   // --- named facilities
   for (const f of WORLD.facilities) {
     const fx = X(f.x), fy = Y(f.z);
@@ -4701,6 +4922,7 @@ const LEGEND_ROWS = [
   { t: 'FUEL POINT / TANKS', d: (c, x, y, o) => facSymbol(c, 'fuel', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
   { t: 'AMMUNITION DEPOT', d: (c, x, y, o) => facSymbol(c, 'ammo', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
   { t: 'BUILDING (PERMANENT)', d: (c, x, y, o) => facSymbol(c, 'bldg', x + o.sw / 2, y, o.sym, o.ink, o.paper, 0) },
+  { t: 'ROCK OUTCROP / BOULDERS', d: (c, x, y, o) => facSymbol(c, 'rock', x + o.sw / 2, y, o.sym * 0.9, o.ink, o.paper, 0) },
   { t: 'VILLAGE — CIVILIAN, NO-STRIKE', d: (c, x, y, o) => {
       c.setLineDash([]); c.fillStyle = o.ink;
       for (const [dx, dy] of [[0, -0.6], [0.9, 0.3], [-0.8, 0.5], [1.9, -0.4]])
