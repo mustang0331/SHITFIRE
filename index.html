@@ -98,6 +98,28 @@
   .mbtn.sel { background: #39482a; color: #ffe9a8; border-color: #5a6b42; }
   #mbest { color: #9fb08c; font-size: 11.5px; line-height: 1.6; margin: 8px 0; }
   #menubox .foot { color: #8fa387; font-style: italic; font-size: 11.5px; }
+
+  /* Map library */
+  #library { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.55); z-index: 12; }
+  #library.on { display: flex; }
+  #libbox { padding: 12px 16px; max-height: 95vh; display: flex;
+    flex-direction: column; }
+  #libhead { display: flex; justify-content: space-between; gap: 24px;
+    font-size: 13px; letter-spacing: .1em; color: #dfe8c8; margin-bottom: 8px; }
+  #libctl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 10px; }
+  #liblab { color: #cfe0bd; font-size: 12px; display: flex; gap: 5px;
+    align-items: center; margin: 0 6px; }
+  #sheetcv { background: #fff; height: min(72vh, 900px); width: auto;
+    align-self: center; border: 1px solid #39442e; }
+  #printwrap { display: none; }
+  @media print {
+    body > *:not(#printwrap) { display: none !important; }
+    #printwrap { display: block; }
+    #printwrap img { width: 100%; }
+  }
+  @page { size: letter portrait; margin: 0.25in; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -135,7 +157,7 @@
 
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
-  [B] BINOS &middot; [L] LASE &middot; [M] MAP &middot; [K] MENU &middot; [V] VOICE &middot; [N] RANDOM MSN
+  [B] BINOS &middot; [L] LASE &middot; [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] VOICE &middot; [N] RANDOM MSN
 </div>
 
 <div id="map"><div id="mapbox" class="panel">
@@ -156,6 +178,25 @@
   <div id="mbest"></div>
   <div class="foot">[K] / [ESC] close &middot; [N] random mission</div>
 </div></div>
+
+<div id="library"><div id="libbox" class="panel">
+  <div id="libhead">
+    <span>MAP LIBRARY — PROCEDURAL ISLAND (TERRAIN SEED 1337)</span>
+    <span>[P] / [ESC] CLOSE</span>
+  </div>
+  <div id="libctl">
+    <button class="mbtn" data-sheet="full">FULL 1:50,000</button>
+    <button class="mbtn" data-sheet="nw">NW 1:25,000</button>
+    <button class="mbtn" data-sheet="ne">NE 1:25,000</button>
+    <button class="mbtn" data-sheet="sw">SW 1:25,000</button>
+    <button class="mbtn" data-sheet="se">SE 1:25,000</button>
+    <label id="liblab"><input type="checkbox" id="libkey"> ANSWER KEY</label>
+    <button class="mbtn" id="libprint">PRINT</button>
+    <button class="mbtn" id="libsave">SAVE PNG</button>
+  </div>
+  <canvas id="sheetcv" width="1275" height="1650"></canvas>
+</div></div>
+<div id="printwrap"><img id="printimg" alt="map sheet"></div>
 
 <script type="module">
 import * as THREE from 'three';
@@ -1787,6 +1828,276 @@ function toggleMap(force) {
   mapEl.classList.toggle('on', on);
 }
 
+/* ============================================================ MAP LIBRARY [P] */
+const libEl = document.getElementById('library');
+const sheetCv = document.getElementById('sheetcv');
+let libSheet = 'full';
+const SHEET_DEFS = {
+  full: { x0: -5000, z0: -5000, size: 10000, scale: 50000, name: 'FULL SHEET' },
+  nw:   { x0: -5000, z0: -5000, size: 5000,  scale: 25000, name: 'NW QUADRANT' },
+  ne:   { x0: 0,     z0: -5000, size: 5000,  scale: 25000, name: 'NE QUADRANT' },
+  sw:   { x0: -5000, z0: 0,     size: 5000,  scale: 25000, name: 'SW QUADRANT' },
+  se:   { x0: 0,     z0: 0,     size: 5000,  scale: 25000, name: 'SE QUADRANT' },
+};
+
+// Renders a print-ready topographic sheet from the SAME H(x,z) as the 3D world.
+function renderSheet() {
+  const def = SHEET_DEFS[libSheet];
+  const answer = document.getElementById('libkey').checked;
+  const ctx = sheetCv.getContext('2d');
+  const W = sheetCv.width, PH = sheetCv.height;
+  const dpi = 150;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, PH);
+  const mapPx = Math.round(def.size / def.scale / 0.0254 * dpi);   // ≈1181 px
+  const mx0 = Math.round((W - mapPx) / 2), my0 = 120;
+  const X = wx => mx0 + (wx - def.x0) / def.size * mapPx;
+  const Y = wz => my0 + (wz - def.z0) / def.size * mapPx;
+
+  // height field sample
+  const N = def.size === 10000 ? 300 : 220;
+  const cellW = def.size / N;
+  const hs = new Float32Array((N + 1) * (N + 1));
+  let maxH = 0;
+  for (let j = 0; j <= N; j++)
+    for (let i = 0; i <= N; i++) {
+      const h = H(def.x0 + i * cellW, def.z0 + j * cellW);
+      hs[j * (N + 1) + i] = h;
+      if (h > maxH) maxH = h;
+    }
+  const cellPx = mapPx / N;
+
+  // water tint
+  ctx.fillStyle = '#e6e6e6';
+  for (let j = 0; j < N; j++)
+    for (let i = 0; i < N; i++)
+      if (hs[j * (N + 1) + i] < 0.05)
+        ctx.fillRect(mx0 + i * cellPx, my0 + j * cellPx, cellPx + 0.6, cellPx + 0.6);
+
+  // marching squares over the sampled field
+  function msSegs(level) {
+    const segs = [];
+    for (let j = 0; j < N; j++) {
+      const zT = def.z0 + j * cellW, zB = zT + cellW;
+      for (let i = 0; i < N; i++) {
+        const xL = def.x0 + i * cellW, xR = xL + cellW;
+        const a = hs[j * (N + 1) + i], b = hs[j * (N + 1) + i + 1];
+        const c = hs[(j + 1) * (N + 1) + i + 1], d = hs[(j + 1) * (N + 1) + i];
+        let idx = 0;
+        if (a >= level) idx |= 1;
+        if (b >= level) idx |= 2;
+        if (c >= level) idx |= 4;
+        if (d >= level) idx |= 8;
+        if (idx === 0 || idx === 15) continue;
+        const pts = [];
+        if (((idx & 1) !== 0) !== (((idx >> 1) & 1) !== 0))
+          pts.push({ x: xL + cellW * (level - a) / (b - a), z: zT });
+        if ((((idx >> 1) & 1) !== 0) !== (((idx >> 2) & 1) !== 0))
+          pts.push({ x: xR, z: zT + cellW * (level - b) / (c - b) });
+        if ((((idx >> 3) & 1) !== 0) !== (((idx >> 2) & 1) !== 0))
+          pts.push({ x: xL + cellW * (level - d) / (c - d), z: zB });
+        if (((idx & 1) !== 0) !== (((idx >> 3) & 1) !== 0))
+          pts.push({ x: xL, z: zT + cellW * (level - a) / (d - a) });
+        if (pts.length >= 2) segs.push([pts[0], pts[1]]);
+        if (pts.length === 4) segs.push([pts[2], pts[3]]);
+      }
+    }
+    return segs;
+  }
+
+  // contours
+  ctx.lineCap = 'round';
+  for (let level = 10; level <= maxH; level += 10) {
+    const isIndex = level % 50 === 0;
+    const segs = msSegs(level);
+    ctx.strokeStyle = isIndex ? '#2f2f2f' : '#8a8a8a';
+    ctx.lineWidth = isIndex ? 1.2 : 0.55;
+    ctx.beginPath();
+    for (const s of segs) {
+      ctx.moveTo(X(s[0].x), Y(s[0].z));
+      ctx.lineTo(X(s[1].x), Y(s[1].z));
+    }
+    ctx.stroke();
+    if (isIndex) {  // sparse elevation labels on index contours
+      ctx.font = '10px Consolas, monospace';
+      ctx.textAlign = 'center';
+      for (let k = 60; k < segs.length; k += 140) {
+        const mxp = (X(segs[k][0].x) + X(segs[k][1].x)) / 2;
+        const myp = (Y(segs[k][0].z) + Y(segs[k][1].z)) / 2;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(mxp - 11, myp - 6, 22, 11);
+        ctx.fillStyle = '#2f2f2f';
+        ctx.fillText(String(level), mxp, myp + 3);
+      }
+    }
+  }
+  // coastline
+  {
+    const segs = msSegs(0.05);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (const s of segs) {
+      ctx.moveTo(X(s[0].x), Y(s[0].z));
+      ctx.lineTo(X(s[1].x), Y(s[1].z));
+    }
+    ctx.stroke();
+  }
+
+  // grid + edge labels
+  const kmN = def.size / 1000;
+  ctx.font = '11px Consolas, monospace';
+  for (let k = 0; k <= kmN; k++) {
+    const px = mx0 + k / kmN * mapPx, py = my0 + k / kmN * mapPx;
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(px, my0); ctx.lineTo(px, my0 + mapPx);
+    ctx.moveTo(mx0, py); ctx.lineTo(mx0 + mapPx, py);
+    ctx.stroke();
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    const eKm = Math.round((CONFIG.MAP.originE + def.x0 + 5000) / 1000 + k);
+    const nKm = Math.round((CONFIG.MAP.originN + 5000 - def.z0) / 1000 - k);
+    ctx.fillText(String(eKm), px, my0 - 5);
+    ctx.fillText(String(eKm), px, my0 + mapPx + 14);
+    ctx.textAlign = 'right';
+    ctx.fillText(String(nKm), mx0 - 4, py + 4);
+    ctx.textAlign = 'left';
+    ctx.fillText(String(nKm), mx0 + mapPx + 4, py + 4);
+  }
+  // neatline
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1.6;
+  ctx.strokeRect(mx0, my0, mapPx, mapPx);
+
+  // symbols
+  const inExtent = p => p.x >= def.x0 && p.x <= def.x0 + def.size &&
+                        p.z >= def.z0 && p.z <= def.z0 + def.size;
+  ctx.font = 'bold 11px Consolas, monospace';
+  ctx.textAlign = 'left';
+  if (inExtent(OP)) {
+    const ox = X(OP.x), oz = Y(OP.z);
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.moveTo(ox, oz - 8); ctx.lineTo(ox - 7, oz + 6); ctx.lineTo(ox + 7, oz + 6);
+    ctx.closePath(); ctx.fill();
+    ctx.fillText(`OP  ${gridOf(OP.x, OP.z)}  ELEV ${Math.round(OP.h)} M`, ox + 10, oz + 4);
+  }
+  for (const kp of (Scenario.kps || [])) {
+    if (!inExtent(kp)) continue;
+    const kx = X(kp.x), kz = Y(kp.z);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(kx - 6, kz - 6); ctx.lineTo(kx + 6, kz + 6);
+    ctx.moveTo(kx - 6, kz + 6); ctx.lineTo(kx + 6, kz - 6);
+    ctx.stroke();
+    ctx.fillStyle = '#000';
+    ctx.fillText(`AB${kp.id}`, kx + 9, kz + 4);
+  }
+  if (answer && Scenario.enemy && inExtent(Scenario.enemy)) {
+    const tx = X(Scenario.enemy.x), tz = Y(Scenario.enemy.z);
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(tx, tz, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(tx, tz, 11, 0, Math.PI * 2);
+    ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.fillText('TGT', tx + 14, tz + 4);
+  }
+
+  // title block
+  ctx.fillStyle = '#000';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 24px Consolas, monospace';
+  ctx.fillText('SHITFIRE — PROCEDURAL ISLAND TRAINING SHEET', W / 2, 46);
+  ctx.font = '13px Consolas, monospace';
+  ctx.fillText(`${def.name}  ·  SCALE 1:${def.scale.toLocaleString('en-US')}  ·  GRID 1000 M  ·  CONTOUR INTERVAL 10 M (INDEX 50 M)`, W / 2, 72);
+  if (answer)
+    ctx.fillText(`ANSWER KEY — TARGET: GRID ${gridOf(Scenario.enemy.x, Scenario.enemy.z)} (${SCN_META[Scenario.type].name}${Scenario.type === 'convoy' ? ', POSITION AT PRINT TIME' : ''})`, W / 2, 94);
+
+  // marginal data
+  const by = my0 + mapPx + 40;
+  ctx.textAlign = 'left';
+  ctx.font = '12px Consolas, monospace';
+  // scale bar
+  const pxPerM = mapPx / def.size;
+  const barSeg = 500, barSegs = def.size === 10000 ? 4 : 2;
+  const bx0 = mx0, bh = 10;
+  for (let s = 0; s < barSegs; s++) {
+    ctx.fillStyle = s % 2 ? '#fff' : '#000';
+    ctx.fillRect(bx0 + s * barSeg * pxPerM, by, barSeg * pxPerM, bh);
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+    ctx.strokeRect(bx0 + s * barSeg * pxPerM, by, barSeg * pxPerM, bh);
+  }
+  ctx.fillStyle = '#000';
+  for (let s = 0; s <= barSegs; s++) {
+    ctx.textAlign = 'center';
+    ctx.fillText(String(s * barSeg), bx0 + s * barSeg * pxPerM, by + 26);
+  }
+  ctx.textAlign = 'left';
+  ctx.fillText('METERS', bx0 + barSegs * barSeg * pxPerM + 14, by + 10);
+  ctx.fillText('READ GRIDS RIGHT, THEN UP. 6-DIGIT GRID = 100 M PRECISION (ARTILLERY).', bx0, by + 48);
+  ctx.fillText('SHEET GENERATED FROM THE SIM HEIGHTFIELD H(x,z) — PAPER AND WORLD CORRELATE EXACTLY.', bx0, by + 66);
+  // declination diagram
+  const dcx = W - 330, dcy = by + 10;
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(dcx, dcy + 52); ctx.lineTo(dcx, dcy);
+  ctx.moveTo(dcx, dcy); ctx.lineTo(dcx - 4, dcy + 9);
+  ctx.moveTo(dcx, dcy); ctx.lineTo(dcx + 4, dcy + 9);
+  const mnA = 2 * Math.PI / 180;
+  ctx.moveTo(dcx, dcy + 52);
+  ctx.lineTo(dcx + Math.sin(mnA) * 52, dcy + 52 - Math.cos(mnA) * 52);
+  ctx.stroke();
+  ctx.font = '11px Consolas, monospace';
+  ctx.fillText('GN', dcx - 22, dcy + 8);
+  ctx.fillText('MN', dcx + 12, dcy + 8);
+  ctx.fillText('GM ANGLE 2°E (≈36 MILS)', dcx - 60, dcy + 74);
+  // legend
+  const lx = W - 330, ly = by + 100;
+  ctx.beginPath();
+  ctx.moveTo(lx + 6, ly - 8); ctx.lineTo(lx, ly + 4); ctx.lineTo(lx + 12, ly + 4);
+  ctx.closePath(); ctx.fillStyle = '#000'; ctx.fill();
+  ctx.fillText('OBSERVATION POST', lx + 22, ly + 2);
+  ctx.beginPath();
+  ctx.moveTo(lx, ly + 14); ctx.lineTo(lx + 12, ly + 26);
+  ctx.moveTo(lx, ly + 26); ctx.lineTo(lx + 12, ly + 14);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.8; ctx.stroke();
+  ctx.fillText('KNOWN / REGISTRATION POINT', lx + 22, ly + 24);
+  ctx.fillText('ENEMY POSITIONS NOT PLOTTED', lx + 22, ly + 46);
+  ctx.font = '10px Consolas, monospace';
+  ctx.fillText(`TERRAIN SEED ${CONFIG.SEED.terrain} · MISSION SEED ${CONFIG.SEED.mission} · SHITFIRE FO TRAINER`, mx0, PH - 18);
+}
+
+function toggleLibrary(force) {
+  const on = force !== undefined ? force : !libEl.classList.contains('on');
+  if (on) {
+    renderSheet();
+    refreshLibButtons();
+    if (document.exitPointerLock) document.exitPointerLock();
+  }
+  libEl.classList.toggle('on', on);
+}
+function refreshLibButtons() {
+  document.querySelectorAll('#libctl [data-sheet]').forEach(b =>
+    b.classList.toggle('sel', b.dataset.sheet === libSheet));
+}
+document.querySelectorAll('#libctl [data-sheet]').forEach(b =>
+  b.addEventListener('click', () => { libSheet = b.dataset.sheet; refreshLibButtons(); renderSheet(); }));
+document.getElementById('libkey').addEventListener('change', renderSheet);
+document.getElementById('libsave').addEventListener('click', () => {
+  const a = document.createElement('a');
+  const answer = document.getElementById('libkey').checked;
+  a.download = `SHITFIRE_${libSheet.toUpperCase()}${answer ? '_ANSWERKEY' : ''}.png`;
+  a.href = sheetCv.toDataURL('image/png');
+  a.click();
+});
+document.getElementById('libprint').addEventListener('click', () => {
+  const img = document.getElementById('printimg');
+  img.onload = () => { window.print(); img.onload = null; };
+  img.src = sheetCv.toDataURL('image/png');
+});
+
 /* ============================================================ MISSION MENU [K] */
 const menuEl = document.getElementById('menu');
 function renderMenu() {
@@ -1936,6 +2247,7 @@ document.addEventListener('keydown', e => {
     aarEl.classList.remove('on');
     mapEl.classList.remove('on');
     menuEl.classList.remove('on');
+    libEl.classList.remove('on');
     return;
   }
   if (e.code === 'Space') {
@@ -1947,6 +2259,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'l') doLase();
   else if (k === 'm') toggleMap();
   else if (k === 'k') toggleMenu();
+  else if (k === 'p') toggleLibrary();
   else if (k === 'v') {
     CONFIG.VOICE.ttsEnabled = !CONFIG.VOICE.ttsEnabled;
     if (!CONFIG.VOICE.ttsEnabled && 'speechSynthesis' in window) speechSynthesis.cancel();
