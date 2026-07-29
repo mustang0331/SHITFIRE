@@ -82,13 +82,28 @@ different item #27s and two different #28s. Backlog lives here now, with stable 
 Decided 2026-07-29: **graphics overhaul → stage 12 remainder → stage 11 (Epilogue).**
 
 **Revised 2026-07-29 (user directive, "finish the entire build out"):** Track E — observation and
-target acquisition — is inserted **ahead of the rest of stage 13**. Order is now
-**E1–E3 → E4–E7 → 13d–13i → stage 12 remainder → stage 11 → stage 14 + fixes.** Rationale: an
-observer who cannot see or find the target is a broken trainer, so legibility outranks beautification.
+target acquisition — is inserted **ahead of the rest of stage 13**. Rationale: an observer who cannot
+see or find the target is a broken trainer, so legibility outranks beautification. **Track E is now
+closed** (E1–E7 all shipped).
+
+**Revised again 2026-07-29, same reasoning applied to real play:** Track G (the user's feedback
+notebook) is inserted ahead of the rest of stage 13. Order is now
+
+**~~E1–E7~~ ✅ → Track G → 13d–13i → stage 12 remainder → stage 11 → stage 14 + Track F**
+
+Track G outranks beautification because it came from someone actually flying the trainer, and because
+several of its rows are doctrine correctness rather than polish. Where a Track G row overlaps an
+existing one (G14 ⊃ 12g, G18 → 12k, G12 vs CLAUDE.md), **Track G wins** — see that track's notes.
 
 Stage *numbers* are stable identifiers — they map to commit messages and, in one case, to a string
-inside the code ([index.html:3691](index.html#L3691) carries `blurb: 'stage 11'`). They are **not**
-the shipping order. Stage 13 ships before stage 12; that is intentional and this table is why.
+inside the code (`SHITFIRE.html` carries `blurb: 'stage 11'`). They are **not** the shipping order.
+Stage 13 ships before stage 12; that is intentional and this table is why.
+
+**⚠ The file is now `SHITFIRE.html`, not `index.html`** (renamed by the user 2026-07-29, recorded as a
+rename in `f4e7ad8`). CLAUDE.md's "One `index.html`" rule is unchanged in *intent* — one self-contained
+file, no build step — but its wording and the references in README/SPEC/QUICKSTART/GRAPHICS are stale
+until the docs sweep runs. Line-number references anywhere on this board predate the rename and have
+drifted by the E4–E7 insertions; **locate by symbol, not by line**.
 
 ### Track A — Stage 13: Visual overhaul ← **ACTIVE**
 
@@ -122,11 +137,16 @@ practise the skill the app exists to teach.
 |---|---|---|---|---|
 | E1 | **Target legibility** — angular-size floor so a figure never falls under a minimum subtense; contrast against jungle/sand; contact disc so figures don't merge into terrain | Opus | Figures countable at 3200 m · **civ/mil discrimination improved, never degraded** | **DONE** `ffc2076` ⚠ needs Chrome |
 | E2 | **SALUTE / activity spot report** — cues the observer onto the target *area* without handing over the grid; difficulty-scaled vagueness; landmark- or sector-referenced | Opus | Orients the observer; never gives the 6/8-digit answer; doesn't tread on the readback | **DONE** `ec4d343` ⚠ needs Chrome |
-| E3 | **Night TOD + NVG / thermal optics** — `night` in TOD_TABLE; DAY/NVG/THERMAL cycle; thermal white-hot so figures read against cold terrain | Opus | Usable at night; **no EffectComposer**; civ/mil discrimination survives in every mode; doesn't trivialise day | IN PROGRESS |
-| E4 | **Asphalt roads** distinct from dirt tracks, in-world | Opus | Metalled routes visually distinct from dirt paths | READY |
-| E5 | **Roads on the `[M]` map and the printed sheets** — currently absent from the map despite being a terrain-association anchor | Opus | Road network legible on both, with legend symbols | READY |
-| E6 | **Settlement hierarchy** — small villages, larger towns, and the airfield, all plotted on map + sheets | Opus | Three distinct settlement scales readable in-world and on paper | READY |
-| E7 | **Rock formations / boulder piles** for terrain association | Opus | Distinctive, resectable off the map; placed by the seeded PRNG | READY |
+| E3 | **Night TOD + NVG / thermal optics** — `night` in TOD_TABLE; DAY/NVG/THERMAL cycle on `[O]`; thermal white-hot so figures read against cold terrain | Opus | Usable at night; **no EffectComposer**; civ/mil discrimination survives in every mode; doesn't trivialise day | **DONE** `ef9d473` ⚠ needs Chrome |
+| E4 | **Asphalt roads** distinct from dirt tracks, in-world | Opus | Metalled routes visually distinct from dirt paths | **DONE** `830d3cc` ⚠ needs Chrome |
+| E5 | **Roads on the `[M]` map and the printed sheets** — currently absent from the map despite being a terrain-association anchor | Opus | Road network legible on both, with legend symbols | **DONE** `cee195f` ⚠ needs Chrome |
+| E6 | **Settlement hierarchy** — small villages, larger towns, and the airfield, all plotted on map + sheets | Opus | Three distinct settlement scales readable in-world and on paper | **DONE** `0d2eaed` ⚠ needs Chrome |
+| E7 | **Rock formations / boulder piles** for terrain association | Opus | Distinctive, resectable off the map; placed by the seeded PRNG | **DONE** `ddd22f9` ⚠ needs Chrome |
+
+**Track E is closed.** All seven rows shipped 2026-07-29. Every one carries a ⚠ — the maths is
+harnessed but nothing in this track has been seen in Chrome, and the whole track is *about* what things
+look like. See §6 for the consolidated visual-QA list; that list is the gate on calling Track E verified
+rather than merely built.
 
 E4–E7 all serve the same end: **terrain association**. CLAUDE.md already requires permanent structures
 and roads on both the printed sheets and `[M]` with symbols and a legend so the observer can resect off
@@ -213,6 +233,70 @@ so continuing on this board is not wasted work if the port later goes ahead.
 **F1 is a correctness bug in the doctrine the app exists to teach.** Recommend landing it alongside
 13a as the other small, high-value, low-risk fix.
 
+### Track G — User feedback notebook (source: [user_feedback.md](user_feedback.md), 2026-07-29)
+
+Raw feedback from the user playing the build. **[user_feedback.md](user_feedback.md) is the user's
+notebook and stays theirs** — this track is my triage of it, not a replacement for it. Nothing is
+deleted from the notebook when a row ships; the row records it here.
+
+This is the highest-value input on the board. Track A/B rows were written from a spec; these were written
+by someone flying the trainer and hitting the edges. **Track G outranks the rest of stage 13** for the
+same reason Track E did: several of these are doctrine correctness, and one (G7) means the FO can
+currently practise a procedure the real fire net would reject.
+
+Grouped by kind, because the risk profiles are completely different. **G-A** are self-contained UI/QoL
+fixes. **G-B** are doctrine corrections and need DOCTRINE.md / JFIRE consulted first — several change
+what the parser accepts and what the FDC says, which is the app's whole reason to exist. **G-C** are
+structural and want a decision before code.
+
+#### G-A — UI, optics and instrumentation (self-contained, ship first)
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| G1 | **Remove the watchtower rail/fence** — it obstructs the observer's view from the OP | Opus | View from the OP unobstructed at every heading; tower still reads as a structure | **NEXT** |
+| G2 | **Magnetic vs true azimuth.** Map is true mil; everything the *observer* reads — compass, laser, HUD heading — should be **magnetic**, declination **+7°**. One conversion at the display boundary, not scattered. | Opus | Grid azimuth on the sheet and magnetic on the HUD differ by exactly 7° (124.4 mils); CFF traffic uses the correct one per DOCTRINE.md; no double-application | READY |
+| G3 | **Dispersion toggle** — turn off round error variance for testing. User-requested explicitly as a test aid. | Opus | Toggle makes `impact === aimpoint`; **flagged in the AAR and TLOG so a no-dispersion run can never be mistaken for a graded one** | READY |
+| G4 | **Binocular FOV + two more zoom levels**, with the mil reticle staying **true at every level** | Opus | Mil graduations measure correctly at all zoom levels (a mil is a mil, or the reticle is a lie); FOV/zoom relationship stated in one place | READY |
+| G5 | **Mil card renders behind the chat terminal** — z-order bug | Opus | Card fully visible with the terminal open | READY |
+| G6 | **Chat terminal draggable + resizable** — it takes up too much space | Opus | Draggable, resizable, position persisted; never covers the reticle centre by default | READY |
+
+#### G-B — Doctrine corrections (read DOCTRINE.md first; several need JFIRE)
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| G7 | **OT factor is not transmitted.** It is the *observer's* own correction arithmetic. OT **direction** is the thing that goes to the FDC, and only on **grid** missions. The trainer currently conflates them. | Opus | OT factor never appears in observer→FDC traffic; OT direction required on grid missions only; 12b's mil-relation workflow still teaches the factor as an observer tool | READY |
+| G8 | **No OT direction → the battery cannot compute the correction.** On a grid mission, if OT direction was never sent before the first adjusting round, the FDC must be *unable* to execute the adjustment — not silently accept it. | Opus | Grid mission without OT direction blocks at the adjust step with a doctrinally correct refusal, not a generic parse error | READY |
+| G9 | **Polar missions need a POS REP first** — the FDC cannot resolve a polar call without the observer's own location | Opus | Polar mission requires position report before the call is accepted; DOCTRINE.md updated to match | READY |
+| G10 | **Initial firing-element status request** before the first mission — round count, location, munition types, number of guns. Not repeated afterwards. **Consult JFIRE for the correct name and format** — the user is explicit that they are unsure what this initial exchange is called, and that the in-mission MTO must stay untouched. | Opus | Correct doctrinal name and format sourced from JFIRE and recorded in DOCTRINE.md *before* implementation; in-mission MTO unchanged | RESEARCH FIRST |
+| G11 | **Observer must read the MTO back** to the FDC — word-for-word intent, but accept a correct-gist readback | Opus | Readback required; gist-level match accepted; strict mode grades it tighter | READY |
+| G12 | **Fratricide fails the mission but must NOT auto-end it.** Currently ends immediately. The mission still has to be *finished* — target destroyed / neutralized / suppressed — it is simply a failure when it ends. Same question applies to collateral damage. | Opus | Friendly hit = recorded failure + 0★, mission continues to a real conclusion; CLAUDE.md's auto-fail rule reworded from "auto-end" to "auto-fail" | READY |
+| G13 | **Effects criteria and casualty radii are probably too small.** Needs **destroyed / neutralized / suppressed** as distinct outcomes with distinct criteria, per JFIRE. Give the observer the option to **continue the mission if the target is only suppressed**. | Opus | Three graded outcomes with sourced radii/criteria; "suppressed" offers continue-or-end; `effectRadius`/`hitsToNeutralize` replaced by the graded model | RESEARCH FIRST |
+| G14 | **Immediate suppression *and* immediate smoke are one-transmission calls.** Supersedes and widens row **12g**, which covered suppression only. Live transcript evidence of a player hitting this: [DIALOGUE_REVISIONS.md §9.3](DIALOGUE_REVISIONS.md). | Opus | Both parse as a single transmission; FDC skips the MTO per DOCTRINE.md | READY |
+| G15 | **Sheaf selection** — needed most for convoys and bunkers. If the observer does not specify, **the FDC chooses from the target description**. | Opus | Sheaf accepted when given, inferred when not, and the inference is explainable in the AAR | READY |
+| G16 | **Fuze selection** — airburst for troops in the open, delay for bunkers; FDC infers if unspecified. Follow the doctrine PDFs. | Opus | Fuze accepted/inferred; choice affects the graded effect, not just the text | READY |
+| G17 | **60mm and artillery need different callsigns.** Currently both talk to HELLHOUND FIRES. | Opus | Distinct callsign per asset; NARRATIVE.md updated so the name is story-consistent | READY |
+| G18 | **60mm and artillery need different effective radii.** A mortar round and a 155 do not do the same thing. Research required. | Opus | Per-asset effect radius sourced and recorded; interacts with G13 — **land G13 first** | RESEARCH FIRST |
+| G19 | **Full CFF protocol audit** — the user reports "inconsistencies" without enumerating them. Read DOCTRINE.md against the parser and the FDC script end to end and produce a findings list before changing anything. Likely absorbs parts of G7–G11. | Opus | Written findings list, each item either fixed or logged as its own row | AUDIT |
+
+#### G-C — Structural (decide before coding)
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| G20 | **The 10×10 km map may be too small** — an 800 m correction runs out of world. Affects `CONFIG.MAP.size`, terrain, the DEM pipeline, the printed sheet scale and every grid in every fixed-seed chapter. **Costed and decided before any code**: a size change may invalidate saved chapter seeds. | Opus | Decision recorded here with the seed-compatibility consequence stated; only then implemented | DECIDE |
+| G21 | **Do target location cues stay accurate when a new DEM is loaded?** User's open question. Verify — do not assume. Covers the E2 spot report, `nearestLandmark`, known points and the printed sheet. | Opus | Answered with evidence against a real loaded DEM (`KOFA_KING_VALLEY_FO_HEIGHTMAP.png` is in the tree); any drift fixed or logged | AUDIT |
+
+**Recommended order:** G1 → G5 → G3 → G2 → G4 → G6 (all of G-A, cheap and immediately felt), then **G19
+audit** and **G10/G13 research** before touching G7–G18, because the audit will likely rewrite those
+rows. G20/G21 last — G20 is a decision, not a task.
+
+**Two rows contradict documents that currently outrank them, and the documents lose:**
+- **G12 vs CLAUDE.md.** CLAUDE.md says fratricide is an "automatic mission fail". The user's correction
+  is that *fail* and *end* are different things. The rule becomes: fratricide and collateral damage
+  auto-**fail** (0★, permanently), but the mission runs to a real conclusion. CLAUDE.md needs the
+  wording change as part of G12's doc commit.
+- **G14 vs row 12g.** 12g is narrower than the truth (suppression only, and marked `BLOCKED by 13`).
+  G14 supersedes it; 12g should be struck when G14 lands rather than both being carried.
+
 ---
 
 ## 4. Definition of done (every row)
@@ -220,7 +304,7 @@ so continuing on this board is not wasted work if the port later goes ahead.
 1. Gate in the table passes.
 2. 60 fps held; no per-frame allocation added.
 3. Stable interfaces unchanged in shape: `H(x,z)` · `fireMission` · `applyCorrection` · `FDC.say` ·
-   `Scenario` · `gradeMission` · `TLOG` ([index.html:3916](index.html#L3916)).
+   `Scenario` · `gradeMission` · `TLOG` (in `SHITFIRE.html`; locate by symbol).
 4. Ballistics untouched — `impact = aimpoint + error`. No trajectory, no angle-T, no gun-line rotation.
 5. Fratricide and collateral damage still auto-fail.
 6. Committed with the row ID as the message prefix.
@@ -228,7 +312,31 @@ so continuing on this board is not wasted work if the port later goes ahead.
 
 ---
 
-## 5. Change log
+## 5. ⚠ Needs-Chrome visual QA — the open gate on Tracks A and E
+
+Nine shipped rows are gated on something no harness can check. Everything below was verified by
+measurement or by parse; **none of it has been seen running.** This is one pass in Chrome, ~15 minutes,
+and it closes all of it. Take a mission on the default island (terrain seed 1337) and check, in order:
+
+| # | Row | What to look at | What would be a regression |
+|---|---|---|---|
+| 1 | 13c | The horizon | A visible band or seam where the sky meets the fog |
+| 2 | 13b/13c | Open `[M]`, then `[P]` and print-preview a sheet | Any colour tint bleeding onto the map or the sheet — they are separate 2D canvases and should be untouched |
+| 3 | E1 | Troops at 1500 m and at 3200 m through binos | Cannot count figures; **or civilians and soldiers becoming harder to tell apart** — that one is a hard fail, not a nit |
+| 4 | E3 | `[O]` through DAY → NVG → THERMAL, at night and in daylight | Civ/mil discrimination lost in any mode; either device useless at night; either device *better* than the naked eye in full day |
+| 5 | E4 | An asphalt route beside a dirt track, from the OP | The two classes not obviously different at range |
+| 6 | E4/E3 | Asphalt in THERMAL after dark | Sealed road not reading warm against cool ground — it is meant to be a teachable cue |
+| 7 | E5 | Compare a road bend on `[M]` against the same bend in the world | The paper and the world disagreeing about where a road goes |
+| 8 | E6 | The town from ~2–3 km | Not unmistakably a *town* rather than a big village; civilian areas not obvious |
+| 9 | E7 | A boulder field at 1500–3200 m, and its symbol on both surfaces | Piles reading as noise instead of one identifiable feature; symbol illegible at `[M]` scale; symbol confusable with the fuel-point circle |
+| 10 | E7 | A named outcrop in a SALUTE report vs. its label on the sheet | Net name and sheet label disagreeing |
+
+Anything that fails here becomes a Track F row, not a silent revert. Anything that passes flips its ⚠
+off in the tables above.
+
+---
+
+## 6. Change log
 
 | Date | Change |
 |---|---|
@@ -239,4 +347,8 @@ so continuing on this board is not wasted work if the port later goes ahead.
 | 2026-07-29 | **13b** `d586e54` code landed; visual gate left open pending Chrome. GRAPHICS.md G0.2 corrected — its "ACES desaturates midtones, bump the greens" guidance was measured false against this palette, so `satComp` ships neutral instead of 1.12. The CPU background pre-tone (`acesFilmic()`) was not in the original plan; it is now a stated requirement for 13c. |
 | 2026-07-29 | **13b visual gate closed** — user confirmed the render reads good in Chrome. `satComp` stays neutral at 1.0. Row is DONE. |
 | 2026-07-29 | **Model split changed: sim code → Opus, worked directly. Fable is out of credits on this account, so dispatching to it fails outright.** CLAUDE.md, this file's rule 6, and QUICKSTART updated; owner column swept. `Fable` in commit messages before this date is history, not instruction. |
+| 2026-07-29 | **Track E closed** — E3 `ef9d473`, E4 `830d3cc`, E5 `cee195f`, E6 `0d2eaed`, E7 `ddd22f9`. All seven rows shipped; all carry ⚠, since the track is entirely about appearance and none of it has been seen in Chrome. New §5 collects that QA into one 15-minute pass. |
+| 2026-07-29 | **`index.html` → `SHITFIRE.html`**, renamed by the user, recorded as a git rename in `f4e7ad8` (staged from HEAD's exact blob so the diff is a pure path change and `--follow` still reaches all history). CLAUDE.md's first golden rule and the references in README/SPEC/QUICKSTART/GRAPHICS are stale until the docs sweep. |
+| 2026-07-29 | **A working JS syntax gate exists now** (`scratchpad/syntaxgate.ps1`): extracts the inline module, strips the imports, wraps it in `if (false) {}` and loads it as a classic script in headless Chrome, so a syntax error is reported as the early error it is while a clean parse executes nothing. Its first version used `new Function(src)` and was **worthless** — that compiles lazily, so it reported OK on a deliberately broken file. Both directions are now verified against an injected unbalanced paren, which it caught and located to the exact line. Every code row from E7 on should run it. |
+| 2026-07-29 | **Track G added** from [user_feedback.md](user_feedback.md) — 21 rows of feedback from the user actually flying the build, triaged into UI (G1–G6), doctrine (G7–G19) and structural (G20–G21). Inserted ahead of the rest of stage 13. Three rows need doctrine research before code (G10, G13, G18) and one is a decision, not a task (G20). Two supersede existing authority: **G12** overrides CLAUDE.md's "automatic mission fail" wording — fratricide *fails* the mission but must not *end* it — and **G14** supersedes the narrower row 12g. |
 | 2026-07-29 | Reviewed the three newer `Dialogue History/` transcripts (08-48, 12-56, 18-05). Added **F5** (STT/typo tolerance in adjust corrections), **F6** ("danger clothes" fuzzy-match), **F7** (readback duplicates DANGER CLOSE) to Track F, all found by reading real play and confirmed against the regexes. Annotated **12g** with live transcript evidence of a player hitting the immediate-suppression gap. Detail in [DIALOGUE_REVISIONS.md §9](DIALOGUE_REVISIONS.md). |
