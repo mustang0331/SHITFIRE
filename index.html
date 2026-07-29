@@ -83,6 +83,21 @@
     letter-spacing: .14em; color: #dfe8c8; margin-bottom: 8px; }
   #mapcv { display: block; background: #1E5A7A; border: 1px solid #39442e; }
   #maplegend { margin-top: 8px; font-size: 11.5px; color: #9fb08c; line-height: 1.5; }
+
+  /* Mission menu */
+  #menu { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.5); z-index: 11; }
+  #menu.on { display: flex; }
+  #menubox { width: 580px; max-width: 92vw; padding: 18px 24px; font-size: 13px; }
+  #menubox h2 { margin: 0 0 10px; font-size: 16px; letter-spacing: .15em; color: #dfe8c8; }
+  #menubox .mlabel { font-size: 11px; letter-spacing: .14em; color: #8fa387; margin: 6px 0 4px; }
+  #menubox .mrow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .mbtn { background: #1a2114; border: 1px solid #39442e; color: #cfe0bd;
+    font: inherit; padding: 7px 10px; cursor: pointer; letter-spacing: .06em; }
+  .mbtn:hover { background: #2a3520; }
+  .mbtn.sel { background: #39482a; color: #ffe9a8; border-color: #5a6b42; }
+  #mbest { color: #9fb08c; font-size: 11.5px; line-height: 1.6; margin: 8px 0; }
+  #menubox .foot { color: #8fa387; font-style: italic; font-size: 11.5px; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -120,7 +135,7 @@
 
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
-  [B] BINOS &middot; [L] LASE &middot; [M] MAP &middot; [V] FDC VOICE &middot; [N] NEW MISSION
+  [B] BINOS &middot; [L] LASE &middot; [M] MAP &middot; [K] MENU &middot; [V] VOICE &middot; [N] RANDOM MSN
 </div>
 
 <div id="map"><div id="mapbox" class="panel">
@@ -131,6 +146,16 @@
 </div></div>
 
 <div id="aar"><div id="aarbox" class="panel"></div></div>
+
+<div id="menu"><div id="menubox" class="panel">
+  <h2>MISSION MENU</h2>
+  <div class="mlabel">SCENARIO</div>
+  <div class="mrow" id="mtypes"></div>
+  <div class="mlabel">DIFFICULTY</div>
+  <div class="mrow" id="mdiffs"></div>
+  <div id="mbest"></div>
+  <div class="foot">[K] / [ESC] close &middot; [N] random mission</div>
+</div></div>
 
 <script type="module">
 import * as THREE from 'three';
@@ -163,7 +188,16 @@ const CONFIG = {
                              'david', 'mark', 'guy', 'male', 'en-us', 'english'] },
   UI: { laseHold: 6 },
 };
-const DIFFICULTY = 'normal';
+let DIFFICULTY = 'normal';
+let currentType = 'strongpoint';
+const SCN_META = {
+  strongpoint: { name: 'POSITION UNDER ATTACK' },
+  troops:      { name: 'TROOPS IN THE OPEN' },
+  bunker:      { name: 'DUG-IN BUNKER' },
+  convoy:      { name: 'CONVOY — MOVING TARGET' },
+  assault:     { name: 'COMBINED ARMS ASSAULT — DANGER CLOSE' },
+};
+const SCN_TYPES = Object.keys(SCN_META);
 const MILS_PER_RAD = 6400 / (Math.PI * 2);
 
 /* ============================================================ PRNG + NOISE */
@@ -398,7 +432,9 @@ const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [],
   const vehGeo = new THREE.BoxGeometry(4.6, 2.1, 2.3);
   const hutGeo = new THREE.BoxGeometry(7, 3.2, 5);
   for (let i = 0; i < 8; i++) { const m = new THREE.Mesh(troopGeo, troopMat); scene.add(m); units.troops.push(m); }
-  for (let i = 0; i < 2; i++) { const m = new THREE.Mesh(vehGeo, vehMat); scene.add(m); units.vehicles.push(m); }
+  for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(vehGeo, vehMat); scene.add(m); units.vehicles.push(m); }
+  units.vehMatAlive = vehMat;
+  units.vehMatDead = new THREE.MeshLambertMaterial({ color: 0x211D18, flatShading: true });
   for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(hutGeo, hutMat); scene.add(m); units.huts.push(m); }
   const pole = new THREE.Mesh(new THREE.BoxGeometry(0.3, 7, 0.3),
     new THREE.MeshLambertMaterial({ color: 0x8a8a80 }));
@@ -426,37 +462,121 @@ const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [],
     m.visible = false;
     scene.add(m); units.kpPosts.push(m);
   }
+  // friendly squad (assault scenario)
+  units.fSquad = [];
+  const fMat = new THREE.MeshLambertMaterial({ color: 0x4A6EA8, flatShading: true });
+  for (let i = 0; i < 6; i++) {
+    const m = new THREE.Mesh(troopGeo, fMat);
+    m.visible = false;
+    scene.add(m); units.fSquad.push(m);
+  }
+  // bunker
+  units.bunker = new THREE.Mesh(new THREE.BoxGeometry(7, 2.6, 7),
+    new THREE.MeshLambertMaterial({ color: 0x6E665C, flatShading: true }));
+  units.bunker.visible = false;
+  scene.add(units.bunker);
+  // vehicle burn flames
+  units.flames = [];
+  const flameMat = new THREE.SpriteMaterial({ color: 0xFF9A40,
+    blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+  for (let i = 0; i < 4; i++) {
+    const s = new THREE.Sprite(flameMat);
+    s.scale.setScalar(3.5); s.visible = false;
+    scene.add(s); units.flames.push(s);
+  }
 }
 let enemyAlive = true;
 
 /* ============================================================ SCENARIO */
 let Scenario = null;
 
-function genScenario(seed) {
+function genScenario(type, seed) {
   const rng = mulberry32((seed * 2654435761 ^ CONFIG.SEED.terrain) >>> 0);
   const M = CONFIG.MISSION;
-  let compound = null, enemy = null;
-  for (let tries = 0; tries < 300 && !enemy; tries++) {
-    const az = rng() * Math.PI * 2;
-    const range = lerp(M.targetRange[0], M.targetRange[1], rng());
-    const cx = OP.x + Math.sin(az) * range, cz = OP.z - Math.cos(az) * range;
-    if (H(cx, cz) < 4) continue;
-    if (!hasLOS(eye.x, eye.y, eye.z, cx, H(cx, cz) + 2, cz)) continue;
-    const eAz = rng() * Math.PI * 2;
-    const eOff = lerp(M.enemyOffset[0], M.enemyOffset[1], rng());
-    const ex = cx + Math.sin(eAz) * eOff, ez = cz - Math.cos(eAz) * eOff;
-    if (H(ex, ez) < 3) continue;
-    if (!hasLOS(eye.x, eye.y, eye.z, ex, H(ex, ez) + 2, ez)) continue;
-    compound = { x: cx, z: cz };
-    enemy = { x: ex, z: ez };
+  const S = { seed, type, difficulty: DIFFICULTY, rng, kps: [], friendlies: [],
+              effectRadius: M.effectRadius, hitsNeed: M.hitsToNeutralize };
+
+  function findSpot(rMin, rMax, hMin, hMax, needLOS) {
+    for (let tries = 0; tries < 300; tries++) {
+      const az = rng() * Math.PI * 2;
+      const range = lerp(rMin, rMax, rng());
+      const x = OP.x + Math.sin(az) * range, z = OP.z - Math.cos(az) * range;
+      const h = H(x, z);
+      if (h < hMin || h > hMax) continue;
+      if (needLOS && !hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) continue;
+      return { x, z };
+    }
+    return null;
   }
-  if (!enemy) { // relax: drop LOS requirement rather than fail
-    const az = rng() * Math.PI * 2, range = 2200;
-    compound = { x: OP.x + Math.sin(az) * range, z: OP.z - Math.cos(az) * range };
-    enemy = { x: compound.x + 200, z: compound.z };
+  const brgTo = p => fmtMils(Math.round(radToMils(azTo(OP.x, OP.z, p.x, p.z)) / 100) * 100 % 6400);
+
+  if (type === 'strongpoint') {
+    let compound = null, enemy = null;
+    for (let tries = 0; tries < 300 && !enemy; tries++) {
+      const c = findSpot(M.targetRange[0], M.targetRange[1], 4, 999, true);
+      if (!c) break;
+      const eAz = rng() * Math.PI * 2;
+      const eOff = lerp(M.enemyOffset[0], M.enemyOffset[1], rng());
+      const ex = c.x + Math.sin(eAz) * eOff, ez = c.z - Math.cos(eAz) * eOff;
+      if (H(ex, ez) < 3) continue;
+      if (!hasLOS(eye.x, eye.y, eye.z, ex, H(ex, ez) + 2, ez)) continue;
+      compound = c; enemy = { x: ex, z: ez };
+    }
+    if (!enemy) {
+      const az = rng() * Math.PI * 2;
+      compound = { x: OP.x + Math.sin(az) * 2200, z: OP.z - Math.cos(az) * 2200 };
+      enemy = { x: compound.x + 200, z: compound.z };
+    }
+    S.compound = compound;
+    S.enemy = enemy;
+    S.friendlies = [{ x: compound.x, z: compound.z, r: M.fratricideRadius }];
+    S.brief = `Friendly strongpoint, grid ${gridOf(compound.x, compound.z)} (bearing ~${brgTo(compound)} mils), is under assault. Locate the attackers pressing it and destroy them without hitting the friendlies.`;
+  } else if (type === 'troops') {
+    S.enemy = findSpot(M.targetRange[0], M.targetRange[1], 2, 14, true) ||
+              { x: OP.x + 2000, z: OP.z };
+    S.brief = `Enemy infantry in the open, reported bearing ~${brgTo(S.enemy)} mils from your OP. A gift. Do not waste it.`;
+  } else if (type === 'bunker') {
+    S.enemy = findSpot(1200, 3000, 22, 140, true) ||
+              findSpot(1200, 3000, 8, 999, true) || { x: OP.x + 1800, z: OP.z };
+    S.effectRadius = 35;
+    S.hitsNeed = 2;
+    S.brief = `Dug-in bunker reported on high ground, bearing ~${brgTo(S.enemy)} mils. The effect radius is tight — put it on the roof.`;
+  } else if (type === 'convoy') {
+    let path = null;
+    for (let tries = 0; tries < 400 && !path; tries++) {
+      const s0 = findSpot(1400, 3200, 1, 10, false);
+      if (!s0) break;
+      const paz = rng() * Math.PI * 2;
+      const dx = Math.sin(paz), dz = -Math.cos(paz);
+      let ok = true, visible = 0;
+      for (let d = 0; d <= 1800; d += 150) {
+        const x = s0.x + dx * d, z = s0.z + dz * d;
+        const h = H(x, z);
+        if (h < 0.5 || h > 16) { ok = false; break; }
+        if (hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) visible++;
+      }
+      if (ok && visible >= 8) path = { sx: s0.x, sz: s0.z, dx, dz, len: 1800 };
+    }
+    if (!path) path = { sx: OP.x + 1500, sz: OP.z, dx: 0, dz: -1, len: 1800 };
+    S.path = path;
+    S.speed = 3.5;
+    S.veh = [0, 1, 2, 3].map(i => ({ off: i * 40, dead: false, x: path.sx, z: path.sz }));
+    S.t0 = sim.now - 220 / S.speed;  // column already strung out on the road
+    S.enemy = { x: path.sx, z: path.sz };
+    S.escaped = false;
+    S.brief = `Enemy convoy, four vehicles, moving on the low ground near grid ${gridOf(path.sx, path.sz)}. Lead the column and time your fire for effect — if the head of the column runs off the end of the road, they are gone.`;
+  } else if (type === 'assault') {
+    S.enemy = findSpot(1600, 3000, 4, 60, true) || { x: OP.x + 2000, z: OP.z };
+    const oAz = azTo(S.enemy.x, S.enemy.z, OP.x, OP.z);  // objective -> OP side
+    S.fStart = { x: S.enemy.x + Math.sin(oAz) * 900, z: S.enemy.z - Math.cos(oAz) * 900 };
+    S.fAdvAz = azTo(S.fStart.x, S.fStart.z, S.enemy.x, S.enemy.z);
+    S.fSpeed = 0.7;
+    S.fHold = 180;
+    S.ft0 = sim.now;
+    S.brief = `Friendly infantry advancing from grid ${gridOf(S.fStart.x, S.fStart.z)} onto an enemy-held objective, bearing ~${brgTo(S.enemy)} mils. This WILL be danger close: your call must include the proword DANGER CLOSE, and a short round lands on our own people.`;
   }
+
   // registration / known points for shift missions
-  const kps = [];
   for (let k = 0; k < 2; k++) {
     for (let tries = 0; tries < 200; tries++) {
       const az = rng() * Math.PI * 2;
@@ -464,48 +584,154 @@ function genScenario(seed) {
       const x = OP.x + Math.sin(az) * range, z = OP.z - Math.cos(az) * range;
       if (H(x, z) < 3) continue;
       if (!hasLOS(eye.x, eye.y, eye.z, x, H(x, z) + 2, z)) continue;
-      if (kps.length && dist2(kps[0].x, kps[0].z, x, z) < 800) continue;
-      if (dist2(x, z, enemy.x, enemy.z) < 400) continue;
-      kps.push({ id: String(1001 + k), x, z });
+      if (S.kps.length && dist2(S.kps[0].x, S.kps[0].z, x, z) < 800) continue;
+      if (dist2(x, z, S.enemy.x, S.enemy.z) < 400) continue;
+      S.kps.push({ id: String(1001 + k), x, z });
       break;
     }
   }
-  return { seed, type: 'position-under-attack', difficulty: DIFFICULTY,
-           compound, enemy, kps, rng };
+  return S;
+}
+
+// Current world positions of all friendly elements (for fratricide + danger close).
+function friendlyPositions() {
+  const S = Scenario;
+  if (!S) return [];
+  if (S.type === 'strongpoint') return S.friendlies;
+  if (S.type !== 'assault') return [];
+  const adv = Math.min(S.fSpeed * (sim.now - S.ft0), 900 - S.fHold);
+  const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
+  const rx = Math.cos(S.fAdvAz), rz = Math.sin(S.fAdvAz);
+  const out = [];
+  for (let i = 0; i < 6; i++) {
+    const l = (i - 2.5) * 8;
+    out.push({ x: S.fStart.x + fx * adv + rx * l,
+               z: S.fStart.z + fz * adv + rz * l, r: 40 });
+  }
+  return out;
+}
+
+// Per-frame scenario dynamics (convoy movement, advancing friendlies).
+function updateScenario() {
+  const S = Scenario;
+  if (!S) return;
+  if (S.type === 'convoy') {
+    const dHead = clamp(S.speed * (sim.now - S.t0), 0, S.path.len);
+    let cxSum = 0, czSum = 0, alive = 0;
+    for (let i = 0; i < S.veh.length; i++) {
+      const v = S.veh[i];
+      if (!v.dead) {
+        const d = clamp(dHead - v.off, 0, S.path.len);
+        v.x = S.path.sx + S.path.dx * d;
+        v.z = S.path.sz + S.path.dz * d;
+        cxSum += v.x; czSum += v.z; alive++;
+      }
+      const m = units.vehicles[i];
+      m.position.set(v.x, H(v.x, v.z) + 1.05, v.z);
+      m.rotation.y = Math.atan2(S.path.dx, S.path.dz) + Math.PI / 2;
+      const fl = units.flames[i];
+      fl.visible = v.dead && ((sim.now * 7 + i) % 1) < 0.6;
+      if (v.dead) fl.position.set(v.x, H(v.x, v.z) + 2.6, v.z);
+    }
+    if (alive) { S.enemy.x = cxSum / alive; S.enemy.z = czSum / alive; }
+    if (dHead >= S.path.len && !S.escaped) {
+      S.escaped = true;
+      if (S.veh.filter(v => !v.dead).length > 1) {
+        log('', 'The convoy has reached the end of the road and dispersed. Mission window closed.', 'sys');
+        if (mission && !mission.done) {
+          mission.done = true; mission.failReason = 'escaped'; mission.tEnd = sim.now;
+          schedule(sim.now + 2, showAAR);
+        }
+      }
+    }
+  } else if (S.type === 'assault') {
+    const adv = Math.min(S.fSpeed * (sim.now - S.ft0), 900 - S.fHold);
+    const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
+    const rx = Math.cos(S.fAdvAz), rz = Math.sin(S.fAdvAz);
+    for (let i = 0; i < units.fSquad.length; i++) {
+      const l = (i - 2.5) * 8;
+      const x = S.fStart.x + fx * adv + rx * l;
+      const z = S.fStart.z + fz * adv + rz * l;
+      units.fSquad[i].position.set(x, H(x, z) + 1.0, z);
+    }
+  }
 }
 
 function placeUnits() {
-  const rng = mulberry32((Scenario.seed * 68168169 + 17) >>> 0);
-  const e = Scenario.enemy, c = Scenario.compound;
-  units.troops.forEach((m, i) => {
-    const a = rng() * Math.PI * 2, r = 4 + rng() * 22;
-    const x = e.x + Math.sin(a) * r, z = e.z + Math.cos(a) * r;
-    m.position.set(x, H(x, z) + 1.0, z);
-    m.rotation.set(0, rng() * Math.PI * 2, 0);
-    if (i < units.flashes.length) units.flashes[i].s.position.set(x, H(x, z) + 1.6, z);
-  });
+  const S = Scenario;
+  const rng = mulberry32((S.seed * 68168169 + 17) >>> 0);
+  // hide/reset everything mission-specific
+  units.troops.forEach(m => m.visible = false);
   units.vehicles.forEach(m => {
-    const a = rng() * Math.PI * 2, r = 12 + rng() * 20;
-    const x = e.x + Math.sin(a) * r, z = e.z + Math.cos(a) * r;
-    m.position.set(x, H(x, z) + 1.05, z);
-    m.rotation.set(0, rng() * Math.PI * 2, 0);
+    m.visible = false; m.material = units.vehMatAlive; m.rotation.set(0, 0, 0);
   });
-  const hutOff = [[0, 0], [10, 7], [-9, 8]];
-  units.huts.forEach((m, i) => {
-    const x = c.x + hutOff[i][0], z = c.z + hutOff[i][1];
-    m.position.set(x, H(x, z) + 1.6, z);
-    m.rotation.set(0, (i * 0.7) % Math.PI, 0);
-  });
-  const fx = c.x + 4, fz = c.z - 5, fh = H(fx, fz);
-  units.flag.pole.position.set(fx, fh + 3.5, fz);
-  units.flag.banner.position.set(fx + 1.2, fh + 6.3, fz);
-  units.smokePuffs.forEach(p => { p.bx = c.x - 6; p.by = H(c.x - 6, c.z + 3); p.bz = c.z + 3; });
+  units.huts.forEach(m => m.visible = false);
+  units.flag.pole.visible = units.flag.banner.visible = false;
+  units.flashes.forEach(f => f.s.visible = false);
+  units.fSquad.forEach(m => m.visible = false);
+  units.bunker.visible = false;
+  units.bunker.material.color.setHex(0x6E665C);
+  units.flames.forEach(s => s.visible = false);
+  units.smokePuffs.forEach(p => { p.on = false; p.m.visible = false; });
+  enemyAlive = true;
+
+  function troopCluster(cx, cz, n, spread) {
+    units.troops.forEach((m, i) => {
+      if (i >= n) return;
+      const a = rng() * Math.PI * 2, r = 4 + rng() * spread;
+      const x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
+      m.visible = true;
+      m.position.set(x, H(x, z) + 1.0, z);
+      m.rotation.set(0, rng() * Math.PI * 2, 0);
+      if (i < units.flashes.length)
+        units.flashes[i].s.position.set(x, H(x, z) + 1.6, z);
+    });
+  }
+
+  if (S.type === 'strongpoint') {
+    troopCluster(S.enemy.x, S.enemy.z, 8, 22);
+    for (let i = 0; i < 2; i++) {
+      const m = units.vehicles[i];
+      const a = rng() * Math.PI * 2, r = 12 + rng() * 20;
+      const x = S.enemy.x + Math.sin(a) * r, z = S.enemy.z + Math.cos(a) * r;
+      m.visible = true;
+      m.position.set(x, H(x, z) + 1.05, z);
+      m.rotation.set(0, rng() * Math.PI * 2, 0);
+    }
+    const c = S.compound;
+    const hutOff = [[0, 0], [10, 7], [-9, 8]];
+    units.huts.forEach((m, i) => {
+      const x = c.x + hutOff[i][0], z = c.z + hutOff[i][1];
+      m.visible = true;
+      m.position.set(x, H(x, z) + 1.6, z);
+      m.rotation.set(0, (i * 0.7) % Math.PI, 0);
+    });
+    units.flag.pole.visible = units.flag.banner.visible = true;
+    const fx = c.x + 4, fz = c.z - 5, fh = H(fx, fz);
+    units.flag.pole.position.set(fx, fh + 3.5, fz);
+    units.flag.banner.position.set(fx + 1.2, fh + 6.3, fz);
+    units.smokePuffs.forEach(p => {
+      p.on = true; p.bx = c.x - 6; p.by = H(c.x - 6, c.z + 3); p.bz = c.z + 3;
+    });
+  } else if (S.type === 'troops') {
+    troopCluster(S.enemy.x, S.enemy.z, 8, 26);
+  } else if (S.type === 'bunker') {
+    const e = S.enemy;
+    units.bunker.visible = true;
+    units.bunker.position.set(e.x, H(e.x, e.z) + 1.3, e.z);
+    troopCluster(e.x + 14, e.z + 9, 3, 8);
+    units.flashes[0].s.position.set(e.x, H(e.x, e.z) + 2.4, e.z);
+  } else if (S.type === 'convoy') {
+    units.vehicles.forEach(m => m.visible = true);  // positions driven per-frame
+  } else if (S.type === 'assault') {
+    troopCluster(S.enemy.x, S.enemy.z, 8, 20);
+    units.fSquad.forEach(m => m.visible = true);    // positions driven per-frame
+  }
   units.kpPosts.forEach((m, i) => {
-    const kp = Scenario.kps[i];
+    const kp = S.kps[i];
     m.visible = !!kp;
     if (kp) m.position.set(kp.x, H(kp.x, kp.z) + 1.4, kp.z);
   });
-  enemyAlive = true;
 }
 
 /* ============================================================ CLOCK + SCHEDULER */
@@ -1036,29 +1262,59 @@ function resolveImpact(impact, isFFE) {
   spawnBurst(impact.x, y, impact.z);
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
+  const S = Scenario;
+  // convoy attrition — any round can kill vehicles
+  if (S.type === 'convoy') {
+    S.veh.forEach((v, i) => {
+      if (!v.dead && dist2(impact.x, impact.z, v.x, v.z) < 40) {
+        v.dead = true;
+        units.vehicles[i].material = units.vehMatDead;
+      }
+    });
+    if (S.veh.filter(v => !v.dead).length <= 1) enemyAlive = false;
+  }
   if (mission.firstMiss === null)
-    mission.firstMiss = dist2(impact.x, impact.z, Scenario.enemy.x, Scenario.enemy.z);
-  // Fratricide check — automatic mission fail.
-  if (dist2(impact.x, impact.z, Scenario.compound.x, Scenario.compound.z)
-      < CONFIG.MISSION.fratricideRadius) {
-    mission.done = true; mission.failReason = 'fratricide'; mission.tEnd = sim.now;
-    FDC.say(pick(QUIPS.frat), { delay: 1.2 });
-    setState('CHECK FIRE');
-    schedule(sim.now + 4.5, showAAR);
-    return;
+    mission.firstMiss = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
+  // Fratricide vs any friendly element — automatic mission fail.
+  for (const f of friendlyPositions()) {
+    if (dist2(impact.x, impact.z, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius)) {
+      mission.done = true; mission.failReason = 'fratricide'; mission.tEnd = sim.now;
+      FDC.say(pick(QUIPS.frat), { delay: 1.2 });
+      setState('CHECK FIRE');
+      schedule(sim.now + 4.5, showAAR);
+      return;
+    }
+  }
+  // easy mode: spot the burst for the observer
+  if (!isFFE && DIFFICULTY === 'easy') {
+    const otAz = azTo(OP.x, OP.z, S.enemy.x, S.enemy.z);
+    const fx = Math.sin(otAz), fz = -Math.cos(otAz);
+    const rx = Math.cos(otAz), rz = Math.sin(otAz);
+    const dx = S.enemy.x - impact.x, dz = S.enemy.z - impact.z;
+    const add = Math.round((dx * fx + dz * fz) / 10) * 10;
+    const right = Math.round((dx * rx + dz * rz) / 10) * 10;
+    schedule(sim.now + 1.5, () => log('',
+      `SPOT (EASY): try ${right >= 0 ? 'RIGHT ' + right : 'LEFT ' + (-right)}, ${add >= 0 ? 'ADD ' + add : 'DROP ' + (-add)}.`, 'sys'));
   }
   if (!isFFE) setState('ADJUSTING');
   else setState('FIRE FOR EFFECT');
 }
 
 function assessFFE() {
-  const M = CONFIG.MISSION;
+  const S = Scenario;
+  if (S.type === 'convoy') {
+    mission.hits = S.veh.filter(v => v.dead).length;
+    if (mission.hits >= 3) enemyAlive = false;
+    return;
+  }
   mission.hits = mission.ffeRounds.filter(r =>
-    dist2(r.x, r.z, Scenario.enemy.x, Scenario.enemy.z) < M.effectRadius).length;
-  if (mission.hits >= M.hitsToNeutralize) {
+    dist2(r.x, r.z, S.enemy.x, S.enemy.z) < S.effectRadius).length;
+  if (mission.hits >= S.hitsNeed) {
     enemyAlive = false;
-    units.troops.forEach(m => { m.rotation.z = 1.35; m.position.y -= 0.55; });
-    units.vehicles.forEach(m => { m.rotation.z = 0.25; });
+    units.troops.forEach(m => { if (m.visible) { m.rotation.z = 1.35; m.position.y -= 0.55; } });
+    if (S.type === 'strongpoint')
+      units.vehicles.forEach(m => { if (m.visible) m.rotation.z = 0.25; });
+    if (S.type === 'bunker') units.bunker.material.color.setHex(0x3A352F);
   }
 }
 
@@ -1227,6 +1483,16 @@ function handleCFF(p) {
     FDC.say(pick(QUIPS.badGrid), { delay: 1 });
     return;
   }
+  // danger-close gate: friendlies inside 600 m demand the proword
+  let minF = Infinity;
+  for (const f of friendlyPositions())
+    minF = Math.min(minF, dist2(cx, cz, f.x, f.z));
+  const dcSent = p.raw.includes('danger close');
+  if (minF < 600 && !dcSent) {
+    FDC.say(pick(QUIPS.dangerClose), { delay: 1.2 });
+    return;
+  }
+  if (dcSent) locStr += ', DANGER CLOSE';
   const notes = formatNotes(p);
   const warno = p.warno === 'none' ? 'adjust' : p.warno;
   const warnoText = warno === 'ffe' ? 'FIRE FOR EFFECT' : 'ADJUST FIRE';
@@ -1271,8 +1537,9 @@ function handleEOM(p) {
   if (!mission.done) { mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now; }
   FDC.say(`END OF MISSION${p.bda ? ', ' + p.bda.toUpperCase() : ''}, OUT.`, { delay: 1.2 });
   if (mission.failReason !== 'fratricide') {
-    const good = mission.ffeRounds.length &&
-      mission.hits >= CONFIG.MISSION.hitsToNeutralize;
+    const good = Scenario.type === 'convoy'
+      ? Scenario.veh.filter(v => v.dead).length >= 3
+      : (mission.ffeRounds.length > 0 && mission.hits >= Scenario.hitsNeed);
     FDC.say(pick(good ? QUIPS.eomGood : QUIPS.eomBad), { delay: 1.2 });
   }
   setState('AAR');
@@ -1319,6 +1586,19 @@ function onPlayerMessage(raw) {
 /* ============================================================ AAR */
 const aarEl = document.getElementById('aar');
 const aarBox = document.getElementById('aarbox');
+// best scores per scenario+difficulty; localStorage when available (in-memory otherwise)
+const BEST = {
+  data: {},
+  load() {
+    try { this.data = JSON.parse(localStorage.getItem('shitfire_best') || '{}'); }
+    catch (e) { this.data = {}; }
+  },
+  save() {
+    try { localStorage.setItem('shitfire_best', JSON.stringify(this.data)); }
+    catch (e) { /* in-memory only (e.g. artifact sandbox) */ }
+  },
+};
+BEST.load();
 function fmtTime(s) {
   const m = Math.floor(s / 60), r = Math.floor(s % 60);
   return `${m}:${String(r).padStart(2, '0')}`;
@@ -1327,30 +1607,53 @@ function showAAR() {
   const m = mission;
   if (!m) return;
   const M = CONFIG.MISSION;
-  const neutralized = m.hits >= M.hitsToNeutralize;
+  const S = Scenario;
+  const isConvoy = S.type === 'convoy';
+  if (isConvoy) m.hits = S.veh.filter(v => v.dead).length;
+  const neutralized = isConvoy ? m.hits >= 3
+    : (m.ffeRounds.length > 0 && m.hits >= S.hitsNeed);
   const frat = m.failReason === 'fratricide';
-  const pass = !frat && neutralized && m.adjustRounds <= M.passMaxAdjustRounds;
+  const escaped = m.failReason === 'escaped';
+  const pass = !frat && !escaped && neutralized && m.adjustRounds <= M.passMaxAdjustRounds;
   const grade = ['A', 'B', 'C', 'D'][Math.min(m.notes.length, 3)];
   const dur = (m.tEnd || sim.now) - m.tStart;
-  let verdict, why;
-  if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted the friendly position.'; }
-  else if (!m.ffeRounds.length) { verdict = 'FAIL — NO FIRE FOR EFFECT'; why = 'Mission ended without firing for effect.'; }
-  else if (!neutralized) { verdict = 'FAIL — TARGET STILL EFFECTIVE'; why = `Only ${m.hits}/${CONFIG.BALLISTICS.ffeRounds} effect rounds landed within ${M.effectRadius} m of the target.`; }
+  let verdict, why = '';
+  if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted a friendly element. Automatic failure.'; }
+  else if (escaped) { verdict = 'FAIL — CONVOY ESCAPED'; why = 'Fewer than three vehicles destroyed before the column ran off the map.'; }
+  else if (!neutralized) {
+    verdict = isConvoy ? 'FAIL — CONVOY STILL EFFECTIVE' : 'FAIL — TARGET STILL EFFECTIVE';
+    why = isConvoy
+      ? `Only ${m.hits}/4 vehicles destroyed (need 3).`
+      : (m.ffeRounds.length
+          ? `Only ${m.hits}/${m.ffeRounds.length} effect rounds landed within ${S.effectRadius} m of the target (need ${S.hitsNeed}).`
+          : 'Mission ended without firing for effect.');
+  }
   else if (!pass) { verdict = 'MARGINAL — TOO MANY ADJUSTING ROUNDS'; why = `Target neutralized, but ${m.adjustRounds} adjusting rounds used (pass ≤ ${M.passMaxAdjustRounds}).`; }
   else { verdict = 'PASS — TARGET NEUTRALIZED'; why = ''; }
+  if (pass) {
+    const key = S.type + ':' + S.difficulty;
+    const prev = BEST.data[key];
+    if (!prev || m.adjustRounds < prev.rounds ||
+        (m.adjustRounds === prev.rounds && dur < prev.time)) {
+      BEST.data[key] = { rounds: m.adjustRounds, time: Math.round(dur) };
+      BEST.save();
+    }
+  }
   aarBox.innerHTML =
-    `<h2>AFTER ACTION REVIEW</h2>` +
+    `<h2>AAR — ${SCN_META[S.type].name} (${S.difficulty.toUpperCase()})</h2>` +
     `<div class="verdict ${pass ? 'pass' : 'fail'}">${verdict}</div>` +
     (why ? `<div style="margin-bottom:10px">${why}</div>` : '') +
     `<table>` +
     `<tr><td>Adjusting rounds</td><td>${m.adjustRounds}</td></tr>` +
     `<tr><td>First-round miss</td><td>${m.firstMiss === null ? '—' : Math.round(m.firstMiss) + ' m'}</td></tr>` +
-    `<tr><td>Effect rounds on target</td><td>${m.hits}/${m.ffeRounds.length}</td></tr>` +
+    (isConvoy
+      ? `<tr><td>Vehicles destroyed</td><td>${m.hits}/4</td></tr>`
+      : `<tr><td>Effect rounds on target</td><td>${m.hits}/${m.ffeRounds.length}</td></tr>`) +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
     `</table>` +
     (m.notes.length ? `<div>Format coaching:</div><ul>${m.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
-    `<div class="foot">[N] — new mission &middot; [ESC] — back to the OP &middot; seed ${CONFIG.SEED.mission}</div>`;
+    `<div class="foot">[N] — random mission &middot; [K] — mission menu &middot; [ESC] — back to the OP &middot; seed ${CONFIG.SEED.mission}</div>`;
   if (document.exitPointerLock) document.exitPointerLock();
   aarEl.classList.add('on');
   setState('AAR');
@@ -1420,11 +1723,23 @@ function drawMap() {
       ctx.fillText(String(CONFIG.MAP.originN / 1000 + 10 - i), 3, p + 11);
     }
   }
-  // friendly strongpoint
-  const c = Scenario.compound;
-  ctx.fillStyle = '#2E5FA0';
-  ctx.fillRect(wpx(c.x) - 5, wpz(c.z) - 5, 10, 10);
-  mapMarkerLabel(ctx, 'FRIENDLY', wpx(c.x) + 8, wpz(c.z) + 4);
+  // friendly elements (strongpoint compound, or advancing squad centroid)
+  if (Scenario.compound) {
+    const c = Scenario.compound;
+    ctx.fillStyle = '#2E5FA0';
+    ctx.fillRect(wpx(c.x) - 5, wpz(c.z) - 5, 10, 10);
+    mapMarkerLabel(ctx, 'FRIENDLY', wpx(c.x) + 8, wpz(c.z) + 4);
+  } else if (Scenario.type === 'assault') {
+    const fp = friendlyPositions();
+    if (fp.length) {
+      let fx = 0, fz = 0;
+      for (const f of fp) { fx += f.x; fz += f.z; }
+      fx /= fp.length; fz /= fp.length;
+      ctx.fillStyle = '#2E5FA0';
+      ctx.fillRect(wpx(fx) - 5, wpz(fz) - 5, 10, 10);
+      mapMarkerLabel(ctx, 'FRIENDLY (MOVING)', wpx(fx) + 8, wpz(fz) + 4);
+    }
+  }
   // firing battery
   ctx.fillStyle = '#2E5FA0';
   ctx.beginPath();
@@ -1472,26 +1787,66 @@ function toggleMap(force) {
   mapEl.classList.toggle('on', on);
 }
 
+/* ============================================================ MISSION MENU [K] */
+const menuEl = document.getElementById('menu');
+function renderMenu() {
+  const tEl = document.getElementById('mtypes');
+  tEl.innerHTML = '';
+  for (const k of SCN_TYPES) {
+    const b = document.createElement('button');
+    b.className = 'mbtn' + (k === currentType ? ' sel' : '');
+    b.textContent = SCN_META[k].name;
+    b.onclick = () => newMission(false, k);
+    tEl.appendChild(b);
+  }
+  const rb = document.createElement('button');
+  rb.className = 'mbtn';
+  rb.textContent = 'RANDOM';
+  rb.onclick = () => newMission(false);
+  tEl.appendChild(rb);
+  const dEl = document.getElementById('mdiffs');
+  dEl.innerHTML = '';
+  for (const d of ['easy', 'normal', 'hard']) {
+    const b = document.createElement('button');
+    b.className = 'mbtn' + (d === DIFFICULTY ? ' sel' : '');
+    b.textContent = d.toUpperCase();
+    b.onclick = () => { DIFFICULTY = d; renderMenu(); };
+    dEl.appendChild(b);
+  }
+  const rows = [];
+  for (const k of SCN_TYPES) {
+    const s = BEST.data[k + ':' + DIFFICULTY];
+    if (s) rows.push(`${SCN_META[k].name}: ${s.rounds} adj rds, ${fmtTime(s.time)}`);
+  }
+  document.getElementById('mbest').textContent = 'BEST (' + DIFFICULTY.toUpperCase() + '): ' +
+    (rows.length ? rows.join(' · ') : 'no passes recorded yet');
+}
+function toggleMenu(force) {
+  const on = force !== undefined ? force : !menuEl.classList.contains('on');
+  if (on) {
+    renderMenu();
+    if (document.exitPointerLock) document.exitPointerLock();
+  }
+  menuEl.classList.toggle('on', on);
+}
+
 /* ============================================================ NEW MISSION */
-function newMission(first) {
+function newMission(first, type) {
   aarEl.classList.remove('on');
+  menuEl.classList.remove('on');
   clearEvents();
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   FDC.lastT = 0;
   mission = null;
   bursts.forEach(b => { b.active = false; b.group.visible = false; });
   if (!first) CONFIG.SEED.mission++;
-  Scenario = genScenario(CONFIG.SEED.mission);
+  if (type) currentType = type;
+  else if (!first) currentType = SCN_TYPES[Math.floor(Math.random() * SCN_TYPES.length)];
+  Scenario = genScenario(currentType, CONFIG.SEED.mission);
   placeUnits();
-  const c = Scenario.compound;
-  const brg = radToMils(azTo(OP.x, OP.z, c.x, c.z));
-  const brgRounded = Math.round(brg / 100) * 100 % 6400;
-  log('', `SCENARIO: STRONGPOINT UNDER ATTACK (${DIFFICULTY.toUpperCase()}). ` +
-    `Friendly strongpoint, grid ${gridOf(c.x, c.z)}, is under assault by enemy infantry nearby. ` +
-    `Locate the attackers and destroy them. Do NOT drop rounds on the friendlies.`, 'sys');
+  log('', `SCENARIO: ${SCN_META[currentType].name} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
   log('', `Your OP: grid ${gridOf(OP.x, OP.z)}, elev ${Math.round(OP.h)} m. ` +
-    `Friendly strongpoint bearing ~${fmtMils(brgRounded)} mils. ` +
-    `Use [B] binos and [L] laser to fix the enemy grid ([M] for the map), then send your call for fire — grid or polar (direction/distance). ` +
+    `Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. ` +
     `Hold [SPACE] to transmit by voice, or type below.`, 'sys');
   if (Scenario.kps && Scenario.kps.length)
     log('', 'Known points registered: ' + Scenario.kps.map(kp =>
@@ -1499,6 +1854,7 @@ function newMission(first) {
       '. Shift example: "adjust fire, shift known point 1001, right 200, add 400, over".', 'sys');
   FDC.say(pick(QUIPS.greet), { delay: 1.5 });
   if (first) {
+    const c = Scenario.compound || Scenario.enemy;
     yaw = azTo(OP.x, OP.z, c.x, c.z);
     pitch = Math.atan2(H(c.x, c.z) + 2 - eye.y, dist2(OP.x, OP.z, c.x, c.z));
   }
@@ -1579,6 +1935,7 @@ document.addEventListener('keydown', e => {
   if (k === 'escape') {
     aarEl.classList.remove('on');
     mapEl.classList.remove('on');
+    menuEl.classList.remove('on');
     return;
   }
   if (e.code === 'Space') {
@@ -1589,6 +1946,7 @@ document.addEventListener('keydown', e => {
   if (k === 'b') setBinos(!binos);
   else if (k === 'l') doLase();
   else if (k === 'm') toggleMap();
+  else if (k === 'k') toggleMenu();
   else if (k === 'v') {
     CONFIG.VOICE.ttsEnabled = !CONFIG.VOICE.ttsEnabled;
     if (!CONFIG.VOICE.ttsEnabled && 'speechSynthesis' in window) speechSynthesis.cancel();
@@ -1641,10 +1999,18 @@ function animate(tMs) {
     headingEl.textContent = s;
     binoHdgEl.textContent = s;
   }
-  // battle ambience
-  for (const f of units.flashes)
-    f.s.visible = enemyAlive && (((t * 0.53 + f.phase) % 1.9) < 0.06);
+  // scenario dynamics + battle ambience
+  updateScenario();
+  const flashOn = enemyAlive && Scenario &&
+    (Scenario.type === 'strongpoint' || Scenario.type === 'assault' || Scenario.type === 'bunker');
+  for (let i = 0; i < units.flashes.length; i++) {
+    const f = units.flashes[i];
+    f.s.visible = flashOn && (Scenario.type !== 'bunker' || i === 0) &&
+      (((t * 0.53 + f.phase) % 1.9) < 0.06);
+  }
   for (const p of units.smokePuffs) {
+    if (!p.on) { p.m.visible = false; continue; }
+    p.m.visible = true;
     const ct = ((t + p.off) % 10) / 10;
     p.m.position.set(p.bx + ct * 26, p.by + 2 + ct * 78, p.bz + ct * 6);
     p.m.scale.setScalar(4 + ct * 17);
