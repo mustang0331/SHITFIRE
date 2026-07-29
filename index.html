@@ -217,6 +217,13 @@
     <button class="mbtn" id="mdemreset">PROCEDURAL ISLAND</button>
     <input type="file" id="demfile" accept="image/*" style="display:none">
   </div>
+  <div class="mlabel">SESSION TRANSCRIPT — COMMS + PARSE + IMPACTS, FOR DIALOGUE REVIEW</div>
+  <div class="mrow">
+    <button class="mbtn" id="mtlogtxt">EXPORT TEXT</button>
+    <button class="mbtn" id="mtlogjson">EXPORT JSON</button>
+    <button class="mbtn" id="mtlogclear">CLEAR</button>
+    <span id="mtlogn" style="color:#8fa387;font-size:11px;align-self:center"></span>
+  </div>
   <div id="mbest"></div>
   <div class="foot">[K] / [ESC] close &middot; [N] skirmish mission</div>
 </div></div>
@@ -1258,6 +1265,68 @@ function runEvents() {
 }
 function clearEvents() { events.length = 0; }
 
+/* ============================================================ TRANSCRIPT LOG */
+// Structured session transcript: every net transmission (observer / FDC /
+// system) plus parse results, impacts, and AAR outcomes, with sim-time and
+// mission context. Reviewable after the fact to correct dialogue, parser
+// handling, and FDC responses. Persisted (last 800 entries) and exportable
+// from the mission menu as JSON or readable text.
+const TLOG = {
+  entries: [],
+  max: 2000,
+  _pending: false,
+  add(kind, call, msg, extra) {
+    const e = {
+      t: Math.round(sim.now * 10) / 10, wall: Date.now(),
+      state, seed: CONFIG.SEED.mission,
+      ch: activeChapter ? activeChapter.id : null,
+      kind, call: call || '', msg,
+    };
+    if (extra) Object.assign(e, extra);
+    this.entries.push(e);
+    if (this.entries.length > this.max)
+      this.entries.splice(0, this.entries.length - this.max);
+    this.save();
+  },
+  save() {   // debounced; in-memory only where localStorage is unavailable
+    if (this._pending) return;
+    this._pending = true;
+    setTimeout(() => {
+      this._pending = false;
+      try { localStorage.setItem('shitfire_transcript', JSON.stringify(this.entries.slice(-800))); }
+      catch (e) { /* in-memory only */ }
+    }, 3000);
+  },
+  load() {
+    try { this.entries = JSON.parse(localStorage.getItem('shitfire_transcript') || '[]'); }
+    catch (e) { this.entries = []; }
+  },
+  clear() {
+    this.entries.length = 0;
+    try { localStorage.removeItem('shitfire_transcript'); } catch (e) {}
+  },
+  text() {
+    return this.entries.map(e => {
+      const tag = `[${fmtTime(e.t)} ${e.state}${e.ch ? ' ch' + e.ch : ''} s${e.seed}]`;
+      if (e.kind === 'parse')
+        return `${tag} · parsed as ${e.ptype}${e.method ? '/' + e.method : ''}${e.warno ? '/' + e.warno : ''}`;
+      if (e.kind === 'impact')
+        return `${tag} * ${e.msg} — ${e.dTgt} m from target`;
+      if (e.kind === 'aar')
+        return `${tag} == AAR: ${e.msg}${e.stars !== undefined ? ` (${e.stars}★)` : ''} — ${e.rounds} adj rds, ${fmtTime(e.dur)}`;
+      return `${tag} ${e.call ? e.call + ': ' : ''}${e.msg}`;
+    }).join('\n');
+  },
+};
+TLOG.load();
+function downloadText(name, text, mime) {
+  const a = document.createElement('a');
+  a.download = name;
+  a.href = URL.createObjectURL(new Blob([text], { type: mime }));
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
 /* ============================================================ COMMS LOG + FDC */
 const logEl = document.getElementById('log');
 function log(call, msg, cls) {
@@ -1267,6 +1336,7 @@ function log(call, msg, cls) {
   d.appendChild(document.createTextNode(msg));
   logEl.appendChild(d);
   logEl.scrollTop = logEl.scrollHeight;
+  TLOG.add(cls || 'sys', call, msg);
 }
 
 const FDC = {
@@ -1850,6 +1920,8 @@ function resolveImpact(impact, isFFE) {
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
   const S = Scenario;
+  TLOG.add('impact', '', isFFE ? 'FFE round' : `adjust round ${mission.adjustRounds}`,
+    { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)) });
   // convoy attrition — any round can kill vehicles
   if (S.type === 'convoy') {
     S.veh.forEach((v, i) => {
@@ -2221,6 +2293,8 @@ function onPlayerMessage(raw) {
   squelch();
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
   const p = parseMessage(raw);
+  TLOG.add('parse', '', raw, { ptype: p.type, method: p.method || null,
+    warno: p.warno || null, ffe: !!p.ffe });
   if (p.type !== 'unknown' && p.type !== 'empty') unknownStreak = 0;
   switch (p.type) {
     case 'empty': break;
@@ -2305,6 +2379,11 @@ function showAAR() {
       BEST.save();
     }
   }
+  TLOG.add('aar', '', verdict, { rounds: m.adjustRounds, dur: Math.round(dur),
+    firstMiss: m.firstMiss === null ? null : Math.round(m.firstMiss),
+    aimErr0: m.aimErr0 === null ? null : Math.round(m.aimErr0),
+    notes: m.notes.length,
+    ...(activeChapter ? { stars: gradeMission(m) } : {}) });
   // campaign star grading (MW2 style): grade, persist best, show in AAR
   let starsHtml = '';
   if (activeChapter) {
@@ -3010,6 +3089,7 @@ function renderMenu() {
   }
   document.getElementById('mbest').textContent = 'SKIRMISH BEST (' + DIFFICULTY.toUpperCase() + '): ' +
     (rows.length ? rows.join(' · ') : 'no passes recorded yet');
+  document.getElementById('mtlogn').textContent = TLOG.entries.length + ' entries';
 }
 function toggleMenu(force) {
   const on = force !== undefined ? force : !menuEl.classList.contains('on');
@@ -3031,6 +3111,19 @@ document.getElementById('mdemreset').addEventListener('click', () => {
     rebuildWorld();
     log('', 'Procedural island restored.', 'sys');
   }
+});
+document.getElementById('mtlogtxt').addEventListener('click', () => {
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  downloadText(`shitfire_transcript_${stamp}.txt`, TLOG.text(), 'text/plain');
+});
+document.getElementById('mtlogjson').addEventListener('click', () => {
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  downloadText(`shitfire_transcript_${stamp}.json`,
+    JSON.stringify(TLOG.entries, null, 1), 'application/json');
+});
+document.getElementById('mtlogclear').addEventListener('click', () => {
+  TLOG.clear();
+  renderMenu();
 });
 
 /* ============================================================ NEW MISSION */
@@ -3345,7 +3438,7 @@ requestAnimationFrame(animate);
 
 // Debug / stable interface exposure
 window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
-  gradeMission, CAMPAIGN, CAMP,
+  gradeMission, CAMPAIGN, CAMP, TLOG,
   get Scenario() { return Scenario; }, get mission() { return mission; }, OP, BATTERY };
 </script>
 </body>
