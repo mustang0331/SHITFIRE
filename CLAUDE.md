@@ -61,6 +61,7 @@ Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed
 2. **One row = one commit**, message prefixed with the row ID: `stage 13c: sky + time of day`, `fix F1: range rounding gate`. Matches existing history (`stage 12e: OT direction and RREMS end of mission`).
 3. **Pass the row's gate before committing.** The gate is in the ROADMAP table; graphics rows also run [GRAPHICS.md](GRAPHICS.md) §Verification checklist. Code existing ≠ row done.
 4. **Docs land in a separate follow-up commit** — never bundled into the code commit, or the diff stops being reviewable. That follow-up is what flips the row to `DONE`.
-5. **Model split.** Sim (`index.html`) code → **Fable**. Doc/planning files (README, SPEC, NARRATIVE, CLAUDE, QUICKSTART, DOCTRINE, TLO, CHEATSHEET, ROADMAP, GRAPHICS, DIALOGUE_REVISIONS) → **Sonnet subagent**.
+5. **Model split.** Sim (`index.html`) code → **Opus**, worked directly rather than dispatched. Doc/planning files (README, SPEC, NARRATIVE, CLAUDE, QUICKSTART, DOCTRINE, TLO, CHEATSHEET, ROADMAP, GRAPHICS, DIALOGUE_REVISIONS) → **Sonnet subagent**.
+   - **Do not dispatch to Fable.** As of 2026-07-29 there are no Fable credits on this account, so a Fable dispatch fails outright and wastes the turn. Earlier docs and commit messages reference Fable as the sim model — that is history, not instruction.
 6. If a row turns out to be two things, **split the row in ROADMAP.md first**, then build.
 - Review diffs before merging. If a row gets messy, `git restore .` and re-prompt narrower — a clean partial beats a broken whole.

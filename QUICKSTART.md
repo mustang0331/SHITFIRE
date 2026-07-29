@@ -1,7 +1,7 @@
 # QUICKSTART — Building SHITFIRE with Claude Code
 
 ## 0. Prereqs
-Install Claude Code (see the official setup page: https://code.claude.com/docs). Have your Fable 5 / Console credits ready.
+Install Claude Code (see the official setup page: https://code.claude.com/docs).
 
 ## 1. Set up the project (one time)
 ```bash
@@ -18,8 +18,8 @@ git add . && git commit -m "spec + project memory"
 ```bash
 claude
 ```
-- Sign in on first launch (use the **Console account** your Fable 5 credits are on).
-- Select the model: type `/model` and choose **Fable 5**.
+- Sign in on first launch.
+- Select the model: type `/model` and choose **Opus**. Sim (`index.html`) work is done directly by Opus; doc-only passes can be handed to a Sonnet subagent. **Fable has no credits on this account — don't route work to it.**
 
 ## 3. Build stage 1 (the MVP core loop)
 Paste this as your first prompt:
