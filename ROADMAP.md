@@ -295,7 +295,54 @@ DO NOT MIL A MAN warning two panels away. Re-referenced to the 5 m truck.
 | G16 | **Fuze selection** — airburst for troops in the open, delay for bunkers; FDC infers if unspecified. Follow the doctrine PDFs. | Opus | Fuze accepted/inferred; choice affects the graded effect, not just the text | READY |
 | G17 | **60mm and artillery need different callsigns.** Currently both talk to HELLHOUND FIRES. | Opus | Distinct callsign per asset; NARRATIVE.md updated so the name is story-consistent | READY |
 | G18 | **60mm and artillery need different effective radii.** A mortar round and a 155 do not do the same thing. Research required. | Opus | Per-asset effect radius sourced and recorded; interacts with G13 — **land G13 first** | RESEARCH FIRST |
-| G19 | **Full CFF protocol audit** — the user reports "inconsistencies" without enumerating them. Read DOCTRINE.md against the parser and the FDC script end to end and produce a findings list before changing anything. Likely absorbs parts of G7–G11. | Opus | Written findings list, each item either fixed or logged as its own row | AUDIT |
+| G19 | **Full CFF protocol audit** — the user reports "inconsistencies" without enumerating them. Read DOCTRINE.md against the parser and the FDC script end to end and produce a findings list before changing anything. | Opus | Written findings list, each item either fixed or logged as its own row | **DONE** — findings below |
+
+#### G19 findings — measured, 2026-07-29
+
+Method: the shipped `normalize()` + `parseMessage()` were transcribed into a JScript harness and
+run against 29 transmissions taken from DOCTRINE.md, citing the line that mandates each. Result:
+
+> **16 of 29 correct doctrinal transmissions classify as `unknown`** — the branch whose FDC reply is
+> *"Say again, over. Slower, and in English this time,"* the mockery reserved for gibberish. Three
+> more mis-classify as something else and are silently acted on wrongly.
+
+The user's word was "inconsistencies". It is worse than that, and this is the headline:
+
+**G22 — the 3-transmission CFF does not exist.** DOCTRINE.md §15 and CLAUDE.md both state a CFF is
+*six elements in three transmissions, each read back by the FDC*. There is no multi-transmission
+state machine. `parseMessage` extracts warning order, location and description from **one** string,
+so the doctrinal Transmission 1 — `"HELLHOUND FIRES, this is MUSTANG 12, adjust fire, over"` —
+parses as `unknown` and gets mocked. An observer who has learned the real format literally cannot
+use it; the trainer only accepts the whole call as a single run-on transmission. This contradicts
+the app's own stated authority in two places and is almost certainly what the user hit.
+
+Everything else, grouped:
+
+| ID | Finding | Doctrine |
+|---|---|---|
+| G22 | **No 3-transmission CFF state machine** (above). Transmission 1 alone → `unknown`. | §15, and CLAUDE.md |
+| G23 | **Height-of-burst corrections are parsed and thrown away.** `corr` has exactly two fields, `right` and `add`. Every `up`/`down` — in a correction, in a polar call's vertical, in a shift's vertical — is discarded. `"up 20, over"` alone → `unknown`. | §54, §27, §28 |
+| G24 | **Fire-control prowords all unrecognised**: `at my command`, `fire`, `cancel at my command`, `do not load`, `cannot observe`, `time on target`. Worse, `"at my command, grid …"` parses as an ordinary grid CFF and the hold is swallowed into the target description. Supersedes/absorbs **12f**. | §34 |
+| G25 | **Safety prowords unrecognised**: `check firing`, `cease loading`. These are the two calls that stop guns. Being mocked for them is the worst possible response in the worst possible moment. | §67 |
+| G26 | **`immediate smoke` / `immediate suppression` with a grid parse as an ordinary HE grid mission** — mission type silently lost. Without a grid (`"immediate suppression 253535"`, from a real transcript) → `unknown`. Folds into **G14**. | §22 |
+| G27 | **`suppress target AK1002, 10 minutes`** (a recorded target by number + duration) → `unknown`. | §22 |
+| G28 | **Sheaf and fuze/ammunition terms unrecognised** as standalone transmissions. Currently a documented simplification (§76) that **G15/G16 deliberately overturn** — noted so the two are reconciled rather than half-built. | §33, §76 |
+
+Working as intended, for the record: grid / polar / shift CFFs, standalone OT direction,
+deviation+range corrections, `fire for effect`, RREMS end-of-mission, `say again`, `repeat`.
+`"correction, grid …"` works, but by luck — the proword is ignored and the grid re-parsed.
+
+**Consequence for the plan.** G22 is a structural change to the parser that G7, G8, G9, G11, G14,
+G24, G26 and G27 all sit inside — a state machine that tracks which transmission the observer is on
+is the thing that makes "read back the MTO" and "POS REP before a polar call" expressible at all.
+**Do G22 first**, then the rest against it. Building them against the current one-shot parser would
+mean rewriting all of them.
+
+**One rule to carry into G22:** DOCTRINE.md §5 is explicit that scripts are *guidelines, not gates*,
+and the forgiving default must survive. The state machine has to accept a complete one-shot call
+exactly as it does today — that is what every existing chapter and transcript uses — while *also*
+accepting the doctrinal three-transmission sequence. Strict mode is the only place the three-part
+form becomes mandatory.
 
 #### G-C — Structural (decide before coding)
 
@@ -304,9 +351,10 @@ DO NOT MIL A MAN warning two panels away. Re-referenced to the 5 m truck.
 | G20 | **The 10×10 km map may be too small** — an 800 m correction runs out of world. Affects `CONFIG.MAP.size`, terrain, the DEM pipeline, the printed sheet scale and every grid in every fixed-seed chapter. **Costed and decided before any code**: a size change may invalidate saved chapter seeds. | Opus | Decision recorded here with the seed-compatibility consequence stated; only then implemented | DECIDE |
 | G21 | **Do target location cues stay accurate when a new DEM is loaded?** User's open question. Verify — do not assume. Covers the E2 spot report, `nearestLandmark`, known points and the printed sheet. | Opus | Answered with evidence against a real loaded DEM (`KOFA_KING_VALLEY_FO_HEIGHTMAP.png` is in the tree); any drift fixed or logged | AUDIT |
 
-**Order:** ~~G1 → G5 → G3 → G2 → G4 → G6~~ ✅ all shipped. **Next is the G19 audit**, then the
-G10/G13 research, and only then G7–G18 — the audit will likely rewrite several of those rows, so
-coding them first wastes the work. G20/G21 last; G20 is a decision, not a task.
+**Order:** ~~G1 → G5 → G3 → G2 → G4 → G6~~ ✅ shipped. ~~G19 audit~~ ✅ done — findings below, and
+they changed the plan: **G22 (the 3-transmission CFF state machine) is now NEXT**, because G7, G8,
+G9, G11, G14, G24, G26 and G27 all sit inside it. Then the G10/G13 doctrine research, then the rest
+of G-B. G20/G21 last; G20 is a decision, not a task.
 
 **Two G-A rows added keybinds** that the docs sweep must pick up: `[Z]` / mouse wheel cycles
 binocular power (4X/7X/14X), and `SHIFT+D` toggles dispersion. Both are in the in-app hint line
@@ -378,6 +426,7 @@ off in the tables above.
 | 2026-07-29 | **Track E closed** — E3 `ef9d473`, E4 `830d3cc`, E5 `cee195f`, E6 `0d2eaed`, E7 `ddd22f9`. All seven rows shipped; all carry ⚠, since the track is entirely about appearance and none of it has been seen in Chrome. New §5 collects that QA into one 15-minute pass. |
 | 2026-07-29 | **`index.html` → `SHITFIRE.html`**, renamed by the user, recorded as a git rename in `f4e7ad8` (staged from HEAD's exact blob so the diff is a pure path change and `--follow` still reaches all history). CLAUDE.md's first golden rule and the references in README/SPEC/QUICKSTART/GRAPHICS are stale until the docs sweep. |
 | 2026-07-29 | **A working JS syntax gate exists now** (`scratchpad/syntaxgate.ps1`): extracts the inline module, strips the imports, wraps it in `if (false) {}` and loads it as a classic script in headless Chrome, so a syntax error is reported as the early error it is while a clean parse executes nothing. Its first version used `new Function(src)` and was **worthless** — that compiles lazily, so it reported OK on a deliberately broken file. Both directions are now verified against an injected unbalanced paren, which it caught and located to the exact line. Every code row from E7 on should run it. |
+| 2026-07-29 | **G19 CFF protocol audit done, and it reordered the track.** The shipped parser was run against 29 transmissions taken from DOCTRINE.md: **16 classify as `unknown`** and get the FDC's gibberish reply, 3 more mis-classify and are acted on wrongly. Headline: **the 3-transmission CFF does not exist** — there is no multi-transmission state machine, so the doctrinal Transmission 1 gets mocked, contradicting both DOCTRINE.md §15 and CLAUDE.md. Logged as **G22–G28**; G22 is now NEXT because eight other rows sit inside it. |
 | 2026-07-29 | **Track G-A shipped whole** — G1 `1c1bfff`, G5 `6b55985`, G3 `6acc97c`, G2 `067b473`, G4 `03beef8`, G6 `1bfe48b`, plus **F8** `ef0ef31` found along the way. Every row carries an executable harness and a headless-Chrome parse; none has been seen running, so §5 grew. Three unreported training-fidelity bugs surfaced during the work (mil-card sizes disagreeing with the world by up to 308 m of taught range error; both declination mistakes landing inside the OT-direction coach's blind spot; the reticle overrunning the screen at 14X), which is the argument for taking user-feedback rows before spec rows — building next to real complaints finds the things nobody thought to report. |
 | 2026-07-29 | **Track G added** from [user_feedback.md](user_feedback.md) — 21 rows of feedback from the user actually flying the build, triaged into UI (G1–G6), doctrine (G7–G19) and structural (G20–G21). Inserted ahead of the rest of stage 13. Three rows need doctrine research before code (G10, G13, G18) and one is a decision, not a task (G20). Two supersede existing authority: **G12** overrides CLAUDE.md's "automatic mission fail" wording — fratricide *fails* the mission but must not *end* it — and **G14** supersedes the narrower row 12g. |
 | 2026-07-29 | Reviewed the three newer `Dialogue History/` transcripts (08-48, 12-56, 18-05). Added **F5** (STT/typo tolerance in adjust corrections), **F6** ("danger clothes" fuzzy-match), **F7** (readback duplicates DANGER CLOSE) to Track F, all found by reading real play and confirmed against the regexes. Annotated **12g** with live transcript evidence of a player hitting the immediate-suppression gap. Detail in [DIALOGUE_REVISIONS.md §9](DIALOGUE_REVISIONS.md). |
