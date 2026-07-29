@@ -191,8 +191,10 @@
     RANGE (m) = SIZE (m) &divide; MILS &times; 1000<br>
     DEVIATION (m) = MILS &times; OT FACTOR (OT range &divide; 1000)<br>
     <span class="ref">KNOWN SIZES: hut 3 m high &middot; truck 5 m long &middot;
-    watchtower 100 m &middot; radio mast 26 m &middot; man 1.8 m</span><br>
+    watchtower 100 m &middot; radio mast 26 m &middot; fuel drum 2 m</span><br>
     <span class="ref">Example: mast subtends 5 mils &rarr; 26 &divide; 5 &times; 1000 = 5200 m</span>
+    <span class="ref">DO NOT MIL A MAN — figures are drawn enlarged at range so you
+    can see them. Mil hard structures. Deviation in mils is unaffected.</span>
     <span class="ref">[R] closes this card</span>
   </div>
 </div>
@@ -334,6 +336,20 @@ const CONFIG = {
     satComp: 1.0,       // 13b — palette saturation trim; see gfxPal(). 1.0 = neutral.
     // --- forward declarations: inert until the row that consumes them lands ---
     sky: true,          // 13c — Sky.js + time of day
+    // --- target legibility -------------------------------------------------
+    // A 2.4 m silhouette at 3200 m subtends 0.75 mils; through the 9-degree bino
+    // FOV that is ~5 px at 1080p, which is below the threshold where a human can
+    // COUNT bodies — the skill this app exists to train. legFloorMil is the
+    // minimum angular height a figure is allowed to subtend; the mesh is scaled
+    // up to hold it. Purely visual: every scoring path (effect radius,
+    // fratricide, collateral) reads Scenario / WORLD coordinates, never a mesh
+    // transform. See legibilityPass().
+    //   1 mil = 1 m at 1000 m. px through binos = mils * innerHeight / 160.
+    legibility: true,
+    legFloorMil: 1.8,   // -> 12.2 px tall at 1080p through binos, at any range
+    legMaxScale: 2.5,   // hard clamp on the silhouette exaggeration
+    legOnset: 800,      // m — never touch a figure closer than this
+    contactShadow: true,// dark disc at the feet so figures don't merge into terrain
     hillshade: false, aoStrength: 0.35,                 // 13d
     nearLOD: false, nearLODSize: 2400, nearLODSeg: 300, // 13e
     veg: false, vegBudget: 4000, vegRadius: 2600,       // 13f
@@ -871,9 +887,76 @@ const _wMats = {
   civB:  new THREE.MeshLambertMaterial({ color: 0xB5A075, flatShading: true }),
   drum:  new THREE.MeshLambertMaterial({ color: 0x7A3A2A, flatShading: true }),
   mast:  new THREE.MeshLambertMaterial({ color: 0xB9B4A6, flatShading: true }),
-  person:new THREE.MeshLambertMaterial({ color: 0xE8E2D0, flatShading: true }),
 };
-const _civGeo = new THREE.BoxGeometry(0.7, 1.8, 0.7);
+
+/* ---- FIGURES: the three families the observer must tell apart ---------------
+   GRAPHICS.md's second governing constraint: legibility beats looks. Three
+   independent fixes, none of which moves a figure's ground position:
+
+     1. distance compensation — the mesh grows with range so a figure never
+        subtends less than CONFIG.GFX.legFloorMil (see legibilityPass()).
+     2. internal contrast — every figure is two-tone, so at least one half
+        contrasts whether the backdrop is jungle green, sand, or wet rock.
+     3. a contact disc at the feet so the silhouette does not merge into terrain.
+
+   Discrimination is a HARD requirement — collateral damage is an auto-fail, so
+   civilian-vs-military must never be a guess. The families therefore differ in
+   BOTH palette and silhouette, and the palettes are inverted against each other:
+
+     enemy     dark oxblood body · narrow BRIGHT RUST cap  (dark below / warm above)
+     friendly  dark navy body    · narrow BRIGHT ICE cap   (dark below / cool above)
+     civilian  PALE bone body    · wide DARK CONICAL hat   (light below / dark above)
+
+   The civilian is also visibly narrower in the body and much wider at the head,
+   so the aspect ratio alone separates it at ranges where colour has washed out.
+
+   All figure geometry has its ORIGIN AT THE FEET. Scaling therefore grows a
+   figure upward off the ground instead of sinking it, and `rotation.z` lays a
+   casualty over about its own boots. Callers set position.y = ground height. */
+const FIG = {
+  h: { troop: 2.40, civ: 2.08 },        // full silhouette height incl. headgear (m)
+  geo: {
+    body:    new THREE.BoxGeometry(0.80, 2.00, 0.80).translate(0, 1.00, 0),
+    cap:     new THREE.BoxGeometry(0.98, 0.46, 0.98).translate(0, 2.17, 0),
+    civBody: new THREE.BoxGeometry(0.54, 1.70, 0.54).translate(0, 0.85, 0),
+    civHat:  new THREE.ConeGeometry(0.80, 0.44, 8).translate(0, 1.86, 0),
+    disc:    new THREE.CircleGeometry(0.75, 12).rotateX(-Math.PI / 2),
+  },
+  mat: {
+    enemyBody:  new THREE.MeshLambertMaterial({ color: 0x59180F, flatShading: true }),
+    enemyCap:   new THREE.MeshLambertMaterial({ color: 0xE0641F, flatShading: true }),
+    friendBody: new THREE.MeshLambertMaterial({ color: 0x22406E, flatShading: true }),
+    friendCap:  new THREE.MeshLambertMaterial({ color: 0x8FC6F2, flatShading: true }),
+    civBody:    new THREE.MeshLambertMaterial({ color: 0xEFE8D4, flatShading: true }),
+    civHat:     new THREE.MeshLambertMaterial({ color: 0x46341F, flatShading: true }),
+    // unlit + untonemapped so the contact patch stays a constant dark anchor at
+    // every time of day; polygonOffset (not a lift) keeps it off the terrain on
+    // a slope without floating clear of the boots.
+    disc: new THREE.MeshBasicMaterial({ color: 0x0A0D07, transparent: true,
+      opacity: 0.40, depthWrite: false, toneMapped: false,
+      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -8 }),
+  },
+};
+// buildWorldFeatures() disposes every geometry it tears down. These are shared
+// and live for the life of the page — mark them off-limits.
+for (const k in FIG.geo) FIG.geo[k].userData.keep = true;
+
+function makeFigure(kind) {                 // 'enemy' | 'friendly' | 'civ'
+  const civ = kind === 'civ', fr = kind === 'friendly';
+  const m = new THREE.Mesh(civ ? FIG.geo.civBody : FIG.geo.body,
+    civ ? FIG.mat.civBody : fr ? FIG.mat.friendBody : FIG.mat.enemyBody);
+  m.add(new THREE.Mesh(civ ? FIG.geo.civHat : FIG.geo.cap,
+    civ ? FIG.mat.civHat : fr ? FIG.mat.friendCap : FIG.mat.enemyCap));
+  if (CONFIG.GFX.contactShadow) {
+    const d = new THREE.Mesh(FIG.geo.disc, FIG.mat.disc);
+    d.position.y = 0.05;
+    d.renderOrder = 1;
+    m.add(d);
+    m.userData.disc = d;
+  }
+  m.userData.figH = civ ? FIG.h.civ : FIG.h.troop;
+  return m;
+}
 
 function ribbonMesh(pts, width, mat, lift) {
   if (pts.length < 2) return null;
@@ -916,7 +999,9 @@ function buildWorldFeatures() {
   // teardown
   if (WORLD.group) {
     scene.remove(WORLD.group);
-    WORLD.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    WORLD.group.traverse(o => {
+      if (o.geometry && !o.geometry.userData.keep) o.geometry.dispose();
+    });
   }
   WORLD.group = new THREE.Group();
   WORLD.roads.length = 0; WORLD.paths.length = 0;
@@ -1068,7 +1153,7 @@ function buildWorldFeatures() {
     }
     if (!vil.huts.length) continue;
     for (let i = 0; i < W.civsPerVillage; i++) {
-      const m = new THREE.Mesh(_civGeo, _wMats.person);
+      const m = makeFigure('civ');
       WORLD.group.add(m);
       WORLD.civs.push({ m, bx: c.x + (rng() - 0.5) * 70, bz: c.z + (rng() - 0.5) * 70,
                         wr: 5 + rng() * 9, phase: rng() * 20, x: c.x, z: c.z });
@@ -1104,20 +1189,18 @@ function updateCivilians(t) {
   for (const c of WORLD.civs) {
     c.x = c.bx + Math.sin(t * 0.14 + c.phase) * c.wr;
     c.z = c.bz + Math.cos(t * 0.11 + c.phase * 1.7) * c.wr;
-    c.m.position.set(c.x, Math.max(H(c.x, c.z), 0) + 0.9, c.z);
+    c.m.position.set(c.x, Math.max(H(c.x, c.z), 0), c.z);   // origin is at the feet
   }
 }
 
 /* ============================================================ UNITS (friendly compound + enemy) */
 const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [], flag: null };
 {
-  const troopMat = new THREE.MeshLambertMaterial({ color: 0x7A2F23, flatShading: true });
   const vehMat = new THREE.MeshLambertMaterial({ color: 0x4A4136, flatShading: true });
   const hutMat = new THREE.MeshLambertMaterial({ color: 0xC9B891, flatShading: true });
-  const troopGeo = new THREE.BoxGeometry(0.8, 2.0, 0.8);
   const vehGeo = new THREE.BoxGeometry(4.6, 2.1, 2.3);
   const hutGeo = new THREE.BoxGeometry(7, 3.2, 5);
-  for (let i = 0; i < 8; i++) { const m = new THREE.Mesh(troopGeo, troopMat); scene.add(m); units.troops.push(m); }
+  for (let i = 0; i < 8; i++) { const m = makeFigure('enemy'); scene.add(m); units.troops.push(m); }
   for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(vehGeo, vehMat); scene.add(m); units.vehicles.push(m); }
   units.vehMatAlive = vehMat;
   units.vehMatDead = new THREE.MeshLambertMaterial({ color: 0x211D18, flatShading: true });
@@ -1150,9 +1233,8 @@ const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [],
   }
   // friendly squad (assault scenario)
   units.fSquad = [];
-  const fMat = new THREE.MeshLambertMaterial({ color: 0x4A6EA8, flatShading: true });
   for (let i = 0; i < 6; i++) {
-    const m = new THREE.Mesh(troopGeo, fMat);
+    const m = makeFigure('friendly');
     m.visible = false;
     scene.add(m); units.fSquad.push(m);
   }
@@ -1431,7 +1513,7 @@ function updateScenario() {
       const l = (i - 2.5) * 8;
       const x = S.fStart.x + fx * adv + rx * l;
       const z = S.fStart.z + fz * adv + rz * l;
-      units.fSquad[i].position.set(x, H(x, z) + 1.0, z);
+      units.fSquad[i].position.set(x, H(x, z), z);   // figure origin is at the feet
     }
   }
 }
@@ -1461,7 +1543,7 @@ function placeUnits() {
       const a = rng() * Math.PI * 2, r = 4 + rng() * spread;
       const x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
       m.visible = true;
-      m.position.set(x, H(x, z) + 1.0, z);
+      m.position.set(x, H(x, z), z);          // figure origin is at the feet
       m.rotation.set(0, rng() * Math.PI * 2, 0);
       if (i < units.flashes.length)
         units.flashes[i].s.position.set(x, H(x, z) + 1.6, z);
@@ -1526,6 +1608,44 @@ function placeUnits() {
     m.visible = !!kp;
     if (kp) m.position.set(kp.x, H(kp.x, kp.z) + 1.4, kp.z);
   });
+  legibilityPass(eye.x, eye.y, eye.z);
+}
+
+/* ---- distance-compensated silhouettes ---------------------------------------
+   Hold a floor on apparent size: a figure is scaled until it subtends at least
+   CONFIG.GFX.legFloorMil, clamped at legMaxScale and never applied inside
+   legOnset metres. VISUAL ONLY — the mesh transform is read by nothing else.
+   Effect radius, fratricide, and collateral all measure against Scenario.enemy,
+   friendlyPositions(), and WORLD.civs[].x/z, which this never touches.
+
+   Caveat worth knowing: this deliberately breaks mil-relation ranging off a MAN
+   (a scaled figure no longer subtends its true height). The mil card lists huts,
+   trucks, the mast and the tower instead — a 1.8 m man at 2 km is 0.9 mils, too
+   small to measure on a 1-mil reticle anyway. Deviation measurement is an angle
+   BETWEEN two points and is unaffected, so 12b's OT-factor workflow is intact.
+
+   Takes an explicit camera position so the AAR bird's-eye plot can size figures
+   for its own range instead of inheriting the observer's. Allocation-free. */
+function figScale(d, baseH) {
+  const G = CONFIG.GFX;
+  if (!G.legibility || d < G.legOnset) return 1;
+  const s = (G.legFloorMil * d / 1000) / baseH;
+  return s < 1 ? 1 : (s > G.legMaxScale ? G.legMaxScale : s);
+}
+function _legOne(m, cx, cy, cz) {
+  if (!m || !m.visible) return;
+  const dx = m.position.x - cx, dy = m.position.y - cy, dz = m.position.z - cz;
+  m.scale.setScalar(figScale(Math.sqrt(dx * dx + dy * dy + dz * dz),
+                             m.userData.figH || FIG.h.troop));
+  // the contact disc is a child, so counter-rotate it to stay flat on the
+  // ground when a casualty or a prone man lays the parent over
+  const disc = m.userData.disc;
+  if (disc) disc.rotation.z = -m.rotation.z;
+}
+function legibilityPass(cx, cy, cz) {
+  for (let i = 0; i < units.troops.length; i++) _legOne(units.troops[i], cx, cy, cz);
+  for (let i = 0; i < units.fSquad.length; i++) _legOne(units.fSquad[i], cx, cy, cz);
+  for (let i = 0; i < WORLD.civs.length; i++)   _legOne(WORLD.civs[i].m, cx, cy, cz);
 }
 
 /* ============================================================ CLOCK + SCHEDULER */
@@ -2359,8 +2479,8 @@ function resolveImpact(impact, isFFE) {
           if (!m.visible) return;
           const a = drng() * Math.PI * 2, r = 18 + drng() * 26;
           const nx = m.position.x + Math.sin(a) * r, nz = m.position.z + Math.cos(a) * r;
-          m.position.set(nx, H(nx, nz) + 0.5, nz);
-          m.rotation.z = 1.2;                       // prone
+          m.position.set(nx, H(nx, nz) + 0.3, nz);
+          m.rotation.z = 1.2;                       // prone, pivoting on the boots
         });
         S.effectRadius = Math.round(S.effectRadius * 0.7);
         S.hitsNeed = Math.min(S.hitsNeed + 1, 4);
@@ -2442,7 +2562,10 @@ function assessFFE() {
     dist2(r.x, r.z, S.enemy.x, S.enemy.z) < S.effectRadius).length;
   if (mission.hits >= S.hitsNeed) {
     enemyAlive = false;
-    units.troops.forEach(m => { if (m.visible) { m.rotation.z = 1.35; m.position.y -= 0.55; } });
+    // figure origin is at the feet, so this pivots the body over without sinking
+    // it — and, unlike the old `position.y -= 0.55`, it is idempotent if the
+    // effect check re-runs.
+    units.troops.forEach(m => { if (m.visible) m.rotation.z = 1.35; });
     if (S.type === 'strongpoint')
       units.vehicles.forEach(m => { if (m.visible) m.rotation.z = 0.25; });
     if (S.type === 'bunker') units.bunker.material.color.setHex(0x3A352F);
@@ -2965,6 +3088,9 @@ function renderShotPlot(cv, m) {
   try {
     renderer.setPixelRatio(1);
     renderer.setSize(W, Hh, false);          // buffer only — CSS size untouched
+    // size figures for the PLOT camera's range, not the observer's, or a
+    // close bird's-eye frame shows 2.5x giants
+    legibilityPass(_plotCam.position.x, _plotCam.position.y, _plotCam.position.z);
     renderer.render(scene, _plotCam);
     ctx.clearRect(0, 0, W, Hh);
     ctx.drawImage(renderer.domElement, 0, 0, W, Hh);
@@ -4482,6 +4608,7 @@ function animate(tMs) {
   // scenario dynamics + battle ambience
   updateScenario();
   updateCivilians(t);
+  legibilityPass(eye.x, eye.y, eye.z);
   const flashOn = enemyAlive && Scenario &&
     (Scenario.type === 'strongpoint' || Scenario.type === 'assault' ||
      Scenario.type === 'bunker' || Scenario.type === 'raid');
