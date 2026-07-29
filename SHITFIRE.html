@@ -22,8 +22,11 @@
     margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.85);
     pointer-events: none; }
 
+  /* z-index declared explicitly (G5). It was absent, so #comms sat above the
+     binocular overlay purely because it appears later in the document — which is
+     exactly the accident that buried the mil card. State the order. */
   #comms { position: fixed; left: 12px; bottom: 12px; width: min(600px, 62vw);
-    font-size: 12.5px; }
+    font-size: 12.5px; z-index: 4; }
   #log { height: 205px; overflow-y: auto; padding: 8px 10px; line-height: 1.5; }
   #log div { margin-bottom: 2px; }
   .obs { color: #ffd98a; }
@@ -135,9 +138,18 @@
   .chstars { color: #ffe9a8; font-size: 12px; white-space: nowrap; letter-spacing: 1.5px; }
   .aarstars { color: #ffe9a8; font-size: 22px; letter-spacing: 6px; margin: 6px 0 10px; }
 
-  /* Mil-relation reference card (binos) */
-  #milcard { display: none; position: absolute; left: 24px; bottom: 96px;
-    max-width: 340px; padding: 10px 13px; background: rgba(12,16,9,.86);
+  /* Mil-relation reference card (binos).
+     G5 — was `left: 24px; bottom: 96px`, which put it straight on top of the
+     comms log (left 12, bottom 12, 205 px of log) and the PTT banner (bottom
+     232) — and it lost, because #bino is a stacking context so the card could
+     never paint above #comms whatever z-index it was given. Now it sits on the
+     RIGHT, which is empty except for the touch bar, so the observer can read the
+     card and the net traffic at the same time instead of trading one for the
+     other. The z-index is belt-and-braces: the positions no longer overlap, but
+     stacking that depends on DOM order is how this broke in the first place. */
+  #milcard { display: none; position: fixed; right: 16px; bottom: 16px;
+    max-width: min(340px, 34vw); z-index: 6; pointer-events: none;
+    padding: 10px 13px; background: rgba(12,16,9,.86);
     border: 1px solid #4d5a3c; color: #cfe0bd; font-size: 11.5px; line-height: 1.6; }
   #milcard.on { display: block; }
   #milcard b { display: block; color: #ffe9a8; letter-spacing: .1em; margin-bottom: 4px; }
@@ -196,17 +208,6 @@
   <canvas id="reticle"></canvas>
   <div id="vignette"></div>
   <div id="binoinfo"><span id="binohdg">AZ 0000</span><div id="lase"></div></div>
-  <div id="milcard">
-    <b>MIL RELATION — RANGE BY RETICLE</b>
-    RANGE (m) = SIZE (m) &divide; MILS &times; 1000<br>
-    DEVIATION (m) = MILS &times; OT FACTOR (OT range &divide; 1000)<br>
-    <span class="ref">KNOWN SIZES: hut 3 m high &middot; truck 5 m long &middot;
-    hangar 6 m high &middot; radio mast 26 m &middot; fuel drum 2 m</span><br>
-    <span class="ref">Example: mast subtends 5 mils &rarr; 26 &divide; 5 &times; 1000 = 5200 m</span>
-    <span class="ref">DO NOT MIL A MAN — figures are drawn enlarged at range so you
-    can see them. Mil hard structures. Deviation in mils is unaffected.</span>
-    <span class="ref">[R] closes this card</span>
-  </div>
 </div>
 
 <div id="ptt" class="panel">&#9679; TRANSMITTING — release [SPACE] to send<br><span class="live" id="pttlive"></span></div>
@@ -218,6 +219,24 @@
     <input id="txinput" autocomplete="off" spellcheck="false"
       placeholder='adjust fire, grid 245 523, infantry in the open, over'>
   </form>
+</div>
+
+<!-- G5 — the mil card lives OUT here, as a sibling of #comms, not inside #bino.
+     It used to be a child of the binocular overlay, and #bino is position:fixed,
+     which makes it a stacking context — so no z-index on the card could ever lift
+     it above #comms, and #comms wins on DOM order. It is toggled by its own .on
+     class and already forced off whenever binos come down, so it does not need to
+     be inside #bino to behave correctly. -->
+<div id="milcard">
+  <b>MIL RELATION — RANGE BY RETICLE</b>
+  RANGE (m) = SIZE (m) &divide; MILS &times; 1000<br>
+  DEVIATION (m) = MILS &times; OT FACTOR (OT range &divide; 1000)<br>
+  <span class="ref">KNOWN SIZES: hut 3 m high &middot; truck 5 m long &middot;
+  hangar 6 m high &middot; radio mast 26 m &middot; fuel drum 2 m</span><br>
+  <span class="ref">Example: mast subtends 5 mils &rarr; 26 &divide; 5 &times; 1000 = 5200 m</span>
+  <span class="ref">DO NOT MIL A MAN — figures are drawn enlarged at range so you
+  can see them. Mil hard structures. Deviation in mils is unaffected.</span>
+  <span class="ref">[R] closes this card</span>
 </div>
 
 <div id="touchbar">
