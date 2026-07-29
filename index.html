@@ -122,6 +122,15 @@
   .chstars { color: #ffe9a8; font-size: 12px; white-space: nowrap; letter-spacing: 1.5px; }
   .aarstars { color: #ffe9a8; font-size: 22px; letter-spacing: 6px; margin: 6px 0 10px; }
 
+  /* Chapter briefing */
+  #brief { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.6); z-index: 13; }
+  #brief.on { display: flex; }
+  #briefbox { width: 560px; max-width: 90vw; padding: 20px 26px; }
+  #brieftitle { margin: 0 0 10px; font-size: 15px; letter-spacing: .12em; color: #dfe8c8; }
+  #brieftext { color: #cfe0bd; font-size: 13px; line-height: 1.65;
+    margin-bottom: 14px; font-style: italic; }
+
   /* Map library */
   #library { position: fixed; inset: 0; display: none; align-items: center;
     justify-content: center; background: rgba(0,0,0,.55); z-index: 12; }
@@ -228,6 +237,12 @@
   <div class="foot">[K] / [ESC] close &middot; [N] skirmish mission</div>
 </div></div>
 
+<div id="brief"><div id="briefbox" class="panel">
+  <h2 id="brieftitle"></h2>
+  <div id="brieftext"></div>
+  <button class="mbtn" id="briefgo">CONTINUE</button>
+</div></div>
+
 <div id="library"><div id="libbox" class="panel">
   <div id="libhead">
     <span>MAP LIBRARY — PROCEDURAL ISLAND (TERRAIN SEED 1337)</span>
@@ -294,7 +309,10 @@ const SCN_META = {
   bunker:      { name: 'DUG-IN BUNKER' },
   convoy:      { name: 'CONVOY — MOVING TARGET' },
   assault:     { name: 'COMBINED ARMS ASSAULT — DANGER CLOSE' },
+  raid:        { name: 'VILLAGE RAID — NO-STRIKE ADJACENT' },
+  wreck:       { name: 'DERELICT WRECK (TRAINING)' },
 };
+const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);
 const MILS_PER_RAD = 6400 / (Math.PI * 2);
 
@@ -456,14 +474,16 @@ let oceanShallows = null;
 }
 
 // Terrain mesh (single low-poly sheet; LOD rings come in a later stage)
+let TERRAIN_PALETTE = null;   // null = tropical; 'black' = Volume IV black sand
 function buildTerrain() {
   const seg = CONFIG.TERRAIN.meshSegments, size = CONFIG.MAP.size;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg).rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
-  const cSandLo = new THREE.Color(0xC7B383), cSand = new THREE.Color(0xD8C89A);
-  const cJunA = new THREE.Color(0x4E7A3D), cJunB = new THREE.Color(0x3B5E2E);
-  const cRokA = new THREE.Color(0x5A544E), cRokB = new THREE.Color(0x6E665C);
+  const blk = TERRAIN_PALETTE === 'black';
+  const cSandLo = new THREE.Color(blk ? 0x3A3733 : 0xC7B383), cSand = new THREE.Color(blk ? 0x4A4640 : 0xD8C89A);
+  const cJunA = new THREE.Color(blk ? 0x3E5A34 : 0x4E7A3D), cJunB = new THREE.Color(blk ? 0x2E4526 : 0x3B5E2E);
+  const cRokA = new THREE.Color(blk ? 0x403C38 : 0x5A544E), cRokB = new THREE.Color(blk ? 0x524D46 : 0x6E665C);
   const tmp = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
@@ -978,6 +998,7 @@ function genScenario(type, seed) {
   const M = CONFIG.MISSION;
   const S = { seed, type, difficulty: DIFFICULTY, rng, kps: [], friendlies: [],
               effectRadius: M.effectRadius, hitsNeed: M.hitsToNeutralize };
+  const OPT = (activeChapter && activeChapter.scn) || {};
 
   function findSpot(rMin, rMax, hMin, hMax, needLOS) {
     for (let tries = 0; tries < 300; tries++) {
@@ -1017,9 +1038,59 @@ function genScenario(type, seed) {
     S.friendlies = [{ x: compound.x, z: compound.z, r: M.fratricideRadius }];
     S.brief = `Friendly strongpoint, grid ${gridOf(compound.x, compound.z)} (bearing ~${brgTo(compound)} mils), is under assault. Locate the attackers pressing it and destroy them without hitting the friendlies.`;
   } else if (type === 'troops') {
-    S.enemy = findSpot(M.targetRange[0], M.targetRange[1], 2, 14, true) ||
-              { x: OP.x + 2000, z: OP.z };
-    S.brief = `Enemy infantry in the open, reported bearing ~${brgTo(S.enemy)} mils from your OP. A gift. Do not waste it.`;
+    if (OPT.mask) {
+      // crest-masked: the target must NOT have line of sight from the OP
+      let spot = null;
+      for (let tries = 0; tries < 400 && !spot; tries++) {
+        const az = rng() * Math.PI * 2, range = lerp(1200, 2600, rng());
+        const x = OP.x + Math.sin(az) * range, z = OP.z - Math.cos(az) * range;
+        const h = H(x, z);
+        if (h < 3 || h > 60) continue;
+        if (hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) continue;
+        if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+        spot = { x, z };
+      }
+      S.enemy = spot || findSpot(M.targetRange[0], M.targetRange[1], 2, 60, false) ||
+                { x: OP.x + 2000, z: OP.z };
+      S.brief = `Enemy infantry assembling IN DEFILADE near grid ${gridOf(S.enemy.x, S.enemy.z)} — you will not see them or your bursts from the tower. Fight it on the map: plot, fire, listen, adjust off the smoke over the crest.`;
+    } else {
+      S.enemy = findSpot(M.targetRange[0], M.targetRange[1], 2, 14, true) ||
+                { x: OP.x + 2000, z: OP.z };
+      S.brief = `Enemy infantry in the open, reported bearing ~${brgTo(S.enemy)} mils from your OP. A gift. Do not waste it.`;
+    }
+  } else if (type === 'wreck') {
+    S.enemy = findSpot(1100, 2100, 1, 6, true) || { x: OP.x + 1500, z: OP.z };
+    S.effectRadius = 30;
+    S.hitsNeed = 2;
+    S.brief = `Training target: a derelict landing craft on the beach, bearing ~${brgTo(S.enemy)} mils. It cannot shoot back. Neither could the last observer.`;
+  } else if (type === 'raid') {
+    // raiders MUST be near a village — try every village with LOS from the
+    // OP, then relax LOS (fight it on the map) before any random fallback
+    function nearVillage(v, needLOS) {
+      for (let tries = 0; tries < 300; tries++) {
+        const az = rng() * Math.PI * 2, r = 130 + rng() * 70;
+        const x = v.x + Math.sin(az) * r, z = v.z - Math.cos(az) * r;
+        if (H(x, z) < 2) continue;
+        if (needLOS && !hasLOS(eye.x, eye.y, eye.z, x, H(x, z) + 2, z)) continue;
+        if (v.huts.some(hh => dist2(x, z, hh.x, hh.z) < 90)) continue;
+        return { x, z };
+      }
+      return null;
+    }
+    let enemy = null, vil = null, seen = true;
+    for (const v of WORLD.villages) {
+      enemy = nearVillage(v, true);
+      if (enemy) { vil = v; break; }
+    }
+    if (!enemy) for (const v of WORLD.villages) {
+      enemy = nearVillage(v, false);
+      if (enemy) { vil = v; seen = false; break; }
+    }
+    S.enemy = enemy || findSpot(1200, 2800, 2, 60, true) || { x: OP.x + 1800, z: OP.z };
+    S.village = vil;
+    S.brief = `Raiders are hitting the civilian village${vil ? ' of ' + vil.name : ''}, grid ${gridOf(S.enemy.x, S.enemy.z)} area.` +
+      (seen ? '' : ' The village is masked from your tower — work it off the map and the smoke.') +
+      ' The huts are NO-STRIKE — one round in the village fails the mission. Cut the raiders down without touching it.';
   } else if (type === 'bunker') {
     S.enemy = findSpot(1200, 3000, 22, 140, true) ||
               findSpot(1200, 3000, 8, 999, true) || { x: OP.x + 1800, z: OP.z };
@@ -1066,13 +1137,19 @@ function genScenario(type, seed) {
   } else if (type === 'assault') {
     S.enemy = findSpot(1600, 3000, 4, 60, true) || { x: OP.x + 2000, z: OP.z };
     const oAz = azTo(S.enemy.x, S.enemy.z, OP.x, OP.z);  // objective -> OP side
-    S.fStart = { x: S.enemy.x + Math.sin(oAz) * 900, z: S.enemy.z - Math.cos(oAz) * 900 };
+    const off = OPT.fClose ? 520 : 900;                  // fClose: friendlies start inside your sheaf distances
+    S.fStart = { x: S.enemy.x + Math.sin(oAz) * off, z: S.enemy.z - Math.cos(oAz) * off };
     S.fAdvAz = azTo(S.fStart.x, S.fStart.z, S.enemy.x, S.enemy.z);
     S.fSpeed = 0.7;
-    S.fHold = 180;
+    S.fHold = OPT.fClose ? 120 : 180;
+    S.fAdvMax = off - S.fHold;
     S.ft0 = sim.now;
-    S.brief = `Friendly infantry advancing from grid ${gridOf(S.fStart.x, S.fStart.z)} onto an enemy-held objective, bearing ~${brgTo(S.enemy)} mils. This WILL be danger close: your call must include the proword DANGER CLOSE, and a short round lands on our own people.`;
+    S.brief = `Friendly infantry advancing from grid ${gridOf(S.fStart.x, S.fStart.z)} onto an enemy-held objective, bearing ~${brgTo(S.enemy)} mils.` +
+      (OPT.fClose
+        ? ' The lines are TANGLED — friendlies are already inside normal safe distances and still moving. DANGER CLOSE proword, creeping corrections, zero slack.'
+        : ' This WILL be danger close: your call must include the proword DANGER CLOSE, and a short round lands on our own people.');
   }
+  if (OPT.effR) S.effectRadius = OPT.effR;
 
   // registration / known points for shift missions
   for (let k = 0; k < 2; k++) {
@@ -1084,7 +1161,7 @@ function genScenario(type, seed) {
       if (!hasLOS(eye.x, eye.y, eye.z, x, H(x, z) + 2, z)) continue;
       if (S.kps.length && dist2(S.kps[0].x, S.kps[0].z, x, z) < 800) continue;
       if (dist2(x, z, S.enemy.x, S.enemy.z) < 400) continue;
-      S.kps.push({ id: String(1001 + k), x, z });
+      S.kps.push({ id: String(1001 + k), name: KP_NAMES[(seed + k) % KP_NAMES.length], x, z });
       break;
     }
   }
@@ -1097,7 +1174,7 @@ function friendlyPositions() {
   if (!S) return [];
   if (S.type === 'strongpoint') return S.friendlies;
   if (S.type !== 'assault') return [];
-  const adv = Math.min(S.fSpeed * (sim.now - S.ft0), 900 - S.fHold);
+  const adv = Math.min(S.fSpeed * (sim.now - S.ft0), S.fAdvMax);
   const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
   const rx = Math.cos(S.fAdvAz), rz = Math.sin(S.fAdvAz);
   const out = [];
@@ -1162,7 +1239,7 @@ function updateScenario() {
       }
     }
   } else if (S.type === 'assault') {
-    const adv = Math.min(S.fSpeed * (sim.now - S.ft0), 900 - S.fHold);
+    const adv = Math.min(S.fSpeed * (sim.now - S.ft0), S.fAdvMax);
     const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
     const rx = Math.cos(S.fAdvAz), rz = Math.sin(S.fAdvAz);
     for (let i = 0; i < units.fSquad.length; i++) {
@@ -1180,7 +1257,8 @@ function placeUnits() {
   // hide/reset everything mission-specific
   units.troops.forEach(m => m.visible = false);
   units.vehicles.forEach(m => {
-    m.visible = false; m.material = units.vehMatAlive; m.rotation.set(0, 0, 0);
+    m.visible = false; m.material = units.vehMatAlive;
+    m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1);
   });
   units.huts.forEach(m => m.visible = false);
   units.flag.pole.visible = units.flag.banner.visible = false;
@@ -1243,6 +1321,20 @@ function placeUnits() {
   } else if (S.type === 'assault') {
     troopCluster(S.enemy.x, S.enemy.z, 8, 20);
     units.fSquad.forEach(m => m.visible = true);    // positions driven per-frame
+  } else if (S.type === 'wreck') {
+    const m = units.vehicles[0];                    // derelict landing craft
+    m.visible = true;
+    m.position.set(S.enemy.x, H(S.enemy.x, S.enemy.z) + 0.9, S.enemy.z);
+    m.rotation.set(0, rng() * Math.PI, 0.35);
+    m.scale.set(2.2, 1.3, 1.6);
+    m.material = units.vehMatDead;
+  } else if (S.type === 'raid') {
+    troopCluster(S.enemy.x, S.enemy.z, 8, 18);
+    const m = units.vehicles[0];
+    m.visible = true;
+    const vx = S.enemy.x + 14, vz = S.enemy.z - 10;
+    m.position.set(vx, H(vx, vz) + 1.05, vz);
+    m.rotation.set(0, rng() * Math.PI * 2, 0);
   }
   units.kpPosts.forEach((m, i) => {
     const kp = S.kps[i];
@@ -1474,6 +1566,18 @@ const QUIPS = {
   rantLost: [
     'STOP. Just — stop. MUSTANG, I have drunk deep of your transmissions and found NOTHING. No grid. No direction. No sense. You are a forward observer. So OBSERVE something, and then TELL ME ABOUT IT in the format God and the field manual intended. Warning order. Location. Description. OVER.',
     'MUSTANG, listen to me very carefully, because I will say this once. I do not know what you are doing on that hill, but it is not calling for fire. Take a breath. Look at your map. Send: warning order, target location, description. In that order. Like a professional. Over.',
+  ],
+  careerFrat: [
+    'And MUSTANG — before we begin: the friendlies have asked me to remind you which color smoke is theirs. All of them. They held a meeting.',
+    'One administrative note, MUSTANG: your file now has a tab. Files should not have tabs. Send your traffic.',
+  ],
+  careerCollat: [
+    'MUSTANG, the village council has formally requested you be issued a map with pictures. Motion carried unanimously. Proceed.',
+    'Before you key up, MUSTANG — the huts are still no-strike. Yes, still. Yes, all of them. Send it.',
+  ],
+  careerVet: [
+    'MUSTANG 12 on the net. The guns know your voice now, son. They perk up. It is almost touching.',
+    'Ah, MUSTANG. The log says we have done this dance a few times. Lead, this time, over.',
   ],
   snide: [
     'Copy your... whatever that was. The manual describes a format, MUSTANG. It is one page. There are pictures.',
@@ -1771,6 +1875,7 @@ function drawReticle() {
 }
 function setBinos(on) {
   binos = on;
+  if (on) tutEvent('binos');
   camera.fov = on ? CONFIG.CAMERA.binoFov : CONFIG.CAMERA.fov;
   camera.updateProjectionMatrix();
   binoEl.classList.toggle('on', on);
@@ -1794,6 +1899,7 @@ function doLase() {
     laseEl.textContent = hit
       ? `RNG ${Math.round(hit.dist)} M   GRID ${gridOf(hit.x, hit.z)}`
       : 'NO RETURN';
+    if (hit) tutEvent('lase', hit);
     schedule(sim.now + CONFIG.UI.laseHold, () => { if (tok === laseToken) laseEl.textContent = ''; });
   });
 }
@@ -1818,14 +1924,19 @@ function gauss(rng) {
   while (v === 0) v = rng();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
+// 60mm mortars (Volume IV): much tighter dispersion than the 155 battery
+function assetScale() {
+  return activeChapter && activeChapter.asset === 'mortar60' ? 0.55 : 1;
+}
 function firstRoundError(rng) {
   const [lo, hi] = CONFIG.BALLISTICS.firstRound[DIFFICULTY];
-  const mag = lerp(lo, hi, rng()), az = rng() * Math.PI * 2;
+  const mag = lerp(lo, hi, rng()) * assetScale(), az = rng() * Math.PI * 2;
   return { x: Math.sin(az) * mag, z: -Math.cos(az) * mag };
 }
 function followUpError(rng, otAz) {
   const s = CONFIG.BALLISTICS.followUp[DIFFICULTY];
-  const along = gauss(rng) * s.range, across = gauss(rng) * s.defl;
+  const k = assetScale();
+  const along = gauss(rng) * s.range * k, across = gauss(rng) * s.defl * k;
   const fx = Math.sin(otAz), fz = -Math.cos(otAz);
   const rx = Math.cos(otAz), rz = Math.sin(otAz);
   return { x: fx * along + rx * across, z: fz * along + rz * across };
@@ -2058,8 +2169,14 @@ function parseMessage(raw) {
     for (let i = di; i < toks.length && !stop.has(toks[i]); i++) descToks.push(toks[i]);
     return { type: 'cff', method: 'grid', warno, digits, desc: descToks.join(' '), raw: t, toks };
   }
-  // shift from known point: "shift known point 1001, right 200, add 400"
-  const mShift = t.match(/\b(?:from|shift)\s+(?:known point\s+|kp\s+|a\s?b\s+)?(\d{4})\b/);
+  // shift from known point: "shift known point 1001, right 200, add 400" —
+  // named KPs also accepted ("shift BREWERY"), normalized to their id first
+  let tS = t;
+  for (const k of ((typeof Scenario !== 'undefined' && Scenario && Scenario.kps) || []))
+    if (k.name)
+      tS = tS.replace(new RegExp('\\b(?:known point\\s+|kp\\s+)?' + k.name.toLowerCase() + '\\b'),
+                      'known point ' + k.id);
+  const mShift = tS.match(/\b(?:from|shift)\s+(?:known point\s+|kp\s+|a\s?b\s+)?(\d{4})\b/);
   if (mShift) {
     const warno = ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none');
     let sRight = 0, sAdd = 0;
@@ -2108,7 +2225,8 @@ function formatNotes(p) {
     notes.push('Open with both callsigns: "HELLHOUND FIRES, THIS IS MUSTANG 12".');
   if (p.warno === 'none')
     notes.push('No warning order — say ADJUST FIRE or FIRE FOR EFFECT.');
-  if (p.method === 'grid' && p.digits.length === 8)
+  if (p.method === 'grid' && p.digits.length === 8 &&
+      !(activeChapter && activeChapter.asset === 'mortar60'))
     notes.push('8-digit grid is 60mm mortar precision; artillery works in hundreds (6-digit).');
   if (!p.desc)
     notes.push('No target description ("infantry in the open", etc.).');
@@ -2122,6 +2240,28 @@ function handleCFF(p) {
   if (mission && !mission.done) {
     FDC.say('MUSTANG 12, we are mid-mission. Adjust, fire for effect, or send end of mission, over.', { delay: 1 });
     return;
+  }
+  // 60mm precision shoots demand the full 8-digit grid
+  if (activeChapter && activeChapter.asset === 'mortar60' &&
+      p.method === 'grid' && p.digits && p.digits.length === 6) {
+    FDC.say('MUSTANG 12, HELLHOUND — this is a 60 MIKE MIKE precision shoot. Six digits is a neighborhood; I need an ADDRESS. Send 8 digits, ten-meter precision, over.', { delay: 1.1 });
+    return;
+  }
+  // strict net (Volume IV): full format or the call is rejected
+  if (activeChapter && activeChapter.strict) {
+    let challenge = null;
+    if (!p.raw.includes('hellhound') || !p.raw.includes('mustang'))
+      challenge = 'this net runs callsigns. Identify yourself and your addressee and say again your last, over.';
+    else if (p.warno === 'none')
+      challenge = 'no warning order heard. ADJUST FIRE or FIRE FOR EFFECT, then location. Say again, over.';
+    else if (!p.desc)
+      challenge = 'no target description. I do not shoot at adjectives. Say again with description, over.';
+    else if (!p.toks.includes('over'))
+      challenge = 'transmissions end with OVER on this net. The book is not a suggestion tonight. Say again, over.';
+    if (challenge) {
+      FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: ' + challenge, { delay: 1.1 });
+      return;
+    }
   }
   // target location -> world point, any method
   let cx, cz, locStr;
@@ -2187,7 +2327,9 @@ function handleCFF(p) {
   FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
           (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
           { delay: CONFIG.FDC.readbackDelay });
-  FDC.say('MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
+  FDC.say(activeChapter && activeChapter.asset === 'mortar60'
+    ? 'MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.'
+    : 'MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
           { delay: 1.4 });
   // deviation policy: sloppy-but-safe call format earns a snide remark and
   // proceeds; a clean call gets the usual readback color.
@@ -2214,6 +2356,12 @@ function handleAdjust(p) {
     return;
   }
   if (state !== 'ADJUSTING') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
+  // strict net: corrections come rounded — deviation in tens, range in fifties
+  if (activeChapter && activeChapter.strict && p.any &&
+      (Math.abs(p.corr.right) % 10 || Math.abs(p.corr.add) % 50)) {
+    FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: deviation in TENS, range in FIFTIES or hundreds. Recompute and say again, over.', { delay: 1 });
+    return;
+  }
   // dangerous deviation gate: a correction that walks the aimpoint onto
   // friendlies or a village is refused with a rant. Resending the identical
   // correction overrides it — scripts are guidelines, and it is his funeral.
@@ -2262,6 +2410,13 @@ function handleAdjust(p) {
 
 function handleEOM(p) {
   if (!mission) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  // strict net: end of mission carries surveillance (RREMS terms)
+  if (activeChapter && activeChapter.strict && !mission.done && !mission.eomChallenged &&
+      !/(neutralized|destroyed|suppressed)/.test(p.bda || '')) {
+    mission.eomChallenged = true;
+    FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: end of mission carries surveillance. NEUTRALIZED, DESTROYED, or SUPPRESSED. Say again with your assessment, over.', { delay: 1.1 });
+    return;
+  }
   if (!mission.done) { mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now; }
   FDC.say(`END OF MISSION${p.bda ? ', ' + p.bda.toUpperCase() : ''}, OUT.`, { delay: 1.2 });
   if (mission.failReason !== 'fratricide' && mission.failReason !== 'collateral') {
@@ -2295,6 +2450,15 @@ function onPlayerMessage(raw) {
   const p = parseMessage(raw);
   TLOG.add('parse', '', raw, { ptype: p.type, method: p.method || null,
     warno: p.warno || null, ffe: !!p.ffe });
+  // tutorial intercept: steps may consume the message; noMission tutorials
+  // keep the guns cold entirely
+  if (TUT.steps) {
+    if (tutEvent('msg', p)) return;
+    if (TUT.noMission && (p.type === 'cff' || p.type === 'adjust' || p.type === 'repeat')) {
+      log('', 'GUNNY BOTTLECAP: Guns are cold today, killer. Follow the drill.', 'sys');
+      return;
+    }
+  }
   if (p.type !== 'unknown' && p.type !== 'empty') unknownStreak = 0;
   switch (p.type) {
     case 'empty': break;
@@ -2379,6 +2543,23 @@ function showAAR() {
       BEST.save();
     }
   }
+  // career record (feeds HELLHOUND's continuity quips)
+  const car = CAMP.data._career || (CAMP.data._career = { frat: 0, collat: 0, missions: 0 });
+  car.missions++;
+  if (frat) car.frat++;
+  if (collat) car.collat++;
+  CAMP.save();
+  // commendations: funny medals for feats worth bragging about
+  const parC = (activeChapter && activeChapter.par) || 300;
+  const medals = [];
+  if (pass) {
+    if (m.adjustRounds <= 1) medals.push('GODDAMN HOLE IN ONE — effect after a single adjusting round');
+    if (m.aimErr0 !== null && m.aimErr0 <= 50) medals.push('EAGLE EYE — initial location within 50 m');
+    if (m.notes.length === 0) medals.push('ACTUALLY READ THE MANUAL — clean call format, no coaching');
+    if (dur <= parC * 0.6) medals.push('FAST MOVER — done in well under par');
+    if (activeChapter && activeChapter.strict) medals.push('IRON NET — passed under strict doctrine');
+    if (activeChapter && activeChapter.asset === 'mortar60') medals.push('TEN-METER MAN — precision work with the sixty');
+  }
   TLOG.add('aar', '', verdict, { rounds: m.adjustRounds, dur: Math.round(dur),
     firstMiss: m.firstMiss === null ? null : Math.round(m.firstMiss),
     aimErr0: m.aimErr0 === null ? null : Math.round(m.aimErr0),
@@ -2412,6 +2593,9 @@ function showAAR() {
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
     `</table>` +
     (m.notes.length ? `<div>Format coaching:</div><ul>${m.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
+    (medals.length ? `<div class="mlabel" style="margin-top:8px">COMMENDATIONS</div><ul>${medals.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
+    (activeChapter && activeChapter.outro && pass
+      ? `<div style="font-style:italic;color:#9fb08c;margin:8px 0">${activeChapter.outro}</div>` : '') +
     (activeChapter ? `<div style="margin-bottom:6px;color:#9fb08c">Replay from the mission menu [K] to improve your stars.</div>` : '') +
     `<div class="foot">[N] — skirmish mission &middot; [K] — mission menu &middot; [ESC] — back to the OP &middot; seed ${CONFIG.SEED.mission}</div>`;
   if (document.exitPointerLock) document.exitPointerLock();
@@ -2553,7 +2737,7 @@ function drawMap() {
     ctx.moveTo(kx - 5, kz - 5); ctx.lineTo(kx + 5, kz + 5);
     ctx.moveTo(kx - 5, kz + 5); ctx.lineTo(kx + 5, kz - 5);
     ctx.stroke();
-    mapMarkerLabel(ctx, 'AB' + kp.id, kx + 8, kz + 4);
+    mapMarkerLabel(ctx, 'AB' + kp.id + (kp.name ? ' ' + kp.name : ''), kx + 8, kz + 4);
   }
   // OP
   const ox = wpx(OP.x), oz = wpz(OP.z);
@@ -2577,6 +2761,7 @@ function toggleMap(force) {
   if (on) {
     drawMap();
     if (document.exitPointerLock) document.exitPointerLock();
+    tutEvent('map');
   }
   mapEl.classList.toggle('on', on);
 }
@@ -2792,7 +2977,7 @@ function renderSheet() {
     ctx.moveTo(kx - 6, kz + 6); ctx.lineTo(kx + 6, kz - 6);
     ctx.stroke();
     ctx.fillStyle = '#000';
-    ctx.fillText(`AB${kp.id}`, kx + 9, kz + 4);
+    ctx.fillText(`AB${kp.id}${kp.name ? ' ' + kp.name : ''}`, kx + 9, kz + 4);
   }
   if (answer && Scenario.enemy && inExtent(Scenario.enemy)) {
     const tx = X(Scenario.enemy.x), tz = Y(Scenario.enemy.z);
@@ -2886,6 +3071,7 @@ function toggleLibrary(force) {
     renderSheet();
     refreshLibButtons();
     if (document.exitPointerLock) document.exitPointerLock();
+    tutEvent('library');
   }
   libEl.classList.toggle('on', on);
 }
@@ -2915,37 +3101,108 @@ document.getElementById('libprint').addEventListener('click', () => {
 // (tutorials, strict mode, 60mm, village raid, epilogue) — shown but not
 // playable, and skipped by the sequential-unlock chain.
 const CAMPAIGN = [
-  { id: 'F',  tab: 'FWD', name: 'FOREWORD — THE SCHOOLHOUSE', need: 0, chapters: [
-    { id: 'F.1', title: 'EYES BEFORE GUNS', blurb: 'optics & mils tutorial — stage 10', impl: false },
-    { id: 'F.2', title: 'THE MAP IS NOT THE TERRITORY', blurb: 'mapwork tutorial — stage 10', impl: false },
-    { id: 'F.3', title: 'SAY IT LIKE YOU MEAN IT', blurb: 'first call for fire — stage 10', impl: false },
+  { id: 'F',  tab: 'FWD', name: 'FOREWORD — THE SCHOOLHOUSE', need: 0, tseed: 1337, chapters: [
+    { id: 'F.1', title: 'EYES BEFORE GUNS', blurb: 'optics, mils, laser', impl: true, type: 'wreck', seed: 51,
+      story: 'A training beach, stateside. Gunnery Sergeant Bottlecap holds a coffee he clearly hates and looks at you the way a man looks at weather. "The actual FO fell off the boat. Nobody elaborates. That makes you the eyes. Let\'s find out if you have any."',
+      outro: 'Gunny initials a box on a clipboard without looking down at it.',
+      tut: { noMission: true,
+        done: 'Eyes, glass, laser. That is the whole instrument. Tomorrow we find out if the brain is attached.',
+        steps: [
+          { on: 'look', amt: 5, say: 'First lesson is free: LOOK AROUND. Drag your eyes across the whole horizon — mouse or stick. The heading readout up top is in mils, 6400 to a circle. Go.' },
+          { on: 'binos', say: 'Adequate. Now glass up — press [B]. The reticle is graduated in mils; you will measure the world with it.' },
+          { on: 'lase', check: h => { TUT.laseSpots.push(h); return true; },
+            say: 'Now LASE — put the reticle on any piece of this island and press [L]. Range and grid come straight back. That laser is worth more than you are.' },
+          { on: 'lase', check: h => TUT.laseSpots.some(p => dist2(p.x, p.z, h.x, h.z) > 300),
+            say: 'Again — a DIFFERENT spot, three hundred meters or more from the first. An observer confirms. He does not assume.' },
+        ] } },
+    { id: 'F.2', title: 'THE MAP IS NOT THE TERRITORY', blurb: 'mapwork & terrain association', impl: true, type: 'wreck', seed: 52,
+      story: '"Paper," Gunny says, producing a map sheet like a priest producing scripture. "The island and this sheet are the same math. Every road, every hut, every tower is plotted. You will learn to stand in one and point at the other."',
+      outro: '"The map never lies. It just waits for you to."',
+      tut: { noMission: true,
+        done: 'That is terrain association. You found a thing in the world on a piece of paper. Some officers never manage it.',
+        steps: [
+          { on: 'map', say: 'Map up — press [M]. Roads, tracks, villages, facilities: plotted. Enemy: never. Finding HIM is the job.' },
+          { on: 'library', say: 'Now the real sheet — press [P] and study the full 1:50,000. Print it if you have a printer; this trade is done on paper. Close it when you have the lay of the island.' },
+          { on: 'msg', missSay: 'Negative. Plot it AGAIN. Find it on your map, read right then up, six digits, and send "grid" plus the number.',
+            check: p => {
+              if (p.type !== 'cff' || p.method !== 'grid' || !p.digits) return false;
+              const d = p.digits;
+              const w = d.length === 8
+                ? enToWorld(parseInt(d.slice(0, 4)) * 10 + 5, parseInt(d.slice(4)) * 10 + 5)
+                : enToWorld(parseInt(d.slice(0, 3)) * 100 + 50, parseInt(d.slice(3)) * 100 + 50);
+              const lm = tutLandmark();
+              return lm && dist2(w.x, w.z, lm.x, lm.z) < 200;
+            },
+            say: () => `Last rep: TERRAIN ASSOCIATION. Find the ${tutLandmark() ? tutLandmark().name : 'FUEL POINT'} on your map and send me its six-digit grid — say or type "grid" and the number. Do not lase it. Read the paper.` },
+        ] } },
+    { id: 'F.3', title: 'SAY IT LIKE YOU MEAN IT', blurb: 'your first full call for fire', impl: true, type: 'wreck', seed: 53, par: 420,
+      story: 'A derelict landing craft rusts on the beach below. "That wreck has been dead thirty years," Gunny says. "You are going to kill it again — with a complete, correct call for fire. HELLHOUND is live. Try not to embarrass either of us."',
+      outro: 'Gunny signs your qualification sheet without looking up. "Congratulations. You are somebody else\'s problem now."',
+      coach: [
+        'Locate the wreck — binos [B], laser [L]. Then send it: callsigns, ADJUST FIRE, grid, description, OVER.',
+        'When the round lands, watch the burst against the target. LEFT/RIGHT so many meters, ADD/DROP so many meters. Then FIRE FOR EFFECT when it is close.',
+        'When the wreck is dead: END OF MISSION, target destroyed. Say it like you have done it before.' ] },
   ]},
-  { id: 'V1', tab: 'I', name: 'VOLUME I — GREEN AS GRASS', need: 0, chapters: [
-    { id: '1.1', title: 'TROOPS IN THE OPEN, BRAINS IN THE REAR', blurb: 'grid fundamentals', impl: true, type: 'troops', seed: 101, par: 300 },
-    { id: '1.2', title: 'KNOCK KNOCK', blurb: 'dug-in bunker — bracket it', impl: true, type: 'bunker', seed: 102, par: 360 },
-    { id: '1.3', title: 'HOLD THE LINE', blurb: 'near the perimeter, not on it', impl: true, type: 'strongpoint', seed: 103, par: 360 },
-    { id: '1.4', title: 'DO IT AGAIN, SLOWER', blurb: 'format discipline on the clock', impl: true, type: 'troops', seed: 104, par: 210 },
+  { id: 'V1', tab: 'I', name: 'VOLUME I — GREEN AS GRASS', need: 0, tseed: 1337, chapters: [
+    { id: '1.1', title: 'TROOPS IN THE OPEN, BRAINS IN THE REAR', blurb: 'grid fundamentals', impl: true, type: 'troops', seed: 101, par: 300,
+      story: 'A quiet-sector island, mostly secured — a good place to be bad at your job. Somebody forgot to tell the platoon of enemy infantry sunbathing in the open. First real mission. First real rounds.',
+      outro: 'HELLHOUND logs the grid without comment, which from HELLHOUND is a medal.' },
+    { id: '1.2', title: 'KNOCK KNOCK', blurb: 'dug-in bunker — bracket it', impl: true, type: 'bunker', seed: 102, par: 360,
+      story: 'A bunker with a roof and opinions. Precision matters now: bracket it — over, short, split the difference — and put one through the front door. The book calls it successive bracketing. Gunny called it "haggling."',
+      outro: 'The engineers send their thanks. They did not want to walk up there.' },
+    { id: '1.3', title: 'HOLD THE LINE', blurb: 'near the perimeter, not on it', impl: true, type: 'strongpoint', seed: 103, par: 360,
+      story: 'A friendly strongpoint is getting pressed and the perimeter is shrinking by the minute. Your rounds go NEXT to our people, not ON them. There is a village behind the wire, too. Everyone on this island is watching your math.',
+      outro: 'The strongpoint holds. Somebody inside the wire owes you a beer and will deny it.' },
+    { id: '1.4', title: 'DO IT AGAIN, SLOWER', blurb: 'format discipline on the clock', impl: true, type: 'troops', seed: 104, par: 210,
+      story: 'HELLHOUND has read your file aloud to the gun crews, twice, doing voices. Today the standard is the FULL format, correct, fast — par is tight and the guns are bored. Prove the schoolhouse took.',
+      outro: 'HELLHOUND, grudging: "Log shows a professional worked this net today. I have started an investigation."' },
   ]},
-  { id: 'V2', tab: 'II', name: 'VOLUME II — THE RIDGE LINE', need: 6, chapters: [
-    { id: '2.1', title: 'NUMBERS ON A COMPASS', blurb: 'polar mission required', impl: true, type: 'troops', seed: 201, par: 300, method: 'polar' },
-    { id: '2.2', title: 'OLD FRIENDS', blurb: 'shift from a known point required', impl: true, type: 'bunker', seed: 202, par: 360, method: 'shift' },
-    { id: '2.3', title: 'DEFILADE BLUES', blurb: 'crest-masked target — stage 10', impl: false },
-    { id: '2.4', title: 'THE PERIMETER', blurb: 'your choice of method, under pressure', impl: true, type: 'strongpoint', seed: 204, par: 330 },
+  { id: 'V2', tab: 'II', name: 'VOLUME II — THE RIDGE LINE', need: 6, tseed: 9021, chapters: [
+    { id: '2.1', title: 'NUMBERS ON A COMPASS', blurb: 'polar mission required', impl: true, type: 'troops', seed: 201, par: 300, method: 'polar',
+      story: 'A new island — coral ridges, dead ground, terrain that hides things. The map is still in a crate somewhere, so today you are the datum: POLAR. Direction and distance off your own position. The FDC knows where you are. Use it.',
+      outro: 'No map, no grid, dead targets. The compass forgives no one.' },
+    { id: '2.2', title: 'OLD FRIENDS', blurb: 'shift from a known point required', impl: true, type: 'bunker', seed: 202, par: 360, method: 'shift',
+      story: 'The registration points on this island have names — the kind of names positions earn. The guns already know them cold. SHIFT from a known point: direction, lateral, range. Ride on data somebody already paid for.',
+      outro: 'The known points hold. That is why we register them before we need them.' },
+    { id: '2.3', title: 'DEFILADE BLUES', blurb: 'crest-masked target — fire on what you cannot see', impl: true, type: 'troops', seed: 203, par: 420, scn: { mask: true },
+      story: 'Enemy infantry assembling in defilade behind the ridge. You will not see them, and you will not see your bursts — just smoke drifting over the crest and the sound arriving late. Fight this one on the map. The map does not blink.',
+      outro: 'You never saw them. They never saw it coming. Fair trade.' },
+    { id: '2.4', title: 'THE PERIMETER', blurb: 'your choice of method, under pressure', impl: true, type: 'strongpoint', seed: 204, par: 330,
+      story: 'Another strongpoint, worse ground, less time. Nobody is telling you which location method to use — that is the point. Pick the right tool, first try, while the perimeter shrinks.',
+      outro: 'Right method, right rounds. The ridge line is yours now.' },
   ]},
-  { id: 'V3', tab: 'III', name: 'VOLUME III — THUNDER RUN', need: 14, chapters: [
-    { id: '3.1', title: 'ROLLING STOCK', blurb: 'convoy — lead it, or catch the pit stop', impl: true, type: 'convoy', seed: 301, par: 420 },
-    { id: '3.2', title: 'CLOSE ENOUGH TO SMELL IT', blurb: 'danger close — say it, creep it', impl: true, type: 'assault', seed: 302, par: 420 },
-    { id: '3.3', title: 'UNINVITED GUESTS', blurb: 'raiders in the village — stage 10', impl: false },
-    { id: '3.4', title: "EVERYONE'S MOVING", blurb: 'combined arms, friendlies advancing', impl: true, type: 'assault', seed: 304, par: 390 },
-    { id: '3.5', title: 'THE WRONG KIND OF FAMOUS', blurb: 'fratricide stress — stage 10', impl: false },
+  { id: 'V3', tab: 'III', name: 'VOLUME III — THUNDER RUN', need: 14, tseed: 5150, chapters: [
+    { id: '3.1', title: 'ROLLING STOCK', blurb: 'convoy — lead it, or catch the pit stop', impl: true, type: 'convoy', seed: 301, par: 420,
+      story: 'The big push is on and everything on this island is moving. An enemy column is running the coast road. Intel says they stop for fuel — columns always stop. Lead a moving target, or ambush a sitting one. Choose.',
+      outro: 'Burning trucks on a coast road: the war\'s most honest progress report.' },
+    { id: '3.2', title: 'CLOSE ENOUGH TO SMELL IT', blurb: 'danger close — say it, creep it', impl: true, type: 'assault', seed: 302, par: 420,
+      story: 'Friendlies assaulting an objective with the enemy inside six hundred meters of them. That is DANGER CLOSE — say the proword like you mean it, and creep the fire in from the safe side. A hundred meters at a time. No heroes.',
+      outro: 'The assault element walks the objective. Every one of them upright. That was the mission.' },
+    { id: '3.3', title: 'UNINVITED GUESTS', blurb: 'raiders in the village — huts are no-strike', impl: true, type: 'raid', seed: 303, par: 390,
+      story: 'First light. Raiders are hitting the fishing village — and the village is full of people whose war this is not. Fire on the raiders. The huts are no-strike. If discrimination were easy, they would not need an observer.',
+      outro: 'The raiders are gone. The village still stands. Nobody there will ever know your callsign, which is exactly right.' },
+    { id: '3.4', title: "EVERYONE'S MOVING", blurb: 'combined arms, friendlies advancing', impl: true, type: 'assault', seed: 304, par: 390,
+      story: 'A full combined-arms push: our infantry advancing, their line breaking, the target shifting while your rounds are in the air. Timing is everything and everything is on the move.',
+      outro: 'Fires and maneuver, actually coordinated. Doctrine writers weep with joy.' },
+    { id: '3.5', title: 'THE WRONG KIND OF FAMOUS', blurb: 'friendlies interleaved — do not make the news', impl: true, type: 'assault', seed: 305, par: 390, scn: { fClose: true },
+      story: 'The lines have collapsed into each other and the map looks like spilled paint. Friendlies are INSIDE your sheaf distances. The chapter title is the threat: observers who guess wrong here get famous in the worst way.',
+      outro: 'Nobody wrote your name in any report today. Stay unfamous.' },
   ]},
-  { id: 'V4', tab: 'IV', name: 'VOLUME IV — BLACK SAND', need: 24, chapters: [
-    { id: '4.1', title: 'STRICT NET', blurb: 'doctrine enforced — stage 10', impl: false },
-    { id: '4.2', title: 'TEN METERS', blurb: '60mm mortars, 8-digit — stage 10', impl: false },
-    { id: '4.3', title: 'NO SECOND CHANCES', blurb: 'hard only. one pass, tight clock.', impl: true, type: 'bunker', seed: 403, par: 240, diffs: ['hard'] },
-    { id: '4.4', title: 'THE MEAT GRINDER', blurb: 'final exam — stage 10', impl: false },
+  { id: 'V4', tab: 'IV', name: 'VOLUME IV — BLACK SAND', need: 24, tseed: 66600, palette: 'black', chapters: [
+    { id: '4.1', title: 'STRICT NET', blurb: 'doctrine enforced — full format or silence', impl: true, type: 'strongpoint', seed: 401, par: 360, strict: true,
+      story: 'A black-sand fortress island, and a new FDC posture: STRICT NET. Full format or the net stays silent — callsigns, warning order, location, description, OVER, correct rounding, real surveillance. The book, verbatim, under fire.',
+      outro: 'The net stayed clean. Doctrine is just courtesy under fire.' },
+    { id: '4.2', title: 'TEN METERS', blurb: '60mm mortars — 8-digit precision', impl: true, type: 'troops', seed: 402, par: 330, asset: 'mortar60', scn: { effR: 30 },
+      story: 'The 155s are displacing, so today you own a 60mm mortar section. Small tubes, tight sheaf, ten-meter grids — EIGHT digits, read right then up. At this precision, "close enough" is a contradiction.',
+      outro: 'Ten-meter work with a sixty. The mortar section names a tube after you. It is the ugly one.' },
+    { id: '4.3', title: 'NO SECOND CHANCES', blurb: 'hard only. one pass, tight clock.', impl: true, type: 'bunker', seed: 403, par: 240, diffs: ['hard'],
+      story: 'One bunker, one clock, hard difficulty, no bracket wide enough to hide in. Everything you have learned, at speed, or nothing.',
+      outro: 'On time, on target, no excuses filed. There were none to file.' },
+    { id: '4.4', title: 'THE MEAT GRINDER', blurb: 'the final exam — strict, hard, everything at once', impl: true, type: 'assault', seed: 404, par: 330, strict: true, diffs: ['hard'],
+      story: 'The last hill on the last island. Strict net, danger close, friendlies advancing, hard difficulty — the whole trade in one mission. Pass this and even HELLHOUND will say something almost kind. Almost.',
+      outro: 'HELLHOUND, after a long pause: "…acceptable, MUSTANG." Frame it.' },
   ]},
-  { id: 'EP', tab: 'EPI', name: 'EPILOGUE — SUNBURN', need: 32, chapters: [
+  { id: 'EP', tab: 'EPI', name: 'EPILOGUE — SUNBURN', need: 32, tseed: 1337, chapters: [
     { id: 'E.1', title: 'THE GREAT CHOW RAID', blurb: 'stage 11', impl: false },
     { id: 'E.2', title: 'CLAWS OUT', blurb: 'stage 11', impl: false },
     { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'stage 11', impl: false },
@@ -2954,7 +3211,15 @@ const CAMPAIGN = [
     tease: 'LOCKED — AWAITING AIRCRAFT. CAS, SOMEDAY.', chapters: [] },
 ];
 const ALL_CHAPTERS = CAMPAIGN.flatMap(v => v.chapters);
+CAMPAIGN.forEach(v => v.chapters.forEach(c => { c._vol = v; }));
 let activeChapter = null;
+// preferred landmark for the F.2 terrain-association drill
+function tutLandmark() {
+  return WORLD.facilities.find(f => f.kind === 'fuel') ||
+         WORLD.facilities.find(f => f.kind === 'mast') ||
+         WORLD.facilities[0] ||
+         (WORLD.villages[0] ? { name: WORLD.villages[0].name + ' village', x: WORLD.villages[0].x, z: WORLD.villages[0].z } : null);
+}
 
 // campaign persistence: best stars per chapter per difficulty
 const CAMP = {
@@ -3012,6 +3277,70 @@ function gradeMission(m) {
   if (activeChapter && activeChapter.method && m.method &&
       m.method !== activeChapter.method) stars = Math.min(stars, 2);
   return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
+}
+
+/* ============================================================ BRIEFINGS + TUTORIALS (stage 10) */
+const briefEl = document.getElementById('brief');
+function showBriefing(ch) {
+  document.getElementById('brieftitle').textContent = `CHAPTER ${ch.id} — ${ch.title}`;
+  document.getElementById('brieftext').textContent = ch.story;
+  briefEl.classList.add('on');
+  if (document.exitPointerLock) document.exitPointerLock();
+  if (CONFIG.VOICE.ttsEnabled && 'speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(ch.story);
+    u.rate = 1.0; u.pitch = 0.9;
+    if (fdcVoice) u.voice = fdcVoice;
+    speechSynthesis.speak(u);
+  }
+}
+document.getElementById('briefgo').addEventListener('click', () => {
+  briefEl.classList.remove('on');
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+});
+
+// Foreword tutorial engine: GUNNY BOTTLECAP walks the observer through steps
+// keyed to real events (look / binos / lase / map / library / msg). noMission
+// tutorials suppress live fire missions; F.3 rides the normal mission flow.
+const TUT = { steps: null, i: 0, noMission: false, yawAcc: 0, lastYaw: null, laseSpots: [] };
+function tutStart(ch) {
+  TUT.steps = ch.tut.steps; TUT.i = 0; TUT.noMission = !!ch.tut.noMission;
+  TUT.yawAcc = 0; TUT.lastYaw = null; TUT.laseSpots.length = 0;
+  schedule(sim.now + 2.5, tutSay);
+}
+function tutStop() { TUT.steps = null; }
+function tutSay() {
+  if (!TUT.steps || !TUT.steps[TUT.i]) return;
+  const s = TUT.steps[TUT.i];
+  log('', 'GUNNY BOTTLECAP: ' + (typeof s.say === 'function' ? s.say() : s.say), 'sys');
+}
+function tutEvent(ev, data) {
+  if (!TUT.steps) return false;
+  const s = TUT.steps[TUT.i];
+  if (!s || s.on !== ev) return false;
+  if (s.check && !s.check(data)) {
+    if (s.missSay && ev === 'msg') { log('', 'GUNNY BOTTLECAP: ' + s.missSay, 'sys'); return true; }
+    return false;
+  }
+  TUT.i++;
+  if (TUT.i >= TUT.steps.length) tutComplete();
+  else schedule(sim.now + 1.0, tutSay);
+  return true;
+}
+function tutComplete() {
+  const ch = activeChapter;
+  TUT.steps = null;
+  const cap = { easy: 3, normal: 4, hard: 5 }[DIFFICULTY] || 3;
+  CAMP.record(ch.id, DIFFICULTY, cap);
+  log('', 'GUNNY BOTTLECAP: ' + ch.tut.done, 'sys');
+  aarBox.innerHTML =
+    `<h2>TRAINING COMPLETE — ${ch.id}: ${ch.title}</h2>` +
+    `<div class="aarstars">${starStr(cap)}</div>` +
+    `<div class="verdict pass">QUALIFIED</div>` +
+    (ch.outro ? `<div style="font-style:italic;color:#9fb08c;margin:8px 0">${ch.outro}</div>` : '') +
+    `<div class="foot">[K] — mission menu &middot; [ESC] — back to the OP</div>`;
+  if (document.exitPointerLock) document.exitPointerLock();
+  aarEl.classList.add('on');
+  setState('AAR');
 }
 
 /* ============================================================ MISSION MENU [K] */
@@ -3136,6 +3465,7 @@ function newMission(first, type, chapter) {
   mission = null;
   bursts.forEach(b => { b.active = false; b.group.visible = false; });
   activeChapter = chapter || null;
+  tutStop();
   if (chapter) {
     // campaign chapter: fixed seed, fixed scenario, difficulty restrictions
     CONFIG.SEED.mission = chapter.seed;
@@ -3143,6 +3473,18 @@ function newMission(first, type, chapter) {
     if (chapter.diffs && !chapter.diffs.includes(DIFFICULTY)) {
       DIFFICULTY = chapter.diffs[0];
       log('', `This chapter is ${chapter.diffs.join('/').toUpperCase()} only — difficulty set to ${DIFFICULTY.toUpperCase()}.`, 'sys');
+    }
+    // per-volume island: rebuild the world when the volume's terrain differs
+    // (a user-loaded DEM always wins)
+    const vol = chapter._vol;
+    if (!DEM && vol && vol.tseed) {
+      const wantPal = vol.palette || null;
+      if (CONFIG.SEED.terrain !== vol.tseed || TERRAIN_PALETTE !== wantPal) {
+        CONFIG.SEED.terrain = vol.tseed;
+        TERRAIN_PALETTE = wantPal;
+        buildTerrain(); buildMinimap(); placeOP(); placeBattery(); buildWorldFeatures();
+        log('', 'Deploying to a new island — new map sheets are in the library [P].', 'sys');
+      }
     }
   } else {
     if (!first) CONFIG.SEED.mission++;
@@ -3155,8 +3497,17 @@ function newMission(first, type, chapter) {
     log('', `CHAPTER ${chapter.id} — ${chapter.title} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
     if (chapter.method)
       log('', `Chapter requirement: locate the target by ${chapter.method === 'polar' ? 'POLAR (direction + distance)' : 'SHIFT FROM A KNOWN POINT'} — a grid call caps this chapter at 2★.`, 'sys');
+    if (chapter.strict)
+      log('', 'STRICT NET: full format enforced — callsigns, warning order, location, description, OVER; corrections rounded (tens/fifties); surveillance term at end of mission.', 'sys');
+    if (chapter.asset === 'mortar60')
+      log('', 'ASSET: 60mm mortar section — 8-digit grids (10 m precision) required. Tighter dispersion, tighter target.', 'sys');
     if (chapter.par)
       log('', `Par time for full stars: ${fmtTime(chapter.par)}.`, 'sys');
+    if (chapter.tut) tutStart(chapter);
+    if (chapter.coach)
+      chapter.coach.forEach((c, i) =>
+        schedule(sim.now + 4 + i * 7, () => log('', 'GUNNY BOTTLECAP: ' + c, 'sys')));
+    if (chapter.story) showBriefing(chapter);
   } else {
     log('', `SKIRMISH: ${SCN_META[currentType].name} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
   }
@@ -3165,14 +3516,21 @@ function newMission(first, type, chapter) {
     `Hold [SPACE] to transmit by voice, or type below.`, 'sys');
   if (Scenario.kps && Scenario.kps.length)
     log('', 'Known points registered: ' + Scenario.kps.map(kp =>
-      `AB${kp.id} grid ${gridOf(kp.x, kp.z)} (brg ${fmtMils(radToMils(azTo(OP.x, OP.z, kp.x, kp.z)))})`).join(' · ') +
-      '. Shift example: "adjust fire, shift known point 1001, right 200, add 400, over".', 'sys');
+      `AB${kp.id} "${kp.name}" grid ${gridOf(kp.x, kp.z)} (brg ${fmtMils(radToMils(azTo(OP.x, OP.z, kp.x, kp.z)))})`).join(' · ') +
+      '. Shift example: "adjust fire, shift known point 1001, right 200, add 400, over" — the KP name works too ("shift BREWERY").', 'sys');
   if (WORLD.villages.length)
     log('', `NO-STRIKE: civilian village${WORLD.villages.length > 1 ? 's' : ''} ` +
       WORLD.villages.map(v => v.name).join(' and ') +
       ' — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. ' +
       'Permanent structures and roads are on the sheet too — use them to orient.', 'sys');
   FDC.say(pick(QUIPS.greet), { delay: 1.5 });
+  // continuity: HELLHOUND remembers your record
+  const car = CAMP.data._career;
+  if (car && Math.random() < 0.4) {
+    if (car.frat > 0) FDC.say(pick(QUIPS.careerFrat), { delay: 1.6 });
+    else if (car.collat > 0) FDC.say(pick(QUIPS.careerCollat), { delay: 1.6 });
+    else if (car.missions >= 5) FDC.say(pick(QUIPS.careerVet), { delay: 1.6 });
+  }
   if (first) {
     const c = Scenario.compound || Scenario.enemy;
     yaw = azTo(OP.x, OP.z, c.x, c.z);
@@ -3257,6 +3615,10 @@ document.addEventListener('keydown', e => {
     mapEl.classList.remove('on');
     menuEl.classList.remove('on');
     libEl.classList.remove('on');
+    if (briefEl.classList.contains('on')) {
+      briefEl.classList.remove('on');
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+    }
     return;
   }
   if (e.code === 'Space') {
@@ -3410,11 +3772,19 @@ function animate(tMs) {
     headingEl.textContent = s;
     binoHdgEl.textContent = s;
   }
+  // tutorial look-around tracking
+  if (TUT.steps) {
+    if (TUT.lastYaw !== null) TUT.yawAcc += Math.abs(yaw - TUT.lastYaw);
+    TUT.lastYaw = yaw;
+    const ts = TUT.steps[TUT.i];
+    if (ts && ts.on === 'look' && TUT.yawAcc > (ts.amt || 5)) tutEvent('look');
+  }
   // scenario dynamics + battle ambience
   updateScenario();
   updateCivilians(t);
   const flashOn = enemyAlive && Scenario &&
-    (Scenario.type === 'strongpoint' || Scenario.type === 'assault' || Scenario.type === 'bunker');
+    (Scenario.type === 'strongpoint' || Scenario.type === 'assault' ||
+     Scenario.type === 'bunker' || Scenario.type === 'raid');
   for (let i = 0; i < units.flashes.length; i++) {
     const f = units.flashes[i];
     f.s.visible = flashOn && (Scenario.type !== 'bunker' || i === 0) &&
