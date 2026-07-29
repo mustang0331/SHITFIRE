@@ -201,7 +201,7 @@
     RANGE (m) = SIZE (m) &divide; MILS &times; 1000<br>
     DEVIATION (m) = MILS &times; OT FACTOR (OT range &divide; 1000)<br>
     <span class="ref">KNOWN SIZES: hut 3 m high &middot; truck 5 m long &middot;
-    watchtower 100 m &middot; radio mast 26 m &middot; fuel drum 2 m</span><br>
+    hangar 6 m high &middot; radio mast 26 m &middot; fuel drum 2 m</span><br>
     <span class="ref">Example: mast subtends 5 mils &rarr; 26 &divide; 5 &times; 1000 = 5200 m</span>
     <span class="ref">DO NOT MIL A MAN — figures are drawn enlarged at range so you
     can see them. Mil hard structures. Deviation in mils is unaffected.</span>
@@ -1521,8 +1521,14 @@ function buildWorldFeatures() {
       addRoute(apron, true);
       // the built side: two hangars, an ops/tower block, a windsock mast
       const bx = af.x + perpX * 62, bz = af.z + perpZ * 62;
-      wBox(bx, bz, 16, 5.5, 11, _wMats.mil, th);
-      wBox(bx + ux * 26, bz + uz * 26, 16, 5.5, 11, _wMats.mil, th);
+      // 6.0 m, matching the mil card's "hangar 6 m high". The hangar replaced the
+      // watchtower as the card's large reference object: the observer is standing
+      // ON the watchtower and can never mil it, and the card's 100 m figure was
+      // wrong anyway against a 300 m tower. A hangar is big, hard-edged, plotted
+      // on the sheet, and visible across the island — an actual usable reference.
+      // KEEP EQUAL TO THE CARD.
+      wBox(bx, bz, 16, 6.0, 11, _wMats.mil, th);
+      wBox(bx + ux * 26, bz + uz * 26, 16, 6.0, 11, _wMats.mil, th);
       wBox(bx - ux * 30, bz - uz * 30, 9, 8.5, 8, _wMats.milB, th);   // tower/ops
       wBox(bx - ux * 30, bz - uz * 30, 0.4, 5, 0.4, _wMats.mast);     // windsock
       for (let i = 0; i < 3; i++)
@@ -1594,7 +1600,10 @@ function buildWorldFeatures() {
       const a = rng() * Math.PI * 2, r = 12 + rng() * 42;
       const hx = c.x + Math.cos(a) * r, hz = c.z + Math.sin(a) * r;
       if (H(hx, hz) < 1) continue;
-      wBox(hx, hz, 5.2, 2.6, 4.2, rng() < 0.5 ? _wMats.civ : _wMats.civB, rng() * Math.PI);
+      // 3.0 m high to match the mil card's "hut 3 m", same as the target huts —
+      // the observer cannot tell a village hut from an enemy-held one by eye, so
+      // they must not mil to different ranges. Was 2.6 m, a 15% range error.
+      wBox(hx, hz, 5.2, 3.0, 4.2, rng() < 0.5 ? _wMats.civ : _wMats.civB, rng() * Math.PI);
       vil.huts.push({ x: hx, z: hz });
     }
     if (!vil.huts.length) continue;
@@ -1891,8 +1900,16 @@ const units = { troops: [], vehicles: [], huts: [], flashes: [], smokePuffs: [],
 {
   const vehMat = new THREE.MeshLambertMaterial({ color: 0x4A4136, flatShading: true });
   const hutMat = new THREE.MeshLambertMaterial({ color: 0xC9B891, flatShading: true });
-  const vehGeo = new THREE.BoxGeometry(4.6, 2.1, 2.3);
-  const hutGeo = new THREE.BoxGeometry(7, 3.2, 5);
+  /* These two are MIL-RELATION REFERENCE OBJECTS, not scenery. The mil card
+     tells the observer a truck is 5 m long and a hut is 3 m high and range is
+     size / mils * 1000, so if the geometry disagrees with the card the trainer
+     teaches a range error. The truck was 4.6 m (a 5 m call reads 8.7% long) and
+     the hut 3.2 m (a 3 m call reads 6.3% short). Rounded to the card, not the
+     other way round: a real observer works from remembered round figures, and
+     the world should reward that rather than punish it.
+     KEEP THESE EQUAL TO THE CARD. */
+  const vehGeo = new THREE.BoxGeometry(5.0, 2.1, 2.3);
+  const hutGeo = new THREE.BoxGeometry(7, 3.0, 5);
   for (let i = 0; i < 8; i++) { const m = makeFigure('enemy'); scene.add(m); units.troops.push(m); }
   for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(vehGeo, vehMat); scene.add(m); units.vehicles.push(m); }
   units.vehMatAlive = vehMat;
