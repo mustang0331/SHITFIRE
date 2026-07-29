@@ -2762,34 +2762,51 @@ function renderShotPlot(cv, m) {
   const halfV = Math.max(220, (vMax - vMin) / 2 + pad);
   const cU = (uMin + uMax) / 2, cV = (vMin + vMax) / 2;
   const cx = tgt.x + rx * cU + fx * cV, cz = tgt.z + rz * cU + fz * cV;
-  const span = Math.max(halfU * 1.6, halfV * 1.25);
   // ~42° above horizontal: high enough to read the plot as a plan, oblique
-  // enough that terrain relief still shows
-  const camH = Math.max(260, span * 1.05);
-  const back = span * 1.15;
+  // enough that terrain relief still shows. Auto-fit so no marker is clipped —
+  // perspective pushes near-edge points out, so widen until everything sits
+  // inside the frame with margin.
+  let span = Math.max(halfU * 1.6, halfV * 1.25);
+  const groundY = Math.max(H(cx, cz), 0);
   _plotCam.aspect = W / Hh;
-  _plotCam.position.set(cx - fx * back, Math.max(H(cx, cz), 0) + camH, cz - fz * back);
   _plotCam.up.set(0, 1, 0);
-  _plotCam.lookAt(cx, Math.max(H(cx, cz), 0), cz);
-  _plotCam.updateProjectionMatrix();
-  _plotCam.updateMatrixWorld(true);
+  const place = () => {
+    _plotCam.position.set(cx - fx * span * 1.15, groundY + Math.max(260, span * 1.05),
+                          cz - fz * span * 1.15);
+    _plotCam.lookAt(cx, groundY, cz);
+    _plotCam.updateProjectionMatrix();
+    _plotCam.updateMatrixWorld(true);
+  };
+  place();
+  for (let fit = 0; fit < 6; fit++) {
+    let worst = 0;
+    for (const p of pts) {
+      if (!p || p.x === undefined) continue;
+      _pv.set(p.x, Math.max(H(p.x, p.z), 0) + 1, p.z).project(_plotCam);
+      worst = Math.max(worst, Math.abs(_pv.x), Math.abs(_pv.y));
+    }
+    if (worst <= 0.86) break;         // comfortably inside the frame
+    span *= Math.min(1.5, worst / 0.8);
+    place();
+  }
 
   // render the live scene from that camera into the plot canvas
   const hidden = [];
   for (const b of bursts) if (b.group.visible) { b.group.visible = false; hidden.push(b.group); }
-  const oldW = renderer.domElement.width, oldH = renderer.domElement.height;
   const oldRatio = renderer.getPixelRatio();
   try {
     renderer.setPixelRatio(1);
-    renderer.setSize(W, Hh, false);
+    renderer.setSize(W, Hh, false);          // buffer only — CSS size untouched
     renderer.render(scene, _plotCam);
     ctx.clearRect(0, 0, W, Hh);
     ctx.drawImage(renderer.domElement, 0, 0, W, Hh);
   } catch (e) {
     return false;
   } finally {
+    // restore to the canonical viewport; nothing is composited mid-swap
+    // because this all runs inside one task
     renderer.setPixelRatio(oldRatio);
-    renderer.setSize(oldW / oldRatio, oldH / oldRatio, false);
+    renderer.setSize(innerWidth, innerHeight, false);
     for (const g of hidden) g.visible = true;
   }
 
