@@ -19,7 +19,7 @@ A CFF is a **request**, not an order. Six elements sent in three transmissions; 
 **Transmission 1 — Observer ID + Warning order:**
 > "HELLHOUND FIRES, this is MUSTANG 12, adjust fire, over."
 
-- Mission types: **adjust fire** (location questionable — expect to correct), **fire for effect** (location accurate first volley), **suppress** (planned target + duration), **immediate suppression / immediate smoke** (friendlies under fire — sent as ONE transmission: ID + warning order + location).
+- Mission types: **adjust fire** (location questionable — expect to correct), **fire for effect** (location accurate first volley), **suppress** (a previously recorded target, by number, + duration — like immediate suppression, sent as ONE transmission: ID + warning order + target number + duration, e.g. "suppress target AK1002, 10 minutes, over"), **immediate suppression / immediate smoke** (friendlies under fire — sent as ONE transmission: ID + warning order + location).
 - Method of location is announced here only if NOT grid: "adjust fire **polar**", "adjust fire, **shift AB1002**". Grid is the standard and goes unannounced.
 
 **Transmission 2 — Target location:**
@@ -39,8 +39,8 @@ Artillery/mortar round predicted within **600 m** of friendlies → observer ann
 
 ## FDC → observer traffic
 
-- **Message to Observer (MTO)** after the CFF readback. Required: **units to fire, changes to the CFF (if any), number of rounds per tube, target number** (e.g. "MUSTANG 12, HELLHOUND — battery, 4 rounds, target AB2001, over"). Optional: time of flight. **The observer reads back the entire MTO.**
-- **"SHOT, OVER"** at firing (observer: "Shot, out"). **"SPLASH, OVER"** ~5 s before impact (on request or given by SOP).
+- **Message to Observer (MTO)** after the CFF readback, opening with the proword **"Message to observer"**. Required: **units to fire, changes to the CFF (if any), number of rounds per tube, target number** (e.g. "Message to observer, battery, 4 rounds, target AB2001, over"). Optional: time of flight, maximum ordinate altitude, other info. **The observer reads back the entire MTO.** No MTO is sent for immediate suppression.
+- **"SHOT, OVER"** from FDC at firing. **"SPLASH, OVER"** ~5 s before impact (on request or given by SOP).
 - FFE completion: **"ROUNDS COMPLETE, OVER."**
 
 ## Corrections (adjust phase)
@@ -64,11 +64,11 @@ Surveillance terms are precise: **suppressed** (effect lasts only during fires),
 
 ## Prowords & vocabulary
 
-**Over / Out / Say again / Correction / Break** · **Shot / Splash / Rounds complete / Ready / Fire / Repeat** (= fire again, last data — never "repeat" as "say again" on a fire net) · **Check firing / Cease loading** (safety stops) · **Record as target / Target number AB####** · **Grid / Direction / Distance / Left / Right / Add / Drop / Up / Down / Danger close / Fire for effect / End of mission**.
+**Over / Out / Say again / Correction / Break** · **Message to observer** (FDC's lead-in to the MTO) · **Shot / Splash / Request splash / Rounds complete / Ready / Fire / Repeat** (= fire again, last data — never "repeat" as "say again" on a fire net) · **Check firing / Cease loading** (safety stops) · **Record as target / Target number AB####** · **Grid / Direction / Distance / Left / Right / Add / Drop / Up / Down / Danger close / Fire for effect / End of mission**.
 
 ## Doctrinal performance standards (use for star pars)
 
-From JFO evaluation standards: initiate the CFF within **2 minutes** of target identification; initial target location within **200 m** of the true location; corrections that walk rounds monotonically onto the target. These map directly onto the star-grading metrics (time par, first-round accuracy, format correctness).
+From JFO evaluation standards (JFO-SSUP-2001, adjust-fire mission): initiate the CFF within **2 minutes** of target identification; initial target location within **200 m** of the true location; announce subsequent corrections within **15 seconds** of the burst; enter fire for effect within **±50 m** of the target using **no more than 3 adjusting rounds**. These map directly onto the star-grading metrics (time-to-CFF par, correction-timing par, first-round accuracy, rounds-to-effect, format correctness) — the sim's own applied pars (`passMaxAdjustRounds: 4`, bonus star at ≤2 rounds; see TLO.md §4) are a deliberately looser design adaptation of this raw 3-round figure, not a literal restatement of it.
 
 ## What the sim deliberately ignores ⚠
 

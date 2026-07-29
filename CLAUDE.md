@@ -1,6 +1,10 @@
 # CLAUDE.md — SHITFIRE (Forward Observer / Call-for-Fire Trainer)
 
-A single-file browser trainer for the FORWARD OBSERVER (not the gun crew). Full build spec is in **SPEC.md** — build it **per SPEC.md's "BUILD ORDER" section, one stage at a time.** The campaign storyline (volumes, chapters, characters, humor rules) lives in **NARRATIVE.md**. **DOCTRINE.md** (distilled from JFIRE 2019 + the JFO Student Handout) is the authority for CFF formats, prowords, rounding, readback protocol, and strict-mode rules — check it before writing any parser or FDC traffic.
+A single-file browser trainer for the FORWARD OBSERVER (not the gun crew).
+
+**Start every session by reading [ROADMAP.md](ROADMAP.md).** It is the single authority on what ships next and what is done, it names the one active work order, and its §1 says which file answers which question. Do not infer status from SPEC.md, README.md, or this file — they drift; the board does not.
+
+Scope per stage lives in **SPEC.md** ("BUILD ORDER"). The campaign storyline (volumes, chapters, characters, humor rules) lives in **NARRATIVE.md**. **DOCTRINE.md** (distilled from JFIRE 2019 + the JFO Student Handout) is the authority for CFF formats, prowords, rounding, readback protocol, and strict-mode rules — check it before writing any parser or FDC traffic.
 
 ## Golden rules (do not violate)
 - **One `index.html`.** No build step, no bundler, no npm, no backend, no API keys.
@@ -27,8 +31,8 @@ A single-file browser trainer for the FORWARD OBSERVER (not the gun crew). Full 
 - **FDC deviation policy:** doctrinal scripts are guidelines, flexible not rigid. **Dangerous deviation** (danger close w/o proword, corrections walking toward friendlies/civilians, unresolved-unsafe FFE) → FDC **rant**. **Stupid-but-safe deviation** (wrong element order, malformed-but-unambiguous calls, absurd rounding) → **snide remark**, mission proceeds. Strict mode still enforces format for grading — the rant/snide split is tone, not an extra gate.
 - **Surface-to-surface fires only.** CAS/9-line is future "Volume V" — a locked menu tease at most; never build it unasked.
 
-## Campaign rules (stages 9–11 — only stage 11 remains)
-Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed. Only **stage 11 (Epilogue — the three SUNBURN chapters, including SUNLAMP)** remains.
+## Campaign rules (stages 9–11)
+Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed. **Stage 11 (Epilogue — the three SUNBURN chapters, including SUNLAMP) is deferred by decision** — see ROADMAP.md Track C. Current order is stage 13 (visual overhaul) → stage 12 remainder → stage 11.
 - Mission menu = **book series**: Volumes → Chapters, per NARRATIVE.md (Foreword tutorial → Volumes I–IV → Epilogue). Chapters are **fixed-seed** missions; `[N]` random generator becomes **Skirmish** mode.
 - **Star grading, original-MW2 style:** 0–5★ per chapter from competency (rounds-to-effect, first-round miss, format, time vs. par), capped by difficulty (Easy 3 / Normal 4 / Hard 5), shown in the mission menu and AAR. Volumes unlock at cumulative star thresholds.
 - The Epilogue's directed-energy mission (SUNLAMP) **still uses the direct-impact model** — only pacing, prowords, visuals, and audio differ.
@@ -45,11 +49,18 @@ Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed
 - If ever run as a claude.ai Artifact: use **in-memory state, not `localStorage`** (blocked there).
 
 ## Don't
-- Don't build all 7 stages at once — ship stage N working, commit, then stage N+1.
+- **Don't ever have two agents editing `index.html` at once.** This has already gone wrong once — GRAPHICS.md was written blind because another agent held the file. One writer, always.
+- Don't build a whole stage at once when it has lettered rows — ship one ROADMAP row, commit, then the next.
 - Don't add a trajectory sim, angle-T math, a bundler, a server, or npm deps.
 - Don't let voice be load-bearing — the typed core must fully work on its own.
 - Don't break the stable interfaces above.
+- Don't mark anything done from memory. Grep the code or run it.
 
-## Workflow
-- `git init` first. Commit after each working stage. Review diffs before merging.
-- Doc/planning file updates (README.md, SPEC.md, NARRATIVE.md, CLAUDE.md, QUICKSTART.md, DOCTRINE.md) → **Sonnet subagent**. Sim (`index.html`) code → **Fable**.
+## Workflow — one work order at a time
+1. **Read ROADMAP.md.** Take the single row marked `NEXT`. If none is marked, ask — don't pick one.
+2. **One row = one commit**, message prefixed with the row ID: `stage 13c: sky + time of day`, `fix F1: range rounding gate`. Matches existing history (`stage 12e: OT direction and RREMS end of mission`).
+3. **Pass the row's gate before committing.** The gate is in the ROADMAP table; graphics rows also run [GRAPHICS.md](GRAPHICS.md) §Verification checklist. Code existing ≠ row done.
+4. **Docs land in a separate follow-up commit** — never bundled into the code commit, or the diff stops being reviewable. That follow-up is what flips the row to `DONE`.
+5. **Model split.** Sim (`index.html`) code → **Fable**. Doc/planning files (README, SPEC, NARRATIVE, CLAUDE, QUICKSTART, DOCTRINE, TLO, CHEATSHEET, ROADMAP, GRAPHICS, DIALOGUE_REVISIONS) → **Sonnet subagent**.
+6. If a row turns out to be two things, **split the row in ROADMAP.md first**, then build.
+- Review diffs before merging. If a row gets messy, `git restore .` and re-prompt narrower — a clean partial beats a broken whole.

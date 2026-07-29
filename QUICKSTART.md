@@ -37,18 +37,28 @@ After each stage tests clean and is committed, prompt:
 
 Repeat for stages 3–7 (polar+shift → FDC personality+audio → scenarios → map library → real DEMs+polish). **Commit between every stage.**
 
-## 6. Epilogue (stage 11)
+## 6. Where the build actually is now
 
-Stages 1–10 are complete and committed: real-DEM polish, world detail & population (structures, roads, villages, convoy pit stops, the FDC rant/snide deviation policy), the campaign skeleton (chapter data model, bookshelf volume/chapter menu, star grading, unlocks, persistence, Skirmish mode), and the narrative layer (chapter briefings, the Foreword tutorial with GUNNY BOTTLECAP, per-volume islands, Volume IV strict-net + 60mm mortars, named known points, commendations, and continuity quips). Only stage 11 remains. Prompt pattern:
+Stages 1–10 are complete and committed, and most of stage 12 landed after them (12a–12e). **[ROADMAP.md](ROADMAP.md) is the board** — it names the one row marked `NEXT`, and the order is no longer simply "stage N then N+1." Current order: **stage 13 (visual overhaul) → stage 12 remainder → stage 11 (Epilogue)**. Stage numbers are stable IDs, not sequence.
 
-> Read SPEC.md, CLAUDE.md, and NARRATIVE.md. Build **BUILD ORDER stage 11 only**: the three SUNBURN Epilogue chapters (E.1 THE GREAT CHOW RAID, E.2 CLAWS OUT, E.3 SUNLAMP ACTUAL), including the SUNLAMP directed-energy call for fire — **same direct-impact model**, `impact = aimpoint + error`, only TOF pacing (charging whine), prowords (DISCHARGE / SOLAR EVENT), beam visual, and audio differ; the locked "VOLUME V: ON WINGS" CAS tease stays a locked menu spine, do not build it. Finish with a balance pass on star pars across the campaign. Stop after stage 11 and commit.
+### The prompt pattern, from here on
 
-**Commit when it tests clean.**
+One ROADMAP row per prompt. One row per commit. Never two.
+
+> Read ROADMAP.md, CLAUDE.md, and SPEC.md. Build **ROADMAP row 13a only** (the bino quality pin — stop adaptive quality dropping pixel ratio while binos are up; detail in GRAPHICS.md §G0.4). Pass the row's gate before committing: troop figures must stay countable through binos at 3000 m after a forced quality step-down. Keep the stable interfaces. Commit as `stage 13a: bino quality pin`. Stop after this row.
+
+Then flip the row to `DONE` in ROADMAP.md as a **separate doc commit** — never bundled into the code commit.
+
+### The two rules that keep this from going sideways
+
+1. **One agent in `index.html` at a time.** This already went wrong once — GRAPHICS.md had to be written blind because another agent held the file.
+2. **Never mark a row done from memory.** Grep the code or run it.
 
 ## Testing notes
 - **Voice**: needs mic permission on a real Chrome tab (won't work in the Artifact sandbox).
 - **Print / map library**: test via the browser print dialog (Save as PDF).
 - **DEMs**: for stage 7, drop a grayscale island heightmap in the folder and tell Claude to wire it behind `H(x,z)`.
+- **DEV UNLOCK**: a toggle in the mission menu's DEVELOPER row opens every volume/chapter regardless of star progress or sequence, without touching saved progress — flip it on to jump straight to a late-campaign chapter for testing instead of grinding unlocks.
 
 ## If a stage gets messy
 Roll back (`git restore .` or checkout the last commit) and re-prompt more narrowly. A clean stage 1–2 beats a broken all-in-one.
