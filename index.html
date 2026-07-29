@@ -235,7 +235,8 @@ const CONFIG = {
     massifX: -520, massifZ: -360, oceanFloor: -30,
     demRes: 512, demMaxElev: 240, demSeaLum: 10,
   },
-  CAMERA: { fov: 60, binoFov: 9, eyeHeight: 2.2, mouseSens: 0.0022, pitchClamp: 1.35 },
+  CAMERA: { fov: 60, binoFov: 9, eyeHeight: 2.2, towerHeight: 15.2,   // 50 ft OP watchtower
+            mouseSens: 0.0022, pitchClamp: 1.35 },
   BALLISTICS: {
     tofDivisor: 300, tofBase: 8, tofMin: 15, tofMax: 40, splashLead: 5,
     firstRound: { easy: [40, 90], normal: [60, 150], hard: [90, 220] },   // m, uniform
@@ -536,11 +537,45 @@ function findOP() {
 }
 const OP = { x: 0, z: 0, h: 0 };
 const eye = { x: 0, y: 0, z: 0 };
+// OP watchtower: the FO observes from a raised platform (+50 ft) so volcano
+// terrain features don't mask the low ground. Eye height drives every LOS
+// check, so lasing and crest-masking all inherit the elevation.
+const towerMeshes = [];
+{
+  const legMat = new THREE.MeshLambertMaterial({ color: 0x6B5B43, flatShading: true });
+  const deckMat = new THREE.MeshLambertMaterial({ color: 0x7A6A50, flatShading: true });
+  const tH = CONFIG.CAMERA.towerHeight;
+  for (const [lx, lz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.35, tH, 0.35), legMat);
+    scene.add(m);
+    towerMeshes.push({ m, ox: lx, oz: lz, oy: tH / 2 });
+  }
+  // cross-braces (visual only)
+  for (let i = 0; i < 2; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.18, tH * 0.55, 0.18), legMat);
+    m.rotation.z = i ? 0.42 : -0.42;
+    scene.add(m);
+    towerMeshes.push({ m, ox: 0, oz: (i ? 1 : -1) * 1.6, oy: tH * 0.4 });
+  }
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.3, 4.6), deckMat);
+  scene.add(deck);
+  towerMeshes.push({ m: deck, ox: 0, oz: 0, oy: tH });
+  for (let i = 0; i < 4; i++) {  // railing
+    const m = new THREE.Mesh(new THREE.BoxGeometry(i < 2 ? 4.6 : 0.12, 0.9, i < 2 ? 0.12 : 4.6), legMat);
+    scene.add(m);
+    towerMeshes.push({ m, ox: i < 2 ? 0 : (i === 2 ? -2.24 : 2.24),
+                       oz: i < 2 ? (i === 0 ? -2.24 : 2.24) : 0, oy: tH + 0.75 });
+  }
+}
 function placeOP() {
   const b = findOP();
   OP.x = b.x; OP.z = b.z; OP.h = b.h;
-  eye.x = OP.x; eye.y = OP.h + CONFIG.CAMERA.eyeHeight; eye.z = OP.z;
+  eye.x = OP.x;
+  eye.y = OP.h + CONFIG.CAMERA.towerHeight + CONFIG.CAMERA.eyeHeight;
+  eye.z = OP.z;
   camera.position.set(eye.x, eye.y, eye.z);
+  for (const e of towerMeshes)
+    e.m.position.set(OP.x + e.ox, OP.h + e.oy, OP.z + e.oz);
 }
 placeOP();
 
@@ -2624,7 +2659,7 @@ function renderSheet() {
     ctx.beginPath();
     ctx.moveTo(ox, oz - 8); ctx.lineTo(ox - 7, oz + 6); ctx.lineTo(ox + 7, oz + 6);
     ctx.closePath(); ctx.fill();
-    ctx.fillText(`OP  ${gridOf(OP.x, OP.z)}  ELEV ${Math.round(OP.h)} M`, ox + 10, oz + 4);
+    ctx.fillText(`OP TWR  ${gridOf(OP.x, OP.z)}  ELEV ${Math.round(OP.h)} M`, ox + 10, oz + 4);
   }
   for (const kp of (Scenario.kps || [])) {
     if (!inExtent(kp)) continue;
@@ -2824,7 +2859,7 @@ function newMission(first, type) {
   Scenario = genScenario(currentType, CONFIG.SEED.mission);
   placeUnits();
   log('', `SCENARIO: ${SCN_META[currentType].name} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
-  log('', `Your OP: grid ${gridOf(OP.x, OP.z)}, elev ${Math.round(OP.h)} m. ` +
+  log('', `Your OP: watchtower at grid ${gridOf(OP.x, OP.z)}, ground elev ${Math.round(OP.h)} m, deck +${Math.round(CONFIG.CAMERA.towerHeight)} m. ` +
     `Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. ` +
     `Hold [SPACE] to transmit by voice, or type below.`, 'sys');
   if (Scenario.kps && Scenario.kps.length)
