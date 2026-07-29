@@ -1571,6 +1571,27 @@ const QUIPS = {
     'STOP. Just — stop. MUSTANG, I have drunk deep of your transmissions and found NOTHING. No grid. No direction. No sense. You are a forward observer. So OBSERVE something, and then TELL ME ABOUT IT in the format God and the field manual intended. Warning order. Location. Description. OVER.',
     'MUSTANG, listen to me very carefully, because I will say this once. I do not know what you are doing on that hill, but it is not calling for fire. Take a breath. Look at your map. Send: warning order, target location, description. In that order. Like a professional. Over.',
   ],
+  // Doctrinal coaching — HELLHOUND teaches adjustment instead of only
+  // mocking it. Easy/Normal only; on Hard you are expected to know.
+  coachTimid: [
+    'MUSTANG, you are NIBBLING. Your burst was {MISS} meters off and you sent a correction a quarter that size. That is not adjustment, that is negotiation. Bracket it — throw a correction big enough to land on the OTHER side, then cut it in half.',
+    'Negative technique, MUSTANG. {MISS} meters of error, and your correction would not move a burst out of its own crater. Doctrine: eight hundred, four hundred, two hundred. Bold, then halve. Send it again with conviction.',
+  ],
+  coachBracket: [
+    'MUSTANG, every round you have fired has landed on the SAME side of that target. You are not adjusting, you are commuting. Send a correction large enough to cross the target — then split the difference. That is a bracket. Use one.',
+    'Listen to me, MUSTANG. All short. Every single one. You cannot split a bracket you have never established. Overshoot it on purpose, then halve. That is the whole trade.',
+  ],
+  coachBracketGood: [
+    'THERE it is — one over, one short. You have a bracket, MUSTANG. Now halve it. Halve it again. Then fire for effect like a professional.',
+    'Bracket established. Cut your correction in half each round from here and you will be in effect before I finish this cigarette.',
+  ],
+  coachStagnant: [
+    'MUSTANG, that correction accomplished NOTHING. Same burst, different paperwork. Look at the burst, look at the target, MEASURE the difference, and send me THAT number.',
+    'We just spent a round and a minute of the war to move that burst almost nowhere. Measure the error. Send the whole error. Not a polite fraction of it.',
+  ],
+  coachLoc: [
+    'MUSTANG — that first round is {MISS} meters off target. That is not the gun, son, that is your grid. Standard is two hundred meters. Work your map before you key that mic next time.',
+  ],
   careerFrat: [
     'And MUSTANG — before we begin: the friendlies have asked me to remind you which color smoke is theirs. All of them. They held a meeting.',
     'One administrative note, MUSTANG: your file now has a tab. Files should not have tabs. Send your traffic.',
@@ -1928,6 +1949,9 @@ function gauss(rng) {
   while (v === 0) v = rng();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
+// Doctrinal coaching is a training aid: on for Easy/Normal, silent on Hard.
+function coachOn() { return DIFFICULTY !== 'hard'; }
+
 // 60mm mortars (Volume IV): much tighter dispersion than the 155 battery
 function assetScale() {
   return activeChapter && activeChapter.asset === 'mortar60' ? 0.55 : 1;
@@ -1957,6 +1981,9 @@ function fireMission(targetLocation, warno, meta) {
     aim: { x: targetLocation.x, z: targetLocation.z },
     rounds: [], ffeRounds: [], adjustRounds: 0,
     firstMiss: null, lastAdjDist: null, wrongWay: 0,
+    // adjustment-doctrine tracking (feeds the live coach + AAR diagnosis)
+    missTrace: [], sides: { long: false, short: false }, bracketed: false,
+    coached: {}, wasted: 0, corrs: [],
     notes: (meta && meta.notes) || [],
     desc: (meta && meta.desc) || '', gridStr: (meta && meta.gridStr) || '',
     method: (meta && meta.method) || null,
@@ -2084,6 +2111,33 @@ function resolveImpact(impact, isFFE) {
       mission.wrongWay++;
       if (mission.wrongWay === 2) FDC.say(pick(QUIPS.wrongWay), { delay: 2.2 });
     }
+    // --- adjustment doctrine: track the spotting, then coach the pattern
+    mission.missTrace.push(Math.round(dTgt));
+    const otAzT = azTo(OP.x, OP.z, S.enemy.x, S.enemy.z);
+    const along = (impact.x - S.enemy.x) * Math.sin(otAzT) +
+                  (impact.z - S.enemy.z) * -Math.cos(otAzT);   // + = over, - = short
+    if (along > 30) mission.sides.long = true;
+    else if (along < -30) mission.sides.short = true;
+    const nowBracketed = mission.sides.long && mission.sides.short;
+    const prev = mission.lastAdjDist;
+    if (prev !== null && Math.abs(dTgt - prev) < prev * 0.15 && dTgt > 80) mission.wasted++;
+    if (coachOn()) {
+      const C = mission.coached;
+      if (mission.rounds.length === 1 && dTgt > 250 && !C.loc) {
+        C.loc = true;
+        FDC.say(pick(QUIPS.coachLoc).replace('{MISS}', Math.round(dTgt)), { delay: 2.4 });
+      } else if (nowBracketed && !mission.bracketed && !C.bracketGood) {
+        C.bracketGood = true;
+        FDC.say(pick(QUIPS.coachBracketGood), { delay: 2.4 });
+      } else if (!nowBracketed && mission.adjustRounds >= 3 && dTgt > 120 && !C.bracket) {
+        C.bracket = true;
+        FDC.say(pick(QUIPS.coachBracket), { delay: 2.4 });
+      } else if (prev !== null && Math.abs(dTgt - prev) < prev * 0.15 && dTgt > 80 && !C.stagnant) {
+        C.stagnant = true;
+        FDC.say(pick(QUIPS.coachStagnant), { delay: 2.4 });
+      }
+    }
+    mission.bracketed = nowBracketed;
     mission.lastAdjDist = dTgt;
   }
   // easy mode: spot the burst for the observer
@@ -2395,8 +2449,19 @@ function handleAdjust(p) {
     if (danger) FDC.say(pick(QUIPS.unsafeInsist), { delay: 1 });
     mission.unsafeKey = null;
   }
+  // timid correction: doctrine wants a bold shift that crosses the target,
+  // not a fraction of the observed miss. Coach at decision time.
+  if (p.any && coachOn() && !mission.coached.timid && mission.lastAdjDist !== null) {
+    const corrMag = Math.hypot(p.corr.right, p.corr.add);
+    if (mission.lastAdjDist > 150 && corrMag < mission.lastAdjDist * 0.45) {
+      mission.coached.timid = true;
+      FDC.say(pick(QUIPS.coachTimid).replace('{MISS}', Math.round(mission.lastAdjDist)),
+              { delay: 1.6 });
+    }
+  }
   const parts = [];
   if (p.any) {
+    mission.corrs.push(Math.round(Math.hypot(p.corr.right, p.corr.add)));
     if (p.corr.right) parts.push(`${p.corr.right > 0 ? 'RIGHT' : 'LEFT'} ${Math.abs(p.corr.right)}`);
     if (p.corr.add) parts.push(`${p.corr.add > 0 ? 'ADD' : 'DROP'} ${Math.abs(p.corr.add)}`);
     applyCorrection({ right: p.corr.right, add: p.corr.add });
@@ -2547,6 +2612,25 @@ function showAAR() {
       BEST.save();
     }
   }
+  // adjustment-doctrine diagnosis: what the round trace says about technique
+  const tr = m.missTrace;
+  let corrEff = null;
+  if (tr.length >= 2) {
+    let sum = 0;
+    for (let i = 1; i < tr.length; i++) sum += (tr[i - 1] - tr[i]) / Math.max(tr[i - 1], 1);
+    corrEff = sum / (tr.length - 1);
+  }
+  const diag = [];
+  if (m.aimErr0 !== null && m.aimErr0 > 200)
+    diag.push(`Initial target location was ${Math.round(m.aimErr0)} m off (standard: ≤200 m). Everything after that was recovery — work the map, or lase and read the grid, before you transmit.`);
+  if (corrEff !== null && corrEff < 0.3 && tr.length >= 3)
+    diag.push(`Correction efficiency ${Math.round(corrEff * 100)}% per round — doctrine's successive bracketing roughly halves the miss each time (~50%). Your corrections were too small for the error you were seeing.`);
+  if (tr.length >= 3 && !(m.sides.long && m.sides.short))
+    diag.push('You never bracketed the target — every adjusting round landed on the same side of it. Fire a correction big enough to cross the target, then split the difference.');
+  if (m.wasted >= 2)
+    diag.push(`${m.wasted} adjusting rounds changed the miss by less than 15% — rounds and time spent for nothing.`);
+  if (!diag.length && pass && m.adjustRounds <= 3)
+    diag.push('Clean adjustment: bold first correction, bracket, split, effect. That is the method.');
   // career record (feeds HELLHOUND's continuity quips)
   const car = CAMP.data._career || (CAMP.data._career = { frat: 0, collat: 0, missions: 0 });
   car.missions++;
@@ -2595,7 +2679,11 @@ function showAAR() {
       : `<tr><td>Effect rounds on target</td><td>${m.hits}/${m.ffeRounds.length}</td></tr>`) +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
+    (tr.length ? `<tr><td>Adjusting round trace</td><td>${tr.join(' → ')} m</td></tr>` : '') +
+    (corrEff !== null ? `<tr><td>Correction efficiency</td><td>${Math.round(corrEff * 100)}% miss reduction/round (doctrine ≈50%)</td></tr>` : '') +
+    (tr.length >= 2 ? `<tr><td>Bracket established</td><td>${m.sides.long && m.sides.short ? 'YES' : 'NO — all rounds one side'}</td></tr>` : '') +
     `</table>` +
+    (diag.length ? `<div class="mlabel" style="margin-top:8px">ADJUSTMENT DIAGNOSIS</div><ul>${diag.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     (m.notes.length ? `<div>Format coaching:</div><ul>${m.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     (medals.length ? `<div class="mlabel" style="margin-top:8px">COMMENDATIONS</div><ul>${medals.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     (activeChapter && activeChapter.outro && pass
