@@ -1,0 +1,19 @@
+# OS cruft
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Local scratch / exports
+*.log
+*.tmp
+scratch/
+exports/
+
+# Large DEM/heightmap source data kept out of the repo (drop-in during dev)
+dem/
+*.tif
+*.tiff
