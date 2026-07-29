@@ -71,8 +71,12 @@
   #aar { position: fixed; inset: 0; display: none; align-items: center;
     justify-content: center; background: rgba(0,0,0,.5); z-index: 10; }
   #aar.on { display: flex; }
-  #aarbox { width: 540px; max-width: 92vw; padding: 20px 26px; font-size: 13.5px;
-    line-height: 1.6; }
+  #aarbox { width: 620px; max-width: 92vw; max-height: 94vh; overflow-y: auto;
+    padding: 20px 26px; font-size: 13.5px; line-height: 1.6; }
+  #aarplot { display: block; width: 100%; height: auto; margin: 6px 0 4px;
+    border: 1px solid #39442e; background: #10150c; }
+  #aarbox .plotcap { color: #8fa387; font-size: 11px; font-style: italic;
+    margin-bottom: 10px; }
   #aarbox h2 { margin: 0 0 4px; font-size: 17px; letter-spacing: .14em; color: #dfe8c8; }
   #aarbox .verdict { font-size: 21px; letter-spacing: .2em; margin: 8px 0 12px; }
   #aarbox .pass { color: #a8e08a; }
@@ -2041,6 +2045,8 @@ function tofFor(aim) {
 function fireMission(targetLocation, warno, meta) {
   mission = {
     aim: { x: targetLocation.x, z: targetLocation.z },
+    // the location as transmitted, kept for the AAR shot plot
+    aim0x: targetLocation.x, aim0z: targetLocation.z,
     rounds: [], ffeRounds: [], adjustRounds: 0,
     firstMiss: null, lastAdjDist: null, wrongWay: 0,
     // adjustment-doctrine tracking (feeds the live coach + AAR diagnosis)
@@ -2723,6 +2729,186 @@ function onPlayerMessage(raw) {
   }
 }
 
+/* ============================================================ AAR SHOT PLOT */
+// Bird's-eye 3D review of the engagement: the real terrain rendered from an
+// oblique camera placed behind the OT line (so plot-left/right is deviation
+// and plot-up/down is range, exactly as the observer called it), with the
+// transmitted location, each adjusting round, and the FFE volley projected
+// onto it through the same camera.
+const _plotCam = new THREE.PerspectiveCamera(42, 16 / 10, 5, 30000);
+const _pv = new THREE.Vector3();
+function renderShotPlot(cv, m) {
+  const S = Scenario;
+  if (!S || !S.enemy) return false;
+  const W = cv.width, Hh = cv.height;
+  const ctx = cv.getContext('2d');
+  const tgt = { x: S.enemy.x, z: S.enemy.z };
+  const pts = [tgt, { x: m.aim0x, z: m.aim0z }, ...m.rounds];
+
+  // frame everything, in OT-frame coordinates (u = deviation, v = range)
+  const otAz = azTo(OP.x, OP.z, tgt.x, tgt.z);
+  const fx = Math.sin(otAz), fz = -Math.cos(otAz);      // toward target (range)
+  const rx = Math.cos(otAz), rz = Math.sin(otAz);       // observer's right
+  let uMin = 0, uMax = 0, vMin = 0, vMax = 0;
+  for (const p of pts) {
+    if (!p || p.x === undefined) continue;
+    const dx = p.x - tgt.x, dz = p.z - tgt.z;
+    const u = dx * rx + dz * rz, v = dx * fx + dz * fz;
+    uMin = Math.min(uMin, u); uMax = Math.max(uMax, u);
+    vMin = Math.min(vMin, v); vMax = Math.max(vMax, v);
+  }
+  const pad = 120;
+  const halfU = Math.max(220, (uMax - uMin) / 2 + pad);
+  const halfV = Math.max(220, (vMax - vMin) / 2 + pad);
+  const cU = (uMin + uMax) / 2, cV = (vMin + vMax) / 2;
+  const cx = tgt.x + rx * cU + fx * cV, cz = tgt.z + rz * cU + fz * cV;
+  const span = Math.max(halfU * 1.6, halfV * 1.25);
+  // ~42° above horizontal: high enough to read the plot as a plan, oblique
+  // enough that terrain relief still shows
+  const camH = Math.max(260, span * 1.05);
+  const back = span * 1.15;
+  _plotCam.aspect = W / Hh;
+  _plotCam.position.set(cx - fx * back, Math.max(H(cx, cz), 0) + camH, cz - fz * back);
+  _plotCam.up.set(0, 1, 0);
+  _plotCam.lookAt(cx, Math.max(H(cx, cz), 0), cz);
+  _plotCam.updateProjectionMatrix();
+  _plotCam.updateMatrixWorld(true);
+
+  // render the live scene from that camera into the plot canvas
+  const hidden = [];
+  for (const b of bursts) if (b.group.visible) { b.group.visible = false; hidden.push(b.group); }
+  const oldW = renderer.domElement.width, oldH = renderer.domElement.height;
+  const oldRatio = renderer.getPixelRatio();
+  try {
+    renderer.setPixelRatio(1);
+    renderer.setSize(W, Hh, false);
+    renderer.render(scene, _plotCam);
+    ctx.clearRect(0, 0, W, Hh);
+    ctx.drawImage(renderer.domElement, 0, 0, W, Hh);
+  } catch (e) {
+    return false;
+  } finally {
+    renderer.setPixelRatio(oldRatio);
+    renderer.setSize(oldW / oldRatio, oldH / oldRatio, false);
+    for (const g of hidden) g.visible = true;
+  }
+
+  // --- project world -> plot canvas
+  const proj = (x, z, lift) => {
+    _pv.set(x, Math.max(H(x, z), 0) + (lift || 0), z).project(_plotCam);
+    return { x: (_pv.x * 0.5 + 0.5) * W, y: (-_pv.y * 0.5 + 0.5) * Hh, z: _pv.z };
+  };
+  const groundCircle = (wx, wz, r, stroke, dash) => {
+    ctx.strokeStyle = stroke; ctx.lineWidth = 1.6;
+    ctx.setLineDash(dash || []);
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i++) {
+      const a = i / 40 * Math.PI * 2;
+      const p = proj(wx + Math.cos(a) * r, wz + Math.sin(a) * r, 0.5);
+      i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+    }
+    ctx.closePath(); ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  // the canvas is CSS-downscaled in the panel, so draw oversized
+  const label = (txt, x, y, col) => {
+    ctx.font = 'bold 16px Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(8,10,6,.9)';
+    ctx.strokeText(txt, x, y);
+    ctx.fillStyle = col; ctx.fillText(txt, x, y);
+  };
+
+  // effect radius + target
+  groundCircle(tgt.x, tgt.z, S.effectRadius, 'rgba(255,120,90,.9)', [7, 5]);
+  const tp = proj(tgt.x, tgt.z, 1);
+  ctx.strokeStyle = '#ff7a5a'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(tp.x - 13, tp.y); ctx.lineTo(tp.x + 13, tp.y);
+  ctx.moveTo(tp.x, tp.y - 13); ctx.lineTo(tp.x, tp.y + 13);
+  ctx.stroke();
+  label('TARGET', tp.x + 16, tp.y + 5, '#ff9a7a');
+
+  // no-fire elements in frame
+  for (const f of friendlyPositions()) {
+    const p = proj(f.x, f.z, 1);
+    if (p.z > 1) continue;
+    ctx.fillStyle = '#6aa7ff';
+    ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
+  }
+  if (S.village) {
+    const p = proj(S.village.x, S.village.z, 1);
+    if (p.z < 1) label('VILLAGE (NO-STRIKE)', p.x + 8, p.y + 4, '#e0c07a');
+  }
+
+  // transmitted location (what the observer sent) + error leg to truth
+  if (m.aim0x !== undefined) {
+    const ap = proj(m.aim0x, m.aim0z, 1);
+    ctx.strokeStyle = 'rgba(255,233,168,.75)'; ctx.lineWidth = 1.4;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(ap.x, ap.y); ctx.lineTo(tp.x, tp.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2.6;
+    ctx.strokeRect(ap.x - 9, ap.y - 9, 18, 18);
+    label(`SENT${m.aimErr0 !== null ? ' (' + Math.round(m.aimErr0) + ' m off)' : ''}`,
+          ap.x + 14, ap.y - 9, '#ffe9a8');
+  }
+
+  // adjusting rounds: numbered, joined in sequence
+  const adj = m.rounds.filter(r => !m.ffeRounds.includes(r));
+  ctx.strokeStyle = 'rgba(160,200,255,.85)'; ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  adj.forEach((r, i) => {
+    const p = proj(r.x, r.z, 1);
+    i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+  });
+  ctx.stroke();
+  adj.forEach((r, i) => {
+    const p = proj(r.x, r.z, 1);
+    ctx.fillStyle = '#0e1a2a'; ctx.strokeStyle = '#8fc4ff'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#cfe4ff';
+    ctx.font = 'bold 15px Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(i + 1), p.x, p.y + 5.5);
+  });
+
+  // FFE volley: filled diamonds
+  m.ffeRounds.forEach(r => {
+    const p = proj(r.x, r.z, 1);
+    ctx.fillStyle = '#ffcf5a'; ctx.strokeStyle = '#7a5a10'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 9); ctx.lineTo(p.x + 9, p.y);
+    ctx.lineTo(p.x, p.y + 9); ctx.lineTo(p.x - 9, p.y);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  });
+
+  // OT line arrow at the near edge — reminds which way "add" and "right" run
+  ctx.strokeStyle = 'rgba(220,230,200,.55)'; ctx.lineWidth = 1.2;
+  ctx.setLineDash([6, 5]);
+  const l0 = proj(tgt.x - fx * span * 0.9, tgt.z - fz * span * 0.9, 1);
+  ctx.beginPath(); ctx.moveTo(l0.x, l0.y); ctx.lineTo(tp.x, tp.y); ctx.stroke();
+  ctx.setLineDash([]);
+  label('OT LINE — ADD ↑ / DROP ↓', l0.x + 12, l0.y, 'rgba(220,230,200,.9)');
+
+  // legend
+  ctx.textAlign = 'left';
+  const ly = Hh - 16;
+  ctx.fillStyle = 'rgba(8,10,6,.78)';
+  ctx.fillRect(8, Hh - 44, 470, 34);
+  ctx.strokeStyle = '#8fc4ff'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.arc(26, ly - 5, 9, 0, Math.PI * 2); ctx.stroke();
+  label('ADJUST (in order)', 42, ly, '#cfe4ff');
+  ctx.fillStyle = '#ffcf5a';
+  ctx.beginPath();
+  ctx.moveTo(232, ly - 14); ctx.lineTo(241, ly - 5);
+  ctx.lineTo(232, ly + 4); ctx.lineTo(223, ly - 5);
+  ctx.closePath(); ctx.fill();
+  label('FIRE FOR EFFECT', 250, ly, '#ffcf5a');
+  return true;
+}
+
 /* ============================================================ AAR */
 const aarEl = document.getElementById('aar');
 const aarBox = document.getElementById('aarbox');
@@ -2842,6 +3028,8 @@ function showAAR() {
     starsHtml +
     `<div class="verdict ${pass ? 'pass' : 'fail'}">${verdict}</div>` +
     (why ? `<div style="margin-bottom:10px">${why}</div>` : '') +
+    `<canvas id="aarplot" width="880" height="550"></canvas>` +
+    `<div class="plotcap">Bird's-eye review, oriented along the observer-target line — plot left/right is deviation, up/down is range.</div>` +
     `<table>` +
     `<tr><td>Adjusting rounds</td><td>${m.adjustRounds}</td></tr>` +
     `<tr><td>First-round miss</td><td>${m.firstMiss === null ? '—' : Math.round(m.firstMiss) + ' m'}</td></tr>` +
@@ -2865,6 +3053,19 @@ function showAAR() {
     `<div class="foot">[N] — skirmish mission &middot; [K] — mission menu &middot; [ESC] — back to the OP &middot; seed ${CONFIG.SEED.mission}</div>`;
   if (document.exitPointerLock) document.exitPointerLock();
   aarEl.classList.add('on');
+  // draw the shot plot into the freshly written canvas; drop it if the
+  // engagement has nothing to show or the render fails
+  const plotCv = document.getElementById('aarplot');
+  if (plotCv) {
+    let ok = false;
+    try { ok = m.rounds.length > 0 && renderShotPlot(plotCv, m); }
+    catch (e) { ok = false; }
+    if (!ok) {
+      plotCv.remove();
+      const cap = aarBox.querySelector('.plotcap');
+      if (cap) cap.remove();
+    }
+  }
   setState('AAR');
 }
 
