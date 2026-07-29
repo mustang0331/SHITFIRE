@@ -74,5 +74,6 @@ Governing rule for stage 13, worth stating in public: **this is a training instr
 | [DIALOGUE_REVISIONS.md](DIALOGUE_REVISIONS.md) | Rewritten FDC quip pools and chapter beats (stage 14) |
 | [CHEATSHEET.md](CHEATSHEET.md) | Condensed FO pull-up reference card — planned in-sim overlay (ROADMAP fix F3) |
 | [TLO.md](TLO.md) | Terminal/Enabling Learning Objectives and star-grading crosswalk for the campaign |
+| [ENGINE_PORT/](ENGINE_PORT/) | Plan and strategy for porting the sim to a game engine (Godot 4 recommended) — engine choice, architecture, parity testing, staged plan |
 | [CLAUDE.md](CLAUDE.md) | Project rules for the coding agent |
 | [QUICKSTART.md](QUICKSTART.md) | Stage-by-stage build workflow |

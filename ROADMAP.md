@@ -37,6 +37,7 @@ Confusion in this project comes from asking the wrong file. One question, one au
 | Dialogue rewrite text | **DIALOGUE_REVISIONS.md** (detail for stage 14) | NARRATIVE |
 | Training-objective crosswalk | **TLO.md** | — |
 | Real-world dispersion / lethality figures | **BALLISTICS_RESEARCH.md** (reference only — nothing in it is applied, and it does **not** license a trajectory sim) | — |
+| How do we move this to a game engine? | **ENGINE_PORT/** (README → CHOICE → ARCHITECTURE → PARITY_TESTING → PORT_PLAN) | SPEC, this board |
 | What is this project? (public face) | **README.md** | — |
 
 **README.md no longer carries a backlog.** It had one, it drifted, and it ended up with two
@@ -145,6 +146,22 @@ already written and unapplied.
 
 **Zero conflict surface with stage 13** (string pools vs. renderer), so 14a/14b can be pulled forward
 between any two graphics rows on request. It still serializes — rule 1 has no exceptions.
+
+### Track E — Engine port (planning complete; execution not scheduled)
+
+Plan and strategy live in **[ENGINE_PORT/](ENGINE_PORT/)** — engine choice (Godot 4 + C#), the
+transfers-vs-rebuilds inventory, the parity-testing strategy, and a staged plan P0–P8. No engine code
+exists and none is scheduled; nothing on this track competes with stage 13/14 rows for `index.html`.
+
+| ID | What | Owner | Status |
+|---|---|---|---|
+| E0 | **P0 freeze the oracle** — record the transcript library + export fixtures while the browser build is the only implementation. Cheap, and the plan's biggest risk if skipped. | — | READY |
+| E1 | P1–P2 headless sim core (`SHITFIRE.Core` + parity tests) | — | PARKED |
+| E2 | P3–P8 engine shell through parity sign-off | — | PARKED |
+
+**The browser build is not retired by the port.** It stays as the parity oracle and the zero-install
+distribution channel. Every stage-12/13/14 row landed here makes the oracle *better*, not obsolete —
+so continuing on this board is not wasted work if the port later goes ahead.
 
 ### Track F — Fixes (not stages; schedulable anytime)
 
