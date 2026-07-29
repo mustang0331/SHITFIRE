@@ -544,6 +544,7 @@ const FDC = {
     this.lastT = t;
     schedule(t, () => {
       this.lastMsg = msg;
+      squelch();
       log(CONFIG.FDC.fdc, msg, 'fdc');
       speakFDC(msg);
     });
@@ -576,6 +577,8 @@ function speakFDC(msg) {
   u.pitch = CONFIG.VOICE.pitch;
   u.volume = CONFIG.VOICE.volume;
   if (fdcVoice) u.voice = fdcVoice;
+  u.onstart = () => hiss(true);
+  u.onend = u.onerror = () => hiss(false);
   speechSynthesis.speak(u);
 }
 
@@ -583,32 +586,93 @@ const QUIPS = {
   greet: [
     'HELLHOUND FIRES on this net. Guns are laid, crew is bored. Find us some work, over.',
     'HELLHOUND FIRES up on this net. Coffee is cold, tubes are warm. Send your traffic, over.',
+    'HELLHOUND FIRES. The guns are hot and the war is not going to fight itself. Send traffic, over.',
+    'HELLHOUND FIRES on the net. We were told there would be targets. We remain optimistic, over.',
+    'HELLHOUND FIRES. Somewhere out there is a grid square that deserves everything that is about to happen to it. Find it, over.',
+  ],
+  readbackTail: [
+    'And MUSTANG — do try to hit the correct island this time.',
+    'Rounds are cheap. Your credibility is not. Standing by.',
+    'The battery thanks you for the work order.',
+    'Copy all. If anything friendly is standing on that grid, now would be the moment to mention it.',
+    'Outstanding. The tubes were getting cold and the crew was getting philosophical.',
+  ],
+  corrSnark: [
+    'That is quite a walk, MUSTANG. Did the first one land in a different time zone?',
+    'Copy that correction. The gun did not move — I want the record to show whose math this was.',
+    'A bold adjustment. Somewhere a map sheet is being held upside down.',
+    'Shifting fire. The fish thank you for your earlier contribution.',
+  ],
+  ffeAck: [
+    'FIRE FOR EFFECT. Now it is a party.',
+    'FIRE FOR EFFECT. This is the only part of the job the battery actually enjoys.',
+    'Copy FIRE FOR EFFECT. Somebody downrange is about to have the worst day of their life.',
+    'FIRE FOR EFFECT. Six rounds, one grid, no hard feelings.',
+  ],
+  completeTail: [
+    'That grid square has been thoroughly redecorated.',
+    'Rounds complete. The landscape can bill somebody else.',
+    'Whatever was standing there is now a matter for the historians.',
+    'Tubes cooling. Send your assessment when you finish admiring the smoke.',
+  ],
+  eomGood: [
+    'Good effect, MUSTANG. We will pretend the first round was a warning shot.',
+    'Target neutralized. Frame this one — it will not happen twice.',
+    'Clean mission. The battery is mildly impressed, which is as impressed as they get.',
+    'End of mission logged. Somewhere a gunnery sergeant sheds a single proud tear.',
+  ],
+  eomBad: [
+    'End of mission logged. The target, regrettably, is still filing complaints.',
+    'Copy end of mission. We converted a great deal of ammunition into noise out there.',
+    'Logged. We will call that one suppressive and never speak of it again.',
+    'End of mission. The enemy remains. So, unfortunately, does our paperwork.',
   ],
   badGrid: [
     'MUSTANG 12, that grid is not on anybody\'s map. Say again your target location, over.',
     'MUSTANG 12, negative copy on that grid — it does not exist. Say again, over.',
+    'MUSTANG 12, I plotted that location and it is either wrong or classified. Say again, over.',
+    'Negative copy. That target location does not survive contact with a map. Say again, over.',
   ],
   water: [
     'Be advised, that grid is in the ocean. Engaging the fish as requested.',
     'That grid is wet, MUSTANG. Hope the target brought a snorkel. Firing anyway.',
+    'Copy. Engaging the Pacific Ocean. Historically a bold choice.',
   ],
   noMission: [
     'MUSTANG 12, there is no mission on this net. Send a call for fire first, over.',
     'MUSTANG 12, you are adjusting rounds we never fired. Send a call for fire, over.',
+    'MUSTANG 12, you are correcting fire that exists only in your heart. Send a call for fire first, over.',
   ],
   inFlight: [
     'MUSTANG 12, rounds are still in the air. Patience. Wait for splash, over.',
+    'Rounds are in the air, MUSTANG. Physics is doing its part — do yours and wait for splash, over.',
+    'Still flying, MUSTANG. If you can steer a shell mid-flight you are wasted in that hole. Wait for splash, over.',
   ],
   unknown: [
     'MUSTANG 12, HELLHOUND FIRES, say again, over. Slower this time.',
     'MUSTANG 12, that transmission was noise with a callsign. Say again, over.',
+    'MUSTANG 12, that had the structure of poetry and the content of static. Say again, over.',
+    'Say again, over. And this time pretend the radio is graded.',
   ],
   complete: [
     'MUSTANG 12, mission is complete. Send end of mission with your BDA, over.',
   ],
-  frat: 'CHECK FIRE. CHECK FIRE. MUSTANG 12, you just put steel on the friendly position. End of mission. Somebody\'s career is over today, and it is not mine.',
+  dangerClose: [
+    'MUSTANG 12, that target is DANGER CLOSE to friendlies and I did not hear the proword. Say again the full call with DANGER CLOSE, or we are not shooting, over.',
+    'Negative, MUSTANG. Friendlies are close enough to read the fuze stamps. Resend with DANGER CLOSE, over.',
+  ],
+  frat: [
+    'CHECK FIRE. CHECK FIRE. MUSTANG 12, you just put steel on the friendly position. End of mission. Somebody\'s career is over today, and it is not mine.',
+    'CHECK FIRE. That was the FRIENDLY position, MUSTANG. They have radios too, and they are using them right now to say your callsign with feeling. End of mission.',
+  ],
 };
-const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function pick(arr) {
+  if (arr.length === 1) return arr[0];
+  let i = Math.floor(Math.random() * arr.length);
+  if (i === arr._last) i = (i + 1) % arr.length;
+  arr._last = i;
+  return arr[i];
+}
 
 /* ============================================================ AUDIO (minimal boom; polish in stage 4) */
 let audioCtx = null, noiseBuf = null;
@@ -640,6 +704,44 @@ function boom(delaySec, dist) {
   g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
   osc.connect(g2); g2.connect(audioCtx.destination);
   osc.start(t0); osc.stop(t0 + 1.2);
+}
+// radio-net textures: key-up squelch, hiss bed under FDC speech, lase tick
+function squelch() {
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  const t0 = audioCtx.currentTime;
+  const src = audioCtx.createBufferSource(); src.buffer = noiseBuf;
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.8;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.12, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.07);
+  src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+  src.start(t0, Math.random() * 0.5, 0.09);
+}
+let hissGain = null;
+function hiss(on) {
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  if (!hissGain) {
+    const src = audioCtx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 0.5;
+    hissGain = audioCtx.createGain();
+    hissGain.gain.value = 0;
+    src.connect(bp); bp.connect(hissGain); hissGain.connect(audioCtx.destination);
+    src.start();
+  }
+  hissGain.gain.setTargetAtTime(on ? 0.035 : 0.0001, audioCtx.currentTime, 0.05);
+}
+function laseTick() {
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  const t0 = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = 'square'; osc.frequency.value = 2400;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.05, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.05);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + 0.06);
 }
 addEventListener('pointerdown', () => { ensureAudio(); if (audioCtx) audioCtx.resume(); }, { once: false });
 addEventListener('keydown', () => { ensureAudio(); if (audioCtx) audioCtx.resume(); }, { once: false });
@@ -808,6 +910,7 @@ let laseToken = 0;
 function doLase() {
   if (!binos) { log('', 'Lasing requires binoculars up — press [B] first.', 'sys'); return; }
   const tok = ++laseToken;
+  laseTick();
   laseEl.textContent = 'LASING…';
   schedule(sim.now + 0.55, () => {
     if (tok !== laseToken) return;
@@ -899,6 +1002,7 @@ function fireAdjustRound() {
 function fireForEffect() {
   const B = CONFIG.BALLISTICS;
   setState('FIRE FOR EFFECT');
+  if (Math.random() < 0.4) FDC.say(pick(QUIPS.ffeAck), { delay: 0.8 });
   const otAz = azTo(OP.x, OP.z, mission.aim.x, mission.aim.z);
   const tof = tofFor(mission.aim);
   const tShot = FDC.say('SHOT, OVER.', { delay: CONFIG.FDC.shotDelay });
@@ -920,6 +1024,7 @@ function fireForEffect() {
     mission.tEnd = sim.now;
     assessFFE();
     FDC.say('ROUNDS COMPLETE, OVER.', { delay: 0.4 });
+    if (Math.random() < 0.5) FDC.say(pick(QUIPS.completeTail), { delay: 1.2 });
     FDC.say(pick(QUIPS.complete), { delay: 1.6 });
     setState('EOM?');
   });
@@ -937,7 +1042,7 @@ function resolveImpact(impact, isFFE) {
   if (dist2(impact.x, impact.z, Scenario.compound.x, Scenario.compound.z)
       < CONFIG.MISSION.fratricideRadius) {
     mission.done = true; mission.failReason = 'fratricide'; mission.tEnd = sim.now;
-    FDC.say(QUIPS.frat, { delay: 1.2 });
+    FDC.say(pick(QUIPS.frat), { delay: 1.2 });
     setState('CHECK FIRE');
     schedule(sim.now + 4.5, showAAR);
     return;
@@ -1130,6 +1235,7 @@ function handleCFF(p) {
           { delay: CONFIG.FDC.readbackDelay });
   FDC.say('MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
           { delay: 1.4 });
+  if (Math.random() < 0.45) FDC.say(pick(QUIPS.readbackTail), { delay: 1.1 });
   if (H(cx, cz) < 0) FDC.say(pick(QUIPS.water), { delay: 1 });
   setState('MISSION SENT');
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr });
@@ -1154,6 +1260,8 @@ function handleAdjust(p) {
   }
   if (p.ffe) parts.push('FIRE FOR EFFECT');
   FDC.say(parts.join(', ') + ', OUT.', { delay: 1 });
+  if (Math.abs(p.corr.right) + Math.abs(p.corr.add) > 150 && Math.random() < 0.5)
+    FDC.say(pick(QUIPS.corrSnark), { delay: 1 });
   if (p.ffe) fireForEffect();
   else fireAdjustRound();
 }
@@ -1162,6 +1270,11 @@ function handleEOM(p) {
   if (!mission) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
   if (!mission.done) { mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now; }
   FDC.say(`END OF MISSION${p.bda ? ', ' + p.bda.toUpperCase() : ''}, OUT.`, { delay: 1.2 });
+  if (mission.failReason !== 'fratricide') {
+    const good = mission.ffeRounds.length &&
+      mission.hits >= CONFIG.MISSION.hitsToNeutralize;
+    FDC.say(pick(good ? QUIPS.eomGood : QUIPS.eomBad), { delay: 1.2 });
+  }
   setState('AAR');
   schedule(FDC.lastT + 1.6, showAAR);
 }
@@ -1181,6 +1294,7 @@ function expectedHint() {
 function sysHint() { log('', 'HINT: ' + expectedHint(), 'sys'); }
 
 function onPlayerMessage(raw) {
+  squelch();
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
   const p = parseMessage(raw);
   switch (p.type) {
