@@ -1019,7 +1019,8 @@ function genScenario(type, seed) {
   const rng = mulberry32((seed * 2654435761 ^ CONFIG.SEED.terrain) >>> 0);
   const M = CONFIG.MISSION;
   const S = { seed, type, difficulty: DIFFICULTY, rng, kps: [], friendlies: [],
-              effectRadius: M.effectRadius, hitsNeed: M.hitsToNeutralize };
+              effectRadius: M.effectRadius, hitsNeed: M.hitsToNeutralize,
+    alerted: 0, dispersed: 0 };
   const OPT = (activeChapter && activeChapter.scn) || {};
 
   function findSpot(rMin, rMax, hMin, hMax, needLOS) {
@@ -2174,6 +2175,31 @@ function resolveImpact(impact, isFFE) {
     if (mission.lastAdjDist !== null && dTgt > mission.lastAdjDist + 40) {
       mission.wrongWay++;
       if (mission.wrongWay === 2) FDC.say(pick(QUIPS.wrongWay), { delay: 2.2 });
+    }
+    // Troops in the open react to fire: a near miss alerts them, and after
+    // the second one they go to ground and spread out — the effect radius
+    // stops being generous. Slow adjustment costs effect, not just stars.
+    if ((S.type === 'troops' || S.type === 'raid') && dTgt < 300 && !S.dispersed) {
+      S.alerted++;
+      if (S.alerted === 1) {
+        log('', 'The infantry heard that one — they are moving and going flat.', 'sys');
+      } else if (S.alerted >= 2) {
+        S.dispersed = 1;
+        // spread the visible cluster and drop them prone
+        const drng = mulberry32((S.seed * 7919 + 13) >>> 0);
+        units.troops.forEach(m => {
+          if (!m.visible) return;
+          const a = drng() * Math.PI * 2, r = 18 + drng() * 26;
+          const nx = m.position.x + Math.sin(a) * r, nz = m.position.z + Math.cos(a) * r;
+          m.position.set(nx, H(nx, nz) + 0.5, nz);
+          m.rotation.z = 1.2;                       // prone
+        });
+        S.effectRadius = Math.round(S.effectRadius * 0.7);
+        S.hitsNeed = Math.min(S.hitsNeed + 1, 4);
+        log('', `They have dispersed and gone to ground. Effect radius is now ${S.effectRadius} m and you need ${S.hitsNeed} rounds on them. Adjust faster next time.`, 'sys');
+        if (coachOn())
+          FDC.say('Be advised, MUSTANG — they are dispersing. Every round you spend walking is a man of theirs finding a hole. Get on with it.', { delay: 2.6 });
+      }
     }
     // --- adjustment doctrine: track the spotting, then coach the pattern
     mission.missTrace.push(Math.round(dTgt));
