@@ -11,7 +11,15 @@ Desktop.ini
 *.log
 *.tmp
 scratch/
+scratchpad/
 exports/
+
+# Dev tooling (permitted per CLAUDE.md "Dev tooling" — never a runtime dep).
+# The tools themselves ARE committed; only their installed deps and output are not.
+tools/node_modules/
+tools/test-results/
+tools/playwright-report/
+tools/.cache/
 
 # Large DEM/heightmap source data kept out of the repo (drop-in during dev)
 dem/
