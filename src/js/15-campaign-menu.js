@@ -180,10 +180,15 @@ function correctionEfficiency(m) {
 }
 function gradeMission(m) {
   const S = Scenario;
-  const isConvoy = S.type === 'convoy';
-  const neutralized = isConvoy ? m.hits >= 3
-    : (m.ffeRounds.length > 0 && m.hits >= S.hitsNeed);
-  if (m.failReason || !neutralized) return 0;
+  /* G13 — stars gate on the graded outcome. NEUTRALIZED or better earns full
+     grading (destruction is not required — neutralization IS mission
+     accomplished per FM 6-30, and the competency metrics below decide the
+     stars). SUPPRESSED passes only a suppress-intent mission; on a destroy
+     mission it is worth a single star — real effect, wrong amount. */
+  if (m.failReason) return 0;
+  const a = assessEffect();
+  if (a.outcome === 'none') return 0;
+  if (a.outcome === 'suppressed' && m.intent !== 'suppress') return 1;
   let stars = 1;
   if (m.notes.length === 0) stars++;
   if (m.adjustRounds <= 2) stars++;

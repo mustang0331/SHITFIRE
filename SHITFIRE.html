@@ -450,8 +450,43 @@ const CONFIG = {
     dispersion: true,
   },
   MISSION: {
-    effectRadius: 60, hitsToNeutralize: 3, fratricideRadius: 80,
+    fratricideRadius: 80,
     passMaxAdjustRounds: 4, targetRange: [1500, 3200], enemyOffset: [150, 250],
+  },
+  /* G13 — graded terminal effects. Replaces the old binary model (N hits inside
+     one radius = "neutralized"). Every HE round now contributes a casualty /
+     damage percentage by how far from the target it lands, and the accumulated
+     figure grades into the three doctrinal outcomes:
+
+         SUPPRESSED   — fire is landing close enough to force heads down; the
+                        effect lasts only during and briefly after the fires
+                        (FM 6-30 §4-14: temporary by definition)
+         NEUTRALIZED  — >=10% casualties: the unit is combat-ineffective
+                        (FM 6-30 §4-14 / App. E-2)
+         DESTROYED    — >=30% casualties: permanently out of action
+                        (FM 6-30 §4-14: "normally renders a unit ineffective")
+
+     Distance bands are unclassified proxies (the real JMEM effect tables are
+     classified — FM 6-30 §4-14e): personnel bands lean on the 155mm lethal-area
+     figures and ATP 3-09.30 Table 1-1 FPF widths recorded in DOCTRINE.md
+     §Pre-mission and effects data; posture swing (standing vs prone) comes from
+     FM 7-90 App. B, where the same volley clears neutralization on a standing
+     platoon and fails it on a prone one. G18 refines these per asset (60mm vs
+     155); until then these are the 155 battery's numbers and chapter `effR`
+     scales the bands for the precision shoots.
+
+     This models terminal EFFECT at the impact point only — where the round
+     lands is still impact = aimpoint + error, never a trajectory. */
+  EFFECTS: {
+    suppressSec: 90,                        // suppression outlives the last round by this
+    posture: { standing: 1.0, prone: 0.4 }, // FM 7-90 App. B: posture alone swings ~2.5x
+    // per-round contribution (%) at full effect, and the distance bands:
+    // full inside rFull, half to rHalf, quarter (suppression credit) to rSupp
+    personnel: { rFull: 30, rHalf: 50, rSupp: 75, perRound: 8,
+                 neutralizePct: 10, destroyPct: 30 },
+    // hard point targets (bunker, derelict): tight bands, structural-damage scale
+    point:     { rFull: 15, rHalf: 25, rSupp: 45, perRound: 55,
+                 neutralizePct: 40, destroyPct: 100 },
   },
   /* G2 — declination. The world, the grid, the map sheet and every azimuth on the
      fire net are GRID (true) mils. The observer's own instruments — compass, HUD
@@ -2233,8 +2268,15 @@ let scenarioT0 = 0;   // sim time the current scenario began (time-to-initiate)
 function genScenario(type, seed) {
   const rng = mulberry32((seed * 2654435761 ^ CONFIG.SEED.terrain) >>> 0);
   const M = CONFIG.MISSION;
+  /* G13 — graded effects state. tgtClass picks the CONFIG.EFFECTS band set
+     ('personnel' or 'point'; convoy is assessed by vehicle kills instead).
+     posture scales personnel casualties (FM 7-90 App. B); dispersal flips it
+     to prone. eff accumulates casualty/damage %; everSuppressed records that
+     suppression was achieved at some point (the verdict term), while
+     suppressedUntil is the live window (the enemy's behaviour). */
   const S = { seed, type, difficulty: DIFFICULTY, rng, kps: [], friendlies: [],
-              effectRadius: M.effectRadius, hitsNeed: M.hitsToNeutralize,
+              tgtClass: 'personnel', posture: 'standing', effScale: 1,
+              eff: 0, everSuppressed: false, suppressedUntil: 0,
     alerted: 0, dispersed: 0 };
   const OPT = (activeChapter && activeChapter.scn) || {};
 
@@ -2298,8 +2340,7 @@ function genScenario(type, seed) {
     }
   } else if (type === 'wreck') {
     S.enemy = findSpot(1100, 2100, 1, 6, true) || { x: OP.x + 1500, z: OP.z };
-    S.effectRadius = 30;
-    S.hitsNeed = 2;
+    S.tgtClass = 'point';
     S.brief = `Training target: a derelict landing craft on the beach, grid bearing ~${brgTo(S.enemy)} mils. It cannot shoot back. Neither could the last observer.`;
   } else if (type === 'raid') {
     // raiders MUST be near a village — try every village with LOS from the
@@ -2332,9 +2373,8 @@ function genScenario(type, seed) {
   } else if (type === 'bunker') {
     S.enemy = findSpot(1200, 3000, 22, 140, true) ||
               findSpot(1200, 3000, 8, 999, true) || { x: OP.x + 1800, z: OP.z };
-    S.effectRadius = 35;
-    S.hitsNeed = 2;
-    S.brief = `Dug-in bunker reported on high ground, grid bearing ~${brgTo(S.enemy)} mils. The effect radius is tight — put it on the roof.`;
+    S.tgtClass = 'point';
+    S.brief = `Dug-in bunker reported on high ground, grid bearing ~${brgTo(S.enemy)} mils. The effect bands are tight — put it on the roof.`;
   } else if (type === 'convoy') {
     let path = null;
     for (let tries = 0; tries < 400 && !path; tries++) {
@@ -2387,7 +2427,11 @@ function genScenario(type, seed) {
         ? ' The lines are TANGLED — friendlies are already inside normal safe distances and still moving. DANGER CLOSE proword, creeping corrections, zero slack.'
         : ' This WILL be danger close: your call must include the proword DANGER CLOSE, and a short round lands on our own people.');
   }
-  if (OPT.effR) S.effectRadius = OPT.effR;
+  /* G13 — the legacy chapter knob `effR` was an absolute effect radius against
+     the old default of 60 m; it now scales the graded distance bands by the
+     same ratio, so chapter 4.2's effR:30 still means "half the normal effect
+     envelope — precision work". G18 replaces this with per-asset band sets. */
+  if (OPT.effR) S.effScale = OPT.effR / 60;
 
   // registration / known points for shift missions
   for (let k = 0; k < 2; k++) {
@@ -2933,6 +2977,18 @@ const QUIPS = {
   ],
   complete: [
     'MUSTANG 12, mission is complete. Send end of mission with your BDA, over.',
+  ],
+  /* G13 — the volley ended but the target did not. Suppressed-only: heads are
+     down and the clock is running; the observer owns the continue-or-end call.
+     No effect: the rounds were a fireworks display. Neither line may skip the
+     doctrinal fact that the net is waiting on the observer's decision. */
+  suppressedOnly: [
+    'MUSTANG 12, they are heads-down, not dead — that is suppression, and it expires. Continue the mission or send end of mission, your call, over.',
+    'MUSTANG 12, you have bought silence, not results. The moment we stop, they get back on their guns. Correct and REPEAT, or close it out, over.',
+  ],
+  noEffect: [
+    'MUSTANG 12, rounds complete, and the target could not care less. Where you put that volley and where they are living are two different places. Correct and REPEAT, or send end of mission and we will both pretend this was training, over.',
+    'MUSTANG 12, no effect observed. We just gave the taxpayers a very expensive drum solo. Fix your data and REPEAT, or end the mission, over.',
   ],
   dangerClose: [
     'MUSTANG 12, that target is DANGER CLOSE to friendly infantry and you did not say the fucking proword. I do not drop shells next to our own people on a mumble. Say again the full call with DANGER CLOSE, over.',
@@ -4065,6 +4121,11 @@ function fireMission(targetLocation, warno, meta) {
     // target identification (scenario start stands in for target ID)
     tInit: sim.now - scenarioT0,
     tStart: sim.now, tEnd: null, done: false, failReason: null, hits: 0,
+    /* G13 — what this mission is FOR. 'destroy' is the default; immediate
+       suppression and suppress-target missions set 'suppress', where a
+       suppressed-only outcome is the mission accomplished, not a shortfall. */
+    intent: (meta && meta.intent) || 'destroy',
+    bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     noDisp: false,          // G3 — set by markDispersion() if any round is fired
                             // with dispersion off; blocks star recording
     checkFire: false,       // G25 — safety hold active; blocks new firing
@@ -4198,7 +4259,8 @@ function handleSuppressTarget(p) {
   setState('MISSION SENT');
   fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
     { notes: mins ? [] : ['Suppress mission sent without a duration.'],
-      desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid' });
+      desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
+      intent: 'suppress' });
 }
 
 /* ---- G24: AT MY COMMAND (DOCTRINE.md §34) -----------------------------------
@@ -4355,10 +4417,78 @@ function fireForEffect() {
     mission.tEnd = sim.now;
     assessFFE();
     FDC.say('ROUNDS COMPLETE, OVER.', { delay: 0.4 });
-    if (Math.random() < 0.5) FDC.say(pick(QUIPS.completeTail), { delay: 1.2 });
-    FDC.say(pick(QUIPS.complete), { delay: 1.6 });
+    /* G13 — the post-volley traffic now depends on what the volley actually
+       did. Accomplished: close it out. Suppressed only: the observer gets the
+       continue-or-end decision — suppression is temporary and the FDC says so.
+       No effect: the mission is not over just because the tubes went quiet. */
+    const a = assessEffect();
+    if (missionAccomplished()) {
+      if (Math.random() < 0.5) FDC.say(pick(QUIPS.completeTail), { delay: 1.2 });
+      FDC.say(pick(QUIPS.complete), { delay: 1.6 });
+    } else if (a.outcome === 'suppressed') {
+      FDC.say(pick(QUIPS.suppressedOnly), { delay: 1.4 });
+      log('', 'Target is SUPPRESSED — heads down, not casualties, and it wears off. Your call: ' +
+        'continue the mission (send a correction, or REPEAT for another volley) or close with ' +
+        '"END OF MISSION, TARGET SUPPRESSED" if suppression is all you needed.', 'sys');
+    } else {
+      FDC.say(pick(QUIPS.noEffect), { delay: 1.4 });
+      log('', 'No appreciable effect on the target. Refine your correction and REPEAT ' +
+        '("right 50, repeat"), or close with END OF MISSION and own the result.', 'sys');
+    }
     setState('EOM?');
   });
+}
+
+/* ---- G13: the graded effect engine (DOCTRINE.md §Pre-mission and effects data)
+   Terminal effect only — WHERE a round lands stays impact = aimpoint + error.
+   Every HE round contributes to Scenario.eff (casualty % for personnel,
+   structural damage for point targets) banded by miss distance and scaled by
+   posture; the accumulated figure grades into SUPPRESSED / NEUTRALIZED /
+   DESTROYED per FM 6-30 §4-14. Suppression is the temporary one: any round in
+   the outer band forces heads down for EFFECTS.suppressSec, and the verdict
+   remembers it via everSuppressed even after the enemy is back up. */
+function effBands() {
+  const S = Scenario, E = CONFIG.EFFECTS;
+  const c = E[S.tgtClass] || E.personnel;
+  const k = S.effScale || 1;
+  return { rFull: c.rFull * k, rHalf: c.rHalf * k, rSupp: c.rSupp * k,
+           perRound: c.perRound, neutralizePct: c.neutralizePct, destroyPct: c.destroyPct };
+}
+function addRoundEffect(impact) {
+  const S = Scenario;
+  if (S.type === 'convoy') return;              // convoys are assessed by vehicle kills
+  const b = effBands();
+  const d = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
+  if (d > b.rSupp) return;
+  if (enemyAlive) {                              // the dead do not duck
+    S.everSuppressed = true;
+    S.suppressedUntil = sim.now + CONFIG.EFFECTS.suppressSec;
+  }
+  const band = d <= b.rFull ? 1 : d <= b.rHalf ? 0.5 : 0.25;
+  const post = S.tgtClass === 'personnel'
+    ? (CONFIG.EFFECTS.posture[S.posture] || 1) : 1;
+  S.eff += b.perRound * band * post;
+}
+function assessEffect() {
+  const S = Scenario;
+  if (S.type === 'convoy') {
+    const dead = S.veh.filter(v => v.dead).length;
+    return { outcome: dead >= 3 ? 'destroyed' : 'none', pct: dead * 25 };
+  }
+  const b = effBands();
+  // threshold on the RAW figure — rounding first would gift a 9.6% volley the
+  // 10% neutralization it did not earn; round only for display
+  const outcome = S.eff >= b.destroyPct ? 'destroyed'
+                : S.eff >= b.neutralizePct ? 'neutralized'
+                : S.everSuppressed ? 'suppressed' : 'none';
+  return { outcome, pct: Math.round(S.eff) };
+}
+// The mission is accomplished at NEUTRALIZED or better — or at SUPPRESSED when
+// suppression was the stated intent (immediate suppression, suppress-target).
+function missionAccomplished() {
+  const a = assessEffect();
+  return a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
+         (a.outcome === 'suppressed' && mission && mission.intent === 'suppress');
 }
 
 function resolveImpact(impact, isFFE) {
@@ -4368,6 +4498,7 @@ function resolveImpact(impact, isFFE) {
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
   const S = Scenario;
+  addRoundEffect(impact);   // G13 — every round's terminal effect counts, adjust or FFE
   TLOG.add('impact', '', isFFE ? 'FFE round' : `adjust round ${mission.adjustRounds}`,
     { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)) });
   // convoy attrition — any round can kill vehicles
@@ -4454,9 +4585,14 @@ function resolveImpact(impact, isFFE) {
           m.position.set(nx, H(nx, nz) + 0.3, nz);
           m.rotation.z = 1.2;                       // prone, pivoting on the boots
         });
-        S.effectRadius = Math.round(S.effectRadius * 0.7);
-        S.hitsNeed = Math.min(S.hitsNeed + 1, 4);
-        log('', `They have dispersed and gone to ground. Effect radius is now ${S.effectRadius} m and you need ${S.hitsNeed} rounds on them. Adjust faster next time.`, 'sys');
+        /* G13 — dispersal is now a POSTURE change, which is what it physically
+           is: FM 7-90 App. B has the same volley clearing neutralization on a
+           standing platoon and failing it prone. Casualty effect per round
+           drops to EFFECTS.posture.prone of the standing figure. */
+        S.posture = 'prone';
+        log('', 'They have dispersed and gone prone. Casualty effect per round is now less than ' +
+          'half — a volley that would have destroyed them standing may only neutralize, or worse. ' +
+          'Adjust faster next time.', 'sys');
         sendSpotReport('displace');   // target displaced — re-cue the observer
         if (coachOn())
           FDC.say('Be advised, MUSTANG — they are dispersing. Every round you spend walking is a man of theirs finding a hole. Get on with it.', { delay: 2.6 });
@@ -4545,17 +4681,22 @@ function assessFFE() {
     if (mission.hits >= 3) enemyAlive = false;
     return;
   }
+  // G13 — `hits` is now "effect rounds inside the outer band": a display and
+  // diagnosis stat, not the pass criterion. The criterion is assessEffect().
   mission.hits = mission.ffeRounds.filter(r =>
-    dist2(r.x, r.z, S.enemy.x, S.enemy.z) < S.effectRadius).length;
-  if (mission.hits >= S.hitsNeed) {
+    dist2(r.x, r.z, S.enemy.x, S.enemy.z) < effBands().rSupp).length;
+  const a = assessEffect();
+  if (a.outcome === 'destroyed' || a.outcome === 'neutralized') {
     enemyAlive = false;
     // figure origin is at the feet, so this pivots the body over without sinking
     // it — and, unlike the old `position.y -= 0.55`, it is idempotent if the
     // effect check re-runs.
     units.troops.forEach(m => { if (m.visible) m.rotation.z = 1.35; });
-    if (S.type === 'strongpoint')
+    // the heavier materiel damage renders only at DESTROYED — a neutralized
+    // position has broken men, not burning trucks
+    if (S.type === 'strongpoint' && a.outcome === 'destroyed')
       units.vehicles.forEach(m => { if (m.visible) m.rotation.z = 0.25; });
-    if (S.type === 'bunker') visSetColor(units.bunker, 0x3A352F);
+    if (S.type === 'bunker' && a.outcome === 'destroyed') visSetColor(units.bunker, 0x3A352F);
   }
 }
 
@@ -4780,7 +4921,10 @@ function parseMessage(raw) {
      anything" is recoverable; a silently halved correction is not. */
   const numCount = (t.match(/\b\d+\b/g) || []).length;
   const stray = numCount - (mLR ? 1 : 0) - (mAD ? 1 : 0) - (mUD ? 1 : 0);
-  if (any || ffe) return { type: 'adjust', corr, any, ffe, stray, raw: t, toks };
+  // G13 — REPEAT riding on a correction ("right 50, repeat"): after a volley it
+  // re-fires the volley at the corrected aimpoint; flagged here, decided there.
+  if (any || ffe) return { type: 'adjust', corr, any, ffe, stray,
+                           rep: /\brepeat\b/.test(t), raw: t, toks };
   if (/\brepeat\b/.test(t)) return { type: 'repeat' };
   /* G22 — a bare WARNING ORDER is doctrinal Transmission 1 ("HELLHOUND FIRES,
      this is MUSTANG 12, adjust fire, over"). It used to fall through to `unknown`
@@ -5111,7 +5255,10 @@ function handleCFF(p) {
   // transmissions, so this works whether the call came one-shot or staged.
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr,
                                          method: p.method, mto: mtoSpec,
-                                         amc: p.raw.includes('at my command') });
+                                         amc: p.raw.includes('at my command'),
+                                         // G13 — an immediate mission's goal is to make
+                                         // them stop shooting, not to annihilate them
+                                         intent: p.imm ? 'suppress' : 'destroy' });
 }
 
 /* ---- G25: the safety stops (DOCTRINE.md §67) --------------------------------
@@ -5265,8 +5412,13 @@ function handleAdjust(p) {
     }
     return;
   }
-  if (state === 'EOM?') {
-    FDC.say('MUSTANG 12, rounds are complete. Send end of mission, over.', { delay: 1 });
+  /* G13 — continue-after-suppression. When the volley did NOT accomplish the
+     mission (still effective, or suppressed-only on a destroy-intent mission),
+     a correction here re-opens the shoot: it applies to the aimpoint and
+     "…, REPEAT" fires the volley again. Only an accomplished mission gets the
+     old "send end of mission" answer. */
+  if (state === 'EOM?' && missionAccomplished()) {
+    FDC.say('MUSTANG 12, rounds are complete and the target is done. Send end of mission, over.', { delay: 1 });
     return;
   }
   /* F5 — an unclaimed number in the transmission. Say so and refuse, rather than
@@ -5281,7 +5433,7 @@ function handleAdjust(p) {
       'Deviation first ("LEFT/RIGHT nnn"), then range ("ADD/DROP nnn").');
     return;
   }
-  if (state !== 'ADJUSTING') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
+  if (state !== 'ADJUSTING' && state !== 'EOM?') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
   /* G23 — height of burst. The observer can now send it and be understood instead
      of being told to say again in English. It deliberately does NOT move the
      aimpoint: the model is `impact = aimpoint + error` in the horizontal plane
@@ -5362,6 +5514,7 @@ function handleAdjust(p) {
     applyCorrection({ right: p.corr.right, add: p.corr.add });
   }
   if (p.ffe) parts.push('FIRE FOR EFFECT');
+  else if (p.rep && state === 'EOM?') parts.push('REPEAT');
   FDC.say(parts.join(', ') + ', OUT.', { delay: 1 });
   // stupid-but-safe: un-doctrinal rounding gets a snide remark, then we fire.
   // Same doctrinal rule as the strict gate above — 50 m only entering fire for effect.
@@ -5369,7 +5522,9 @@ function handleAdjust(p) {
     FDC.say(pick(QUIPS.snideRound), { delay: 1.3 });
   else if (Math.abs(p.corr.right) + Math.abs(p.corr.add) > 150 && Math.random() < 0.5)
     FDC.say(pick(QUIPS.corrSnark), { delay: 1 });
-  if (p.ffe) fireForEffect();
+  // G13 — a correction carrying REPEAT after a volley fires the volley again;
+  // during adjustment REPEAT means another adjusting round, as it always did.
+  if (p.ffe || (p.rep && state === 'EOM?')) fireForEffect();
   else fireAdjustRound();
 }
 
@@ -5382,7 +5537,18 @@ function handleEOM(p) {
     FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: end of mission carries surveillance. NEUTRALIZED, DESTROYED, or SUPPRESSED. Say again with your assessment, over.', { delay: 1.1 });
     return;
   }
-  if (!mission.done) { mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now; }
+  if (!mission.done) {
+    mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now;
+    /* G13 — surveillance is the observer's own call and the FDC logs it as sent
+       (doctrine does not have the FDC second-guessing BDA on the net). The AAR
+       is where a claim gets compared with what the rounds actually did. */
+    const mClaim = (p.bda || '').match(/destroyed|neutralized|suppressed/);
+    mission.bdaClaim = mClaim ? mClaim[0] : null;
+    const rank = { none: 0, suppressed: 1, neutralized: 2, destroyed: 3 };
+    const actual = assessEffect().outcome;
+    if (mission.bdaClaim && rank[mission.bdaClaim] > rank[actual])
+      mission.notes.push(`Surveillance overclaimed: you reported "${mission.bdaClaim}" — the assessed effect was ${actual === 'none' ? 'no effect' : actual.toUpperCase()}. BDA you cannot back up sends the next unit into a live position.`);
+  }
   // RREMS: refinement moves the recorded mean point of impact onto the
   // adjusting point; "record as target" files it for future use
   if (p.refine && p.refine.any) {
@@ -5407,10 +5573,8 @@ function handleEOM(p) {
   }
   FDC.say(`END OF MISSION${p.bda ? ', ' + p.bda.toUpperCase() : ''}, OUT.`, { delay: 1.2 });
   if (mission.failReason !== 'fratricide' && mission.failReason !== 'collateral') {
-    const good = Scenario.type === 'convoy'
-      ? Scenario.veh.filter(v => v.dead).length >= 3
-      : (mission.ffeRounds.length > 0 && mission.hits >= Scenario.hitsNeed);
-    FDC.say(pick(good ? QUIPS.eomGood : QUIPS.eomBad), { delay: 1.2 });
+    // G13 — the closing color keys on the graded outcome, not a hit count
+    FDC.say(pick(missionAccomplished() ? QUIPS.eomGood : QUIPS.eomBad), { delay: 1.2 });
   }
   setState('AAR');
   schedule(FDC.lastT + 1.6, showAAR);
@@ -5423,8 +5587,16 @@ function expectedHint() {
         ? 'Send OT DIRECTION first ("direction 5920, over") — then an OT-line correction, '
         : 'Send an OT-line correction, ') +
         'e.g. "right 50, add 100, over" — or "fire for effect, over" once rounds are on target. [R] in binos for the mil-relation card.';
-    case 'EOM?':
+    case 'EOM?': {
+      // G13 — the right next move depends on what the volley did
+      if (mission && !mission.done && !missionAccomplished()) {
+        const a = assessEffect();
+        return a.outcome === 'suppressed'
+          ? 'Target suppressed only — that wears off. Continue ("right 50, repeat" or bare REPEAT) or close with "end of mission, target suppressed, over".'
+          : 'No effect yet — the mission is still open. Correct and REPEAT ("drop 100, repeat"), or close with END OF MISSION and own the result.';
+      }
       return 'Close with RREMS: "end of mission, target neutralized, over" — you may add a refinement ("left 10, drop 50") and "record as target" first.';
+    }
     case 'SHOT': case 'MISSION SENT': case 'FIRE FOR EFFECT':
       return 'Rounds are in progress — wait for SPLASH, observe the burst, then correct.';
     default:
@@ -5527,6 +5699,15 @@ function onPlayerMessage(raw) {
     case 'repeat':
       if (mission && !mission.done && state === 'ADJUSTING') {
         FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
+      } else if (mission && !mission.done && state === 'EOM?') {
+        /* G13 — REPEAT after ROUNDS COMPLETE fires the volley again at the same
+           data. This is the continue-after-suppression path when the aim is
+           already good and the target just refuses to stay down. */
+        if (missionAccomplished()) {
+          FDC.say('MUSTANG 12, the target is done — I am not re-attacking a dead position. Send end of mission, over.', { delay: 1 });
+        } else {
+          FDC.say('REPEAT, OUT.', { delay: 1 }); fireForEffect();
+        }
       } else { FDC.say(pick(QUIPS.noMission), { delay: 1 }); sysHint(); }
       break;
     case 'eom': handleEOM(p); break;
@@ -5657,8 +5838,9 @@ function renderShotPlot(cv, m) {
     ctx.fillStyle = col; ctx.fillText(txt, x, y);
   };
 
-  // effect radius + target
-  groundCircle(tgt.x, tgt.z, S.effectRadius, 'rgba(255,120,90,.9)', [7, 5]);
+  // effect envelope (G13 — the outer band; rounds inside it contributed) + target
+  groundCircle(tgt.x, tgt.z, S.type === 'convoy' ? 40 : effBands().rSupp,
+               'rgba(255,120,90,.9)', [7, 5]);
   const tp = proj(tgt.x, tgt.z, 1);
   ctx.strokeStyle = '#ff7a5a'; ctx.lineWidth = 3;
   ctx.beginPath();
@@ -5774,28 +5956,40 @@ function showAAR() {
   const S = Scenario;
   const isConvoy = S.type === 'convoy';
   if (isConvoy) m.hits = S.veh.filter(v => v.dead).length;
-  const neutralized = isConvoy ? m.hits >= 3
-    : (m.ffeRounds.length > 0 && m.hits >= S.hitsNeed);
+  /* G13 — the verdict comes off the graded effect, and it distinguishes the
+     three doctrinal outcomes. SUPPRESSED is a pass only when suppression was
+     the mission's intent; on a destroy mission it is a marginal — real effect,
+     wrong amount, and it wears off. */
+  const a = assessEffect();
+  const accomplished = a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
+                       (a.outcome === 'suppressed' && m.intent === 'suppress');
+  const bands = isConvoy ? null : effBands();
   const frat = m.failReason === 'fratricide';
   const collat = m.failReason === 'collateral';
   const escaped = m.failReason === 'escaped';
-  const pass = !frat && !collat && !escaped && neutralized && m.adjustRounds <= M.passMaxAdjustRounds;
+  const pass = !frat && !collat && !escaped && accomplished && m.adjustRounds <= M.passMaxAdjustRounds;
   const grade = ['A', 'B', 'C', 'D'][Math.min(m.notes.length, 3)];
   const dur = (m.tEnd || sim.now) - m.tStart;
   let verdict, why = '';
   if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted a friendly element. Automatic failure.'; }
   else if (collat) { verdict = 'FAIL — CIVILIAN CASUALTIES'; why = 'Rounds impacted a civilian village. Collateral damage is an automatic failure, same as fratricide.'; }
   else if (escaped) { verdict = 'FAIL — CONVOY ESCAPED'; why = 'Fewer than three vehicles destroyed before the column ran off the map.'; }
-  else if (!neutralized) {
+  else if (a.outcome === 'none') {
     verdict = isConvoy ? 'FAIL — CONVOY STILL EFFECTIVE' : 'FAIL — TARGET STILL EFFECTIVE';
     why = isConvoy
       ? `Only ${m.hits}/4 vehicles destroyed (need 3).`
-      : (m.ffeRounds.length
-          ? `Only ${m.hits}/${m.ffeRounds.length} effect rounds landed within ${S.effectRadius} m of the target (need ${S.hitsNeed}).`
-          : 'Mission ended without firing for effect.');
+      : (m.rounds.length
+          ? `Assessed effect ${a.pct}% — below the ${bands.neutralizePct}% that renders a unit combat-ineffective (FM 6-30). The fires never touched them.`
+          : 'Mission ended without a round fired.');
   }
-  else if (!pass) { verdict = 'MARGINAL — TOO MANY ADJUSTING ROUNDS'; why = `Target neutralized, but ${m.adjustRounds} adjusting rounds used (pass ≤ ${M.passMaxAdjustRounds}).`; }
-  else { verdict = 'PASS — TARGET NEUTRALIZED'; why = ''; }
+  else if (a.outcome === 'suppressed' && !accomplished) {
+    verdict = 'MARGINAL — TARGET SUPPRESSED ONLY';
+    why = `Heads went down while the rounds fell (${a.pct}% casualties — neutralization needs ${bands.neutralizePct}%), and suppression wears off. They are back on their guns. You had the option to continue: correction, REPEAT.`;
+  }
+  else if (a.outcome === 'suppressed') { verdict = 'PASS — TARGET SUPPRESSED'; why = 'Suppression was the mission. They stopped shooting while it mattered.'; }
+  else if (!pass) { verdict = 'MARGINAL — TOO MANY ADJUSTING ROUNDS'; why = `Target ${a.outcome}, but ${m.adjustRounds} adjusting rounds used (pass ≤ ${M.passMaxAdjustRounds}).`; }
+  else if (a.outcome === 'destroyed') { verdict = isConvoy ? 'PASS — CONVOY DESTROYED' : 'PASS — TARGET DESTROYED'; why = isConvoy ? '' : `Assessed ${a.pct}% casualties — past the ${bands.destroyPct}% that takes a unit off the books permanently.`; }
+  else { verdict = 'PASS — TARGET NEUTRALIZED'; why = `Assessed ${a.pct}% casualties — combat-ineffective (≥${bands.neutralizePct}%), short of destruction (${bands.destroyPct}%).`; }
   if (pass) {
     const key = S.type + ':' + S.difficulty;
     const prev = BEST.data[key];
@@ -5841,6 +6035,9 @@ function showAAR() {
     if (activeChapter && activeChapter.asset === 'mortar60') medals.push('TEN-METER MAN — precision work with the sixty');
   }
   TLOG.add('aar', '', verdict, { rounds: m.adjustRounds, dur: Math.round(dur),
+    // G13 — graded outcome fields (additive; existing entry fields unchanged)
+    outcome: a.outcome, effPct: a.pct, intent: m.intent,
+    ...(m.bdaClaim ? { bdaClaim: m.bdaClaim } : {}),
     firstMiss: m.firstMiss === null ? null : Math.round(m.firstMiss),
     aimErr0: m.aimErr0 === null ? null : Math.round(m.aimErr0),
     tInit: Math.round(m.tInit),
@@ -5883,7 +6080,9 @@ function showAAR() {
     `<tr><td>Initial location error</td><td>${m.aimErr0 === null ? '—' : Math.round(m.aimErr0) + ' m (JFO standard ≤ 200 m)'}</td></tr>` +
     (isConvoy
       ? `<tr><td>Vehicles destroyed</td><td>${m.hits}/4</td></tr>`
-      : `<tr><td>Effect rounds on target</td><td>${m.hits}/${m.ffeRounds.length}</td></tr>`) +
+      : `<tr><td>Assessed effect</td><td>${a.pct}% ${S.tgtClass === 'point' ? 'structural damage' : 'casualties'} — ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()} (neutralize ≥${bands.neutralizePct}%, destroy ≥${bands.destroyPct}%${S.posture === 'prone' ? '; target went prone — per-round effect ×' + CONFIG.EFFECTS.posture.prone : ''})</td></tr>` +
+        `<tr><td>Effect rounds in the outer band</td><td>${m.hits}/${m.ffeRounds.length} within ${Math.round(bands.rSupp)} m</td></tr>`) +
+    (m.bdaClaim ? `<tr><td>Surveillance sent</td><td>${m.bdaClaim.toUpperCase()}${m.bdaClaim === a.outcome ? ' — matches the assessment' : ` — assessed: ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()}`}</td></tr>` : '') +
     `<tr><td>Time to initiate CFF</td><td>${fmtTime(m.tInit)} (standard ≤ 2:00)</td></tr>` +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
@@ -6877,10 +7076,15 @@ function correctionEfficiency(m) {
 }
 function gradeMission(m) {
   const S = Scenario;
-  const isConvoy = S.type === 'convoy';
-  const neutralized = isConvoy ? m.hits >= 3
-    : (m.ffeRounds.length > 0 && m.hits >= S.hitsNeed);
-  if (m.failReason || !neutralized) return 0;
+  /* G13 — stars gate on the graded outcome. NEUTRALIZED or better earns full
+     grading (destruction is not required — neutralization IS mission
+     accomplished per FM 6-30, and the competency metrics below decide the
+     stars). SUPPRESSED passes only a suppress-intent mission; on a destroy
+     mission it is worth a single star — real effect, wrong amount. */
+  if (m.failReason) return 0;
+  const a = assessEffect();
+  if (a.outcome === 'none') return 0;
+  if (a.outcome === 'suppressed' && m.intent !== 'suppress') return 1;
   let stars = 1;
   if (m.notes.length === 0) stars++;
   if (m.adjustRounds <= 2) stars++;
@@ -7485,7 +7689,9 @@ function animate(tMs) {
   cffqTick();             // G22 — lapse a call for fire the observer never finished
   updateCivilians(t);
   legibilityPass(eye.x, eye.y, eye.z);
-  const flashOn = enemyAlive && Scenario &&
+  // G13 — a suppressed enemy stops shooting for the suppression window and
+  // resumes when it lapses: the observer can SEE suppression working and wearing off
+  const flashOn = enemyAlive && Scenario && sim.now >= (Scenario.suppressedUntil || 0) &&
     (Scenario.type === 'strongpoint' || Scenario.type === 'assault' ||
      Scenario.type === 'bunker' || Scenario.type === 'raid');
   for (let i = 0; i < units.flashes.length; i++) {

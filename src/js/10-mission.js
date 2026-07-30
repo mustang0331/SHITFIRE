@@ -110,6 +110,11 @@ function fireMission(targetLocation, warno, meta) {
     // target identification (scenario start stands in for target ID)
     tInit: sim.now - scenarioT0,
     tStart: sim.now, tEnd: null, done: false, failReason: null, hits: 0,
+    /* G13 — what this mission is FOR. 'destroy' is the default; immediate
+       suppression and suppress-target missions set 'suppress', where a
+       suppressed-only outcome is the mission accomplished, not a shortfall. */
+    intent: (meta && meta.intent) || 'destroy',
+    bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     noDisp: false,          // G3 — set by markDispersion() if any round is fired
                             // with dispersion off; blocks star recording
     checkFire: false,       // G25 — safety hold active; blocks new firing
@@ -243,7 +248,8 @@ function handleSuppressTarget(p) {
   setState('MISSION SENT');
   fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
     { notes: mins ? [] : ['Suppress mission sent without a duration.'],
-      desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid' });
+      desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
+      intent: 'suppress' });
 }
 
 /* ---- G24: AT MY COMMAND (DOCTRINE.md §34) -----------------------------------
@@ -400,10 +406,78 @@ function fireForEffect() {
     mission.tEnd = sim.now;
     assessFFE();
     FDC.say('ROUNDS COMPLETE, OVER.', { delay: 0.4 });
-    if (Math.random() < 0.5) FDC.say(pick(QUIPS.completeTail), { delay: 1.2 });
-    FDC.say(pick(QUIPS.complete), { delay: 1.6 });
+    /* G13 — the post-volley traffic now depends on what the volley actually
+       did. Accomplished: close it out. Suppressed only: the observer gets the
+       continue-or-end decision — suppression is temporary and the FDC says so.
+       No effect: the mission is not over just because the tubes went quiet. */
+    const a = assessEffect();
+    if (missionAccomplished()) {
+      if (Math.random() < 0.5) FDC.say(pick(QUIPS.completeTail), { delay: 1.2 });
+      FDC.say(pick(QUIPS.complete), { delay: 1.6 });
+    } else if (a.outcome === 'suppressed') {
+      FDC.say(pick(QUIPS.suppressedOnly), { delay: 1.4 });
+      log('', 'Target is SUPPRESSED — heads down, not casualties, and it wears off. Your call: ' +
+        'continue the mission (send a correction, or REPEAT for another volley) or close with ' +
+        '"END OF MISSION, TARGET SUPPRESSED" if suppression is all you needed.', 'sys');
+    } else {
+      FDC.say(pick(QUIPS.noEffect), { delay: 1.4 });
+      log('', 'No appreciable effect on the target. Refine your correction and REPEAT ' +
+        '("right 50, repeat"), or close with END OF MISSION and own the result.', 'sys');
+    }
     setState('EOM?');
   });
+}
+
+/* ---- G13: the graded effect engine (DOCTRINE.md §Pre-mission and effects data)
+   Terminal effect only — WHERE a round lands stays impact = aimpoint + error.
+   Every HE round contributes to Scenario.eff (casualty % for personnel,
+   structural damage for point targets) banded by miss distance and scaled by
+   posture; the accumulated figure grades into SUPPRESSED / NEUTRALIZED /
+   DESTROYED per FM 6-30 §4-14. Suppression is the temporary one: any round in
+   the outer band forces heads down for EFFECTS.suppressSec, and the verdict
+   remembers it via everSuppressed even after the enemy is back up. */
+function effBands() {
+  const S = Scenario, E = CONFIG.EFFECTS;
+  const c = E[S.tgtClass] || E.personnel;
+  const k = S.effScale || 1;
+  return { rFull: c.rFull * k, rHalf: c.rHalf * k, rSupp: c.rSupp * k,
+           perRound: c.perRound, neutralizePct: c.neutralizePct, destroyPct: c.destroyPct };
+}
+function addRoundEffect(impact) {
+  const S = Scenario;
+  if (S.type === 'convoy') return;              // convoys are assessed by vehicle kills
+  const b = effBands();
+  const d = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
+  if (d > b.rSupp) return;
+  if (enemyAlive) {                              // the dead do not duck
+    S.everSuppressed = true;
+    S.suppressedUntil = sim.now + CONFIG.EFFECTS.suppressSec;
+  }
+  const band = d <= b.rFull ? 1 : d <= b.rHalf ? 0.5 : 0.25;
+  const post = S.tgtClass === 'personnel'
+    ? (CONFIG.EFFECTS.posture[S.posture] || 1) : 1;
+  S.eff += b.perRound * band * post;
+}
+function assessEffect() {
+  const S = Scenario;
+  if (S.type === 'convoy') {
+    const dead = S.veh.filter(v => v.dead).length;
+    return { outcome: dead >= 3 ? 'destroyed' : 'none', pct: dead * 25 };
+  }
+  const b = effBands();
+  // threshold on the RAW figure — rounding first would gift a 9.6% volley the
+  // 10% neutralization it did not earn; round only for display
+  const outcome = S.eff >= b.destroyPct ? 'destroyed'
+                : S.eff >= b.neutralizePct ? 'neutralized'
+                : S.everSuppressed ? 'suppressed' : 'none';
+  return { outcome, pct: Math.round(S.eff) };
+}
+// The mission is accomplished at NEUTRALIZED or better — or at SUPPRESSED when
+// suppression was the stated intent (immediate suppression, suppress-target).
+function missionAccomplished() {
+  const a = assessEffect();
+  return a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
+         (a.outcome === 'suppressed' && mission && mission.intent === 'suppress');
 }
 
 function resolveImpact(impact, isFFE) {
@@ -413,6 +487,7 @@ function resolveImpact(impact, isFFE) {
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
   const S = Scenario;
+  addRoundEffect(impact);   // G13 — every round's terminal effect counts, adjust or FFE
   TLOG.add('impact', '', isFFE ? 'FFE round' : `adjust round ${mission.adjustRounds}`,
     { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)) });
   // convoy attrition — any round can kill vehicles
@@ -499,9 +574,14 @@ function resolveImpact(impact, isFFE) {
           m.position.set(nx, H(nx, nz) + 0.3, nz);
           m.rotation.z = 1.2;                       // prone, pivoting on the boots
         });
-        S.effectRadius = Math.round(S.effectRadius * 0.7);
-        S.hitsNeed = Math.min(S.hitsNeed + 1, 4);
-        log('', `They have dispersed and gone to ground. Effect radius is now ${S.effectRadius} m and you need ${S.hitsNeed} rounds on them. Adjust faster next time.`, 'sys');
+        /* G13 — dispersal is now a POSTURE change, which is what it physically
+           is: FM 7-90 App. B has the same volley clearing neutralization on a
+           standing platoon and failing it prone. Casualty effect per round
+           drops to EFFECTS.posture.prone of the standing figure. */
+        S.posture = 'prone';
+        log('', 'They have dispersed and gone prone. Casualty effect per round is now less than ' +
+          'half — a volley that would have destroyed them standing may only neutralize, or worse. ' +
+          'Adjust faster next time.', 'sys');
         sendSpotReport('displace');   // target displaced — re-cue the observer
         if (coachOn())
           FDC.say('Be advised, MUSTANG — they are dispersing. Every round you spend walking is a man of theirs finding a hole. Get on with it.', { delay: 2.6 });
@@ -590,17 +670,22 @@ function assessFFE() {
     if (mission.hits >= 3) enemyAlive = false;
     return;
   }
+  // G13 — `hits` is now "effect rounds inside the outer band": a display and
+  // diagnosis stat, not the pass criterion. The criterion is assessEffect().
   mission.hits = mission.ffeRounds.filter(r =>
-    dist2(r.x, r.z, S.enemy.x, S.enemy.z) < S.effectRadius).length;
-  if (mission.hits >= S.hitsNeed) {
+    dist2(r.x, r.z, S.enemy.x, S.enemy.z) < effBands().rSupp).length;
+  const a = assessEffect();
+  if (a.outcome === 'destroyed' || a.outcome === 'neutralized') {
     enemyAlive = false;
     // figure origin is at the feet, so this pivots the body over without sinking
     // it — and, unlike the old `position.y -= 0.55`, it is idempotent if the
     // effect check re-runs.
     units.troops.forEach(m => { if (m.visible) m.rotation.z = 1.35; });
-    if (S.type === 'strongpoint')
+    // the heavier materiel damage renders only at DESTROYED — a neutralized
+    // position has broken men, not burning trucks
+    if (S.type === 'strongpoint' && a.outcome === 'destroyed')
       units.vehicles.forEach(m => { if (m.visible) m.rotation.z = 0.25; });
-    if (S.type === 'bunker') visSetColor(units.bunker, 0x3A352F);
+    if (S.type === 'bunker' && a.outcome === 'destroyed') visSetColor(units.bunker, 0x3A352F);
   }
 }
 

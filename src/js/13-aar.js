@@ -113,8 +113,9 @@ function renderShotPlot(cv, m) {
     ctx.fillStyle = col; ctx.fillText(txt, x, y);
   };
 
-  // effect radius + target
-  groundCircle(tgt.x, tgt.z, S.effectRadius, 'rgba(255,120,90,.9)', [7, 5]);
+  // effect envelope (G13 — the outer band; rounds inside it contributed) + target
+  groundCircle(tgt.x, tgt.z, S.type === 'convoy' ? 40 : effBands().rSupp,
+               'rgba(255,120,90,.9)', [7, 5]);
   const tp = proj(tgt.x, tgt.z, 1);
   ctx.strokeStyle = '#ff7a5a'; ctx.lineWidth = 3;
   ctx.beginPath();
@@ -230,28 +231,40 @@ function showAAR() {
   const S = Scenario;
   const isConvoy = S.type === 'convoy';
   if (isConvoy) m.hits = S.veh.filter(v => v.dead).length;
-  const neutralized = isConvoy ? m.hits >= 3
-    : (m.ffeRounds.length > 0 && m.hits >= S.hitsNeed);
+  /* G13 — the verdict comes off the graded effect, and it distinguishes the
+     three doctrinal outcomes. SUPPRESSED is a pass only when suppression was
+     the mission's intent; on a destroy mission it is a marginal — real effect,
+     wrong amount, and it wears off. */
+  const a = assessEffect();
+  const accomplished = a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
+                       (a.outcome === 'suppressed' && m.intent === 'suppress');
+  const bands = isConvoy ? null : effBands();
   const frat = m.failReason === 'fratricide';
   const collat = m.failReason === 'collateral';
   const escaped = m.failReason === 'escaped';
-  const pass = !frat && !collat && !escaped && neutralized && m.adjustRounds <= M.passMaxAdjustRounds;
+  const pass = !frat && !collat && !escaped && accomplished && m.adjustRounds <= M.passMaxAdjustRounds;
   const grade = ['A', 'B', 'C', 'D'][Math.min(m.notes.length, 3)];
   const dur = (m.tEnd || sim.now) - m.tStart;
   let verdict, why = '';
   if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted a friendly element. Automatic failure.'; }
   else if (collat) { verdict = 'FAIL — CIVILIAN CASUALTIES'; why = 'Rounds impacted a civilian village. Collateral damage is an automatic failure, same as fratricide.'; }
   else if (escaped) { verdict = 'FAIL — CONVOY ESCAPED'; why = 'Fewer than three vehicles destroyed before the column ran off the map.'; }
-  else if (!neutralized) {
+  else if (a.outcome === 'none') {
     verdict = isConvoy ? 'FAIL — CONVOY STILL EFFECTIVE' : 'FAIL — TARGET STILL EFFECTIVE';
     why = isConvoy
       ? `Only ${m.hits}/4 vehicles destroyed (need 3).`
-      : (m.ffeRounds.length
-          ? `Only ${m.hits}/${m.ffeRounds.length} effect rounds landed within ${S.effectRadius} m of the target (need ${S.hitsNeed}).`
-          : 'Mission ended without firing for effect.');
+      : (m.rounds.length
+          ? `Assessed effect ${a.pct}% — below the ${bands.neutralizePct}% that renders a unit combat-ineffective (FM 6-30). The fires never touched them.`
+          : 'Mission ended without a round fired.');
   }
-  else if (!pass) { verdict = 'MARGINAL — TOO MANY ADJUSTING ROUNDS'; why = `Target neutralized, but ${m.adjustRounds} adjusting rounds used (pass ≤ ${M.passMaxAdjustRounds}).`; }
-  else { verdict = 'PASS — TARGET NEUTRALIZED'; why = ''; }
+  else if (a.outcome === 'suppressed' && !accomplished) {
+    verdict = 'MARGINAL — TARGET SUPPRESSED ONLY';
+    why = `Heads went down while the rounds fell (${a.pct}% casualties — neutralization needs ${bands.neutralizePct}%), and suppression wears off. They are back on their guns. You had the option to continue: correction, REPEAT.`;
+  }
+  else if (a.outcome === 'suppressed') { verdict = 'PASS — TARGET SUPPRESSED'; why = 'Suppression was the mission. They stopped shooting while it mattered.'; }
+  else if (!pass) { verdict = 'MARGINAL — TOO MANY ADJUSTING ROUNDS'; why = `Target ${a.outcome}, but ${m.adjustRounds} adjusting rounds used (pass ≤ ${M.passMaxAdjustRounds}).`; }
+  else if (a.outcome === 'destroyed') { verdict = isConvoy ? 'PASS — CONVOY DESTROYED' : 'PASS — TARGET DESTROYED'; why = isConvoy ? '' : `Assessed ${a.pct}% casualties — past the ${bands.destroyPct}% that takes a unit off the books permanently.`; }
+  else { verdict = 'PASS — TARGET NEUTRALIZED'; why = `Assessed ${a.pct}% casualties — combat-ineffective (≥${bands.neutralizePct}%), short of destruction (${bands.destroyPct}%).`; }
   if (pass) {
     const key = S.type + ':' + S.difficulty;
     const prev = BEST.data[key];
@@ -297,6 +310,9 @@ function showAAR() {
     if (activeChapter && activeChapter.asset === 'mortar60') medals.push('TEN-METER MAN — precision work with the sixty');
   }
   TLOG.add('aar', '', verdict, { rounds: m.adjustRounds, dur: Math.round(dur),
+    // G13 — graded outcome fields (additive; existing entry fields unchanged)
+    outcome: a.outcome, effPct: a.pct, intent: m.intent,
+    ...(m.bdaClaim ? { bdaClaim: m.bdaClaim } : {}),
     firstMiss: m.firstMiss === null ? null : Math.round(m.firstMiss),
     aimErr0: m.aimErr0 === null ? null : Math.round(m.aimErr0),
     tInit: Math.round(m.tInit),
@@ -339,7 +355,9 @@ function showAAR() {
     `<tr><td>Initial location error</td><td>${m.aimErr0 === null ? '—' : Math.round(m.aimErr0) + ' m (JFO standard ≤ 200 m)'}</td></tr>` +
     (isConvoy
       ? `<tr><td>Vehicles destroyed</td><td>${m.hits}/4</td></tr>`
-      : `<tr><td>Effect rounds on target</td><td>${m.hits}/${m.ffeRounds.length}</td></tr>`) +
+      : `<tr><td>Assessed effect</td><td>${a.pct}% ${S.tgtClass === 'point' ? 'structural damage' : 'casualties'} — ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()} (neutralize ≥${bands.neutralizePct}%, destroy ≥${bands.destroyPct}%${S.posture === 'prone' ? '; target went prone — per-round effect ×' + CONFIG.EFFECTS.posture.prone : ''})</td></tr>` +
+        `<tr><td>Effect rounds in the outer band</td><td>${m.hits}/${m.ffeRounds.length} within ${Math.round(bands.rSupp)} m</td></tr>`) +
+    (m.bdaClaim ? `<tr><td>Surveillance sent</td><td>${m.bdaClaim.toUpperCase()}${m.bdaClaim === a.outcome ? ' — matches the assessment' : ` — assessed: ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()}`}</td></tr>` : '') +
     `<tr><td>Time to initiate CFF</td><td>${fmtTime(m.tInit)} (standard ≤ 2:00)</td></tr>` +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +

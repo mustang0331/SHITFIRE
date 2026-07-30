@@ -67,7 +67,9 @@ function animate(tMs) {
   cffqTick();             // G22 — lapse a call for fire the observer never finished
   updateCivilians(t);
   legibilityPass(eye.x, eye.y, eye.z);
-  const flashOn = enemyAlive && Scenario &&
+  // G13 — a suppressed enemy stops shooting for the suppression window and
+  // resumes when it lapses: the observer can SEE suppression working and wearing off
+  const flashOn = enemyAlive && Scenario && sim.now >= (Scenario.suppressedUntil || 0) &&
     (Scenario.type === 'strongpoint' || Scenario.type === 'assault' ||
      Scenario.type === 'bunker' || Scenario.type === 'raid');
   for (let i = 0; i < units.flashes.length; i++) {

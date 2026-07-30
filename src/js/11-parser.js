@@ -219,7 +219,10 @@ function parseMessage(raw) {
      anything" is recoverable; a silently halved correction is not. */
   const numCount = (t.match(/\b\d+\b/g) || []).length;
   const stray = numCount - (mLR ? 1 : 0) - (mAD ? 1 : 0) - (mUD ? 1 : 0);
-  if (any || ffe) return { type: 'adjust', corr, any, ffe, stray, raw: t, toks };
+  // G13 — REPEAT riding on a correction ("right 50, repeat"): after a volley it
+  // re-fires the volley at the corrected aimpoint; flagged here, decided there.
+  if (any || ffe) return { type: 'adjust', corr, any, ffe, stray,
+                           rep: /\brepeat\b/.test(t), raw: t, toks };
   if (/\brepeat\b/.test(t)) return { type: 'repeat' };
   /* G22 — a bare WARNING ORDER is doctrinal Transmission 1 ("HELLHOUND FIRES,
      this is MUSTANG 12, adjust fire, over"). It used to fall through to `unknown`

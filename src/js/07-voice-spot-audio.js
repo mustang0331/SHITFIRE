@@ -103,6 +103,18 @@ const QUIPS = {
   complete: [
     'MUSTANG 12, mission is complete. Send end of mission with your BDA, over.',
   ],
+  /* G13 — the volley ended but the target did not. Suppressed-only: heads are
+     down and the clock is running; the observer owns the continue-or-end call.
+     No effect: the rounds were a fireworks display. Neither line may skip the
+     doctrinal fact that the net is waiting on the observer's decision. */
+  suppressedOnly: [
+    'MUSTANG 12, they are heads-down, not dead — that is suppression, and it expires. Continue the mission or send end of mission, your call, over.',
+    'MUSTANG 12, you have bought silence, not results. The moment we stop, they get back on their guns. Correct and REPEAT, or close it out, over.',
+  ],
+  noEffect: [
+    'MUSTANG 12, rounds complete, and the target could not care less. Where you put that volley and where they are living are two different places. Correct and REPEAT, or send end of mission and we will both pretend this was training, over.',
+    'MUSTANG 12, no effect observed. We just gave the taxpayers a very expensive drum solo. Fix your data and REPEAT, or end the mission, over.',
+  ],
   dangerClose: [
     'MUSTANG 12, that target is DANGER CLOSE to friendly infantry and you did not say the fucking proword. I do not drop shells next to our own people on a mumble. Say again the full call with DANGER CLOSE, over.',
     'Negative. Friendlies are close enough to that grid to read the lot numbers off the fuzes. You want this mission? Say DANGER CLOSE like you mean it, over.',

@@ -46,8 +46,43 @@ const CONFIG = {
     dispersion: true,
   },
   MISSION: {
-    effectRadius: 60, hitsToNeutralize: 3, fratricideRadius: 80,
+    fratricideRadius: 80,
     passMaxAdjustRounds: 4, targetRange: [1500, 3200], enemyOffset: [150, 250],
+  },
+  /* G13 — graded terminal effects. Replaces the old binary model (N hits inside
+     one radius = "neutralized"). Every HE round now contributes a casualty /
+     damage percentage by how far from the target it lands, and the accumulated
+     figure grades into the three doctrinal outcomes:
+
+         SUPPRESSED   — fire is landing close enough to force heads down; the
+                        effect lasts only during and briefly after the fires
+                        (FM 6-30 §4-14: temporary by definition)
+         NEUTRALIZED  — >=10% casualties: the unit is combat-ineffective
+                        (FM 6-30 §4-14 / App. E-2)
+         DESTROYED    — >=30% casualties: permanently out of action
+                        (FM 6-30 §4-14: "normally renders a unit ineffective")
+
+     Distance bands are unclassified proxies (the real JMEM effect tables are
+     classified — FM 6-30 §4-14e): personnel bands lean on the 155mm lethal-area
+     figures and ATP 3-09.30 Table 1-1 FPF widths recorded in DOCTRINE.md
+     §Pre-mission and effects data; posture swing (standing vs prone) comes from
+     FM 7-90 App. B, where the same volley clears neutralization on a standing
+     platoon and fails it on a prone one. G18 refines these per asset (60mm vs
+     155); until then these are the 155 battery's numbers and chapter `effR`
+     scales the bands for the precision shoots.
+
+     This models terminal EFFECT at the impact point only — where the round
+     lands is still impact = aimpoint + error, never a trajectory. */
+  EFFECTS: {
+    suppressSec: 90,                        // suppression outlives the last round by this
+    posture: { standing: 1.0, prone: 0.4 }, // FM 7-90 App. B: posture alone swings ~2.5x
+    // per-round contribution (%) at full effect, and the distance bands:
+    // full inside rFull, half to rHalf, quarter (suppression credit) to rSupp
+    personnel: { rFull: 30, rHalf: 50, rSupp: 75, perRound: 8,
+                 neutralizePct: 10, destroyPct: 30 },
+    // hard point targets (bunker, derelict): tight bands, structural-damage scale
+    point:     { rFull: 15, rHalf: 25, rSupp: 45, perRound: 55,
+                 neutralizePct: 40, destroyPct: 100 },
   },
   /* G2 — declination. The world, the grid, the map sheet and every azimuth on the
      fire net are GRID (true) mils. The observer's own instruments — compass, HUD

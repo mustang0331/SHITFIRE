@@ -273,7 +273,10 @@ function handleCFF(p) {
   // transmissions, so this works whether the call came one-shot or staged.
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr,
                                          method: p.method, mto: mtoSpec,
-                                         amc: p.raw.includes('at my command') });
+                                         amc: p.raw.includes('at my command'),
+                                         // G13 — an immediate mission's goal is to make
+                                         // them stop shooting, not to annihilate them
+                                         intent: p.imm ? 'suppress' : 'destroy' });
 }
 
 /* ---- G25: the safety stops (DOCTRINE.md §67) --------------------------------
@@ -427,8 +430,13 @@ function handleAdjust(p) {
     }
     return;
   }
-  if (state === 'EOM?') {
-    FDC.say('MUSTANG 12, rounds are complete. Send end of mission, over.', { delay: 1 });
+  /* G13 — continue-after-suppression. When the volley did NOT accomplish the
+     mission (still effective, or suppressed-only on a destroy-intent mission),
+     a correction here re-opens the shoot: it applies to the aimpoint and
+     "…, REPEAT" fires the volley again. Only an accomplished mission gets the
+     old "send end of mission" answer. */
+  if (state === 'EOM?' && missionAccomplished()) {
+    FDC.say('MUSTANG 12, rounds are complete and the target is done. Send end of mission, over.', { delay: 1 });
     return;
   }
   /* F5 — an unclaimed number in the transmission. Say so and refuse, rather than
@@ -443,7 +451,7 @@ function handleAdjust(p) {
       'Deviation first ("LEFT/RIGHT nnn"), then range ("ADD/DROP nnn").');
     return;
   }
-  if (state !== 'ADJUSTING') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
+  if (state !== 'ADJUSTING' && state !== 'EOM?') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
   /* G23 — height of burst. The observer can now send it and be understood instead
      of being told to say again in English. It deliberately does NOT move the
      aimpoint: the model is `impact = aimpoint + error` in the horizontal plane
@@ -524,6 +532,7 @@ function handleAdjust(p) {
     applyCorrection({ right: p.corr.right, add: p.corr.add });
   }
   if (p.ffe) parts.push('FIRE FOR EFFECT');
+  else if (p.rep && state === 'EOM?') parts.push('REPEAT');
   FDC.say(parts.join(', ') + ', OUT.', { delay: 1 });
   // stupid-but-safe: un-doctrinal rounding gets a snide remark, then we fire.
   // Same doctrinal rule as the strict gate above — 50 m only entering fire for effect.
@@ -531,7 +540,9 @@ function handleAdjust(p) {
     FDC.say(pick(QUIPS.snideRound), { delay: 1.3 });
   else if (Math.abs(p.corr.right) + Math.abs(p.corr.add) > 150 && Math.random() < 0.5)
     FDC.say(pick(QUIPS.corrSnark), { delay: 1 });
-  if (p.ffe) fireForEffect();
+  // G13 — a correction carrying REPEAT after a volley fires the volley again;
+  // during adjustment REPEAT means another adjusting round, as it always did.
+  if (p.ffe || (p.rep && state === 'EOM?')) fireForEffect();
   else fireAdjustRound();
 }
 
@@ -544,7 +555,18 @@ function handleEOM(p) {
     FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: end of mission carries surveillance. NEUTRALIZED, DESTROYED, or SUPPRESSED. Say again with your assessment, over.', { delay: 1.1 });
     return;
   }
-  if (!mission.done) { mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now; }
+  if (!mission.done) {
+    mission.done = true; if (!mission.tEnd) mission.tEnd = sim.now;
+    /* G13 — surveillance is the observer's own call and the FDC logs it as sent
+       (doctrine does not have the FDC second-guessing BDA on the net). The AAR
+       is where a claim gets compared with what the rounds actually did. */
+    const mClaim = (p.bda || '').match(/destroyed|neutralized|suppressed/);
+    mission.bdaClaim = mClaim ? mClaim[0] : null;
+    const rank = { none: 0, suppressed: 1, neutralized: 2, destroyed: 3 };
+    const actual = assessEffect().outcome;
+    if (mission.bdaClaim && rank[mission.bdaClaim] > rank[actual])
+      mission.notes.push(`Surveillance overclaimed: you reported "${mission.bdaClaim}" — the assessed effect was ${actual === 'none' ? 'no effect' : actual.toUpperCase()}. BDA you cannot back up sends the next unit into a live position.`);
+  }
   // RREMS: refinement moves the recorded mean point of impact onto the
   // adjusting point; "record as target" files it for future use
   if (p.refine && p.refine.any) {
@@ -569,10 +591,8 @@ function handleEOM(p) {
   }
   FDC.say(`END OF MISSION${p.bda ? ', ' + p.bda.toUpperCase() : ''}, OUT.`, { delay: 1.2 });
   if (mission.failReason !== 'fratricide' && mission.failReason !== 'collateral') {
-    const good = Scenario.type === 'convoy'
-      ? Scenario.veh.filter(v => v.dead).length >= 3
-      : (mission.ffeRounds.length > 0 && mission.hits >= Scenario.hitsNeed);
-    FDC.say(pick(good ? QUIPS.eomGood : QUIPS.eomBad), { delay: 1.2 });
+    // G13 — the closing color keys on the graded outcome, not a hit count
+    FDC.say(pick(missionAccomplished() ? QUIPS.eomGood : QUIPS.eomBad), { delay: 1.2 });
   }
   setState('AAR');
   schedule(FDC.lastT + 1.6, showAAR);
@@ -585,8 +605,16 @@ function expectedHint() {
         ? 'Send OT DIRECTION first ("direction 5920, over") — then an OT-line correction, '
         : 'Send an OT-line correction, ') +
         'e.g. "right 50, add 100, over" — or "fire for effect, over" once rounds are on target. [R] in binos for the mil-relation card.';
-    case 'EOM?':
+    case 'EOM?': {
+      // G13 — the right next move depends on what the volley did
+      if (mission && !mission.done && !missionAccomplished()) {
+        const a = assessEffect();
+        return a.outcome === 'suppressed'
+          ? 'Target suppressed only — that wears off. Continue ("right 50, repeat" or bare REPEAT) or close with "end of mission, target suppressed, over".'
+          : 'No effect yet — the mission is still open. Correct and REPEAT ("drop 100, repeat"), or close with END OF MISSION and own the result.';
+      }
       return 'Close with RREMS: "end of mission, target neutralized, over" — you may add a refinement ("left 10, drop 50") and "record as target" first.';
+    }
     case 'SHOT': case 'MISSION SENT': case 'FIRE FOR EFFECT':
       return 'Rounds are in progress — wait for SPLASH, observe the burst, then correct.';
     default:
@@ -689,6 +717,15 @@ function onPlayerMessage(raw) {
     case 'repeat':
       if (mission && !mission.done && state === 'ADJUSTING') {
         FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
+      } else if (mission && !mission.done && state === 'EOM?') {
+        /* G13 — REPEAT after ROUNDS COMPLETE fires the volley again at the same
+           data. This is the continue-after-suppression path when the aim is
+           already good and the target just refuses to stay down. */
+        if (missionAccomplished()) {
+          FDC.say('MUSTANG 12, the target is done — I am not re-attacking a dead position. Send end of mission, over.', { delay: 1 });
+        } else {
+          FDC.say('REPEAT, OUT.', { delay: 1 }); fireForEffect();
+        }
       } else { FDC.say(pick(QUIPS.noMission), { delay: 1 }); sysHint(); }
       break;
     case 'eom': handleEOM(p); break;

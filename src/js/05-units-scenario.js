@@ -84,8 +84,15 @@ let scenarioT0 = 0;   // sim time the current scenario began (time-to-initiate)
 function genScenario(type, seed) {
   const rng = mulberry32((seed * 2654435761 ^ CONFIG.SEED.terrain) >>> 0);
   const M = CONFIG.MISSION;
+  /* G13 — graded effects state. tgtClass picks the CONFIG.EFFECTS band set
+     ('personnel' or 'point'; convoy is assessed by vehicle kills instead).
+     posture scales personnel casualties (FM 7-90 App. B); dispersal flips it
+     to prone. eff accumulates casualty/damage %; everSuppressed records that
+     suppression was achieved at some point (the verdict term), while
+     suppressedUntil is the live window (the enemy's behaviour). */
   const S = { seed, type, difficulty: DIFFICULTY, rng, kps: [], friendlies: [],
-              effectRadius: M.effectRadius, hitsNeed: M.hitsToNeutralize,
+              tgtClass: 'personnel', posture: 'standing', effScale: 1,
+              eff: 0, everSuppressed: false, suppressedUntil: 0,
     alerted: 0, dispersed: 0 };
   const OPT = (activeChapter && activeChapter.scn) || {};
 
@@ -149,8 +156,7 @@ function genScenario(type, seed) {
     }
   } else if (type === 'wreck') {
     S.enemy = findSpot(1100, 2100, 1, 6, true) || { x: OP.x + 1500, z: OP.z };
-    S.effectRadius = 30;
-    S.hitsNeed = 2;
+    S.tgtClass = 'point';
     S.brief = `Training target: a derelict landing craft on the beach, grid bearing ~${brgTo(S.enemy)} mils. It cannot shoot back. Neither could the last observer.`;
   } else if (type === 'raid') {
     // raiders MUST be near a village — try every village with LOS from the
@@ -183,9 +189,8 @@ function genScenario(type, seed) {
   } else if (type === 'bunker') {
     S.enemy = findSpot(1200, 3000, 22, 140, true) ||
               findSpot(1200, 3000, 8, 999, true) || { x: OP.x + 1800, z: OP.z };
-    S.effectRadius = 35;
-    S.hitsNeed = 2;
-    S.brief = `Dug-in bunker reported on high ground, grid bearing ~${brgTo(S.enemy)} mils. The effect radius is tight — put it on the roof.`;
+    S.tgtClass = 'point';
+    S.brief = `Dug-in bunker reported on high ground, grid bearing ~${brgTo(S.enemy)} mils. The effect bands are tight — put it on the roof.`;
   } else if (type === 'convoy') {
     let path = null;
     for (let tries = 0; tries < 400 && !path; tries++) {
@@ -238,7 +243,11 @@ function genScenario(type, seed) {
         ? ' The lines are TANGLED — friendlies are already inside normal safe distances and still moving. DANGER CLOSE proword, creeping corrections, zero slack.'
         : ' This WILL be danger close: your call must include the proword DANGER CLOSE, and a short round lands on our own people.');
   }
-  if (OPT.effR) S.effectRadius = OPT.effR;
+  /* G13 — the legacy chapter knob `effR` was an absolute effect radius against
+     the old default of 60 m; it now scales the graded distance bands by the
+     same ratio, so chapter 4.2's effR:30 still means "half the normal effect
+     envelope — precision work". G18 replaces this with per-asset band sets. */
+  if (OPT.effR) S.effScale = OPT.effR / 60;
 
   // registration / known points for shift missions
   for (let k = 0; k < 2; k++) {
