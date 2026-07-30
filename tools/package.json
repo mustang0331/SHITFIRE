@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "shots": "node shots.js",
-    "lint": "eslint --no-eslintrc -c eslint.config.js .."
+    "lint": "node lint.js"
   },
   "dependencies": {
     "playwright-core": "^1.62.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.8.0",
+    "globals": "^17.8.0"
   }
 }

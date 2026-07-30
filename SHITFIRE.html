@@ -7519,9 +7519,11 @@ requestAnimationFrame(animate);
 window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   gradeMission, CAMPAIGN, CAMP, TLOG,
   get Scenario() { return Scenario; }, get mission() { return mission; }, OP, BATTERY,
-  // QA hooks for tools/shots.js (additive — the stable interface above is unchanged):
-  // the screenshot rig drives TOD and optics states that no keybind reaches directly.
-  applyTOD, setVision, onPlayerMessage };
+  // QA hooks for tools/shots.js and tools/replay.js (additive — the stable
+  // interface above is unchanged): the screenshot rig drives TOD and optics
+  // states no keybind reaches; the replay rig re-classifies recorded traffic
+  // through parseMessage without touching mission state.
+  applyTOD, setVision, onPlayerMessage, parseMessage };
 </script>
 </body>
 </html>
