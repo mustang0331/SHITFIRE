@@ -271,6 +271,28 @@ management. Try the patch first; it is the cheaper of the two.
 
 ## G4 — Instanced vegetation
 
+> **Shipped `cb8a13d` (2026-07-30) as ROADMAP 13f.** The implemented shape matches the plan below with
+> one addition: alongside the alpha-tested crossed-quad canopy (procedural `CanvasTexture` silhouette,
+> no image assets) and the low-poly scrub scatter, a **horizontal crown cap** was added — the observer
+> looks down from the 300 m OP, and vertical cards foreshorten away to nothing at that angle, so a cap
+> mesh reads as canopy from above where crossed quads alone did not. A real bug was found and fixed
+> across three visual iterations (black-at-noon, crown caps, palette brightening): every foliage normal
+> pointed straight up with every face wound twice (front visible from both sides), so geometric normals
+> rendered every tree black at noon and `THREE.DoubleSide` could not compensate — back faces get their
+> normals flipped too, which does not correct an already-wrong front-face normal. Placement runs off
+> **its own seeded stream** (island seed XOR golden ratio) so no existing road, facility, or village
+> placement shifts. Density is `f(H) × f(slope, the 0.62 rock threshold) × clumping (the same vnoise
+> field that greens the terrain) × radial thinning`; exclusions are **point-to-segment** distance (not
+> point-to-point) to every road/path ribbon, plus discs around villages, facilities (airfield 320 m),
+> named rocks, the OP, and the battery. Training rules land as specified: canopy hard-capped at
+> `CONFIG.GFX.vegMaxH` 6 m, and a new `vegMissionCull()` clears 80 m around enemy/friendly elements, the
+> assault corridor, and the convoy path at mission start. Black-sand palette runs a 30% density budget,
+> desaturated. Materials and optics variants dispose correctly on island rebuild. Building this caught a
+> lint bug of its own — duplicate `CONFIG.GFX` keys left over as stale 13e/13f forward-declarations,
+> removed. Verified 12/12 screenshot states clean; figures at the target countable and unmasked at 7x;
+> lint 0 errors; offline zero-network confirmed. The plan text below is kept as the design record; the
+> crown cap is the one respect in which it is no longer the shipped shape.
+
 The island currently has no vegetation at all, which is the largest single gap between what it looks
 like and what it is. Two `InstancedMesh` objects, two draw calls:
 
@@ -474,6 +496,12 @@ Anything that fails becomes a Track F row on ROADMAP — **not** a silent revert
 | 15 | G6 | Drag the comms header, resize from the corner, double-click to reset | Resize corner invisible against the border; transcript clipped instead of resized; scroll not pinned to bottom |
 | 16 | 13d | The island's relief at midday and at dawn (`applyTOD`), and a Volume IV black-sand chapter | Ridges/draws not visibly deeper than pre-13d; dawn not raking the relief; black sand crushed to illegibility; or the [M] map/sheets picking up any tint |
 | 17 | F3 | `[H]` cheat sheet over a running mission | Text illegible at 12px; panel fighting the mil card or comms panel; [ESC] not closing it |
+
+### Vegetation (Track A)
+
+| # | Row | Look at | Regression if |
+|---|---|---|---|
+| 18 | 13f | Canopy/scatter density and colour on a Volume IV (black-sand) chapter | Palette not desaturated / not inside the 30% budget as spec'd — **unconfirmed by eye**: no Volume IV state currently exists in the shots rig, so this cannot be caught automatically and needs a manual look |
 
 ---
 
