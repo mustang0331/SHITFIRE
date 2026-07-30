@@ -312,6 +312,7 @@ function showAAR() {
   TLOG.add('aar', '', verdict, { rounds: m.adjustRounds, dur: Math.round(dur),
     // G13 — graded outcome fields (additive; existing entry fields unchanged)
     outcome: a.outcome, effPct: a.pct, intent: m.intent,
+    ...(m.sheaf ? { sheaf: m.sheaf.kind, sheafSrc: m.sheaf.source } : {}),
     ...(m.bdaClaim ? { bdaClaim: m.bdaClaim } : {}),
     firstMiss: m.firstMiss === null ? null : Math.round(m.firstMiss),
     aimErr0: m.aimErr0 === null ? null : Math.round(m.aimErr0),
@@ -358,6 +359,7 @@ function showAAR() {
       : `<tr><td>Assessed effect</td><td>${a.pct}% ${S.tgtClass === 'point' ? 'structural damage' : 'casualties'} — ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()} (neutralize ≥${bands.neutralizePct}%, destroy ≥${bands.destroyPct}%${S.posture === 'prone' ? '; target went prone — per-round effect ×' + CONFIG.EFFECTS.posture.prone : ''})</td></tr>` +
         `<tr><td>Effect rounds in the outer band</td><td>${m.hits}/${m.ffeRounds.length} within ${Math.round(bands.rSupp)} m</td></tr>`) +
     (m.bdaClaim ? `<tr><td>Surveillance sent</td><td>${m.bdaClaim.toUpperCase()}${m.bdaClaim === a.outcome ? ' — matches the assessment' : ` — assessed: ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()}`}</td></tr>` : '') +
+    (m.sheaf ? `<tr><td>Sheaf</td><td>${m.sheaf.kind.toUpperCase()} (${m.sheaf.source}) — ${m.sheaf.why}</td></tr>` : '') +
     `<tr><td>Time to initiate CFF</td><td>${fmtTime(m.tInit)} (standard ≤ 2:00)</td></tr>` +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +

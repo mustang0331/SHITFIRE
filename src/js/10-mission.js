@@ -115,6 +115,7 @@ function fireMission(targetLocation, warno, meta) {
        suppressed-only outcome is the mission accomplished, not a shortfall. */
     intent: (meta && meta.intent) || 'destroy',
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
+    sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     noDisp: false,          // G3 — set by markDispersion() if any round is fired
                             // with dispersion off; blocks star recording
     checkFire: false,       // G25 — safety hold active; blocks new firing
@@ -249,7 +250,7 @@ function handleSuppressTarget(p) {
   fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
     { notes: mins ? [] : ['Suppress mission sent without a duration.'],
       desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
-      intent: 'suppress' });
+      intent: 'suppress', sheaf: inferSheaf('', p.raw) });
 }
 
 /* ---- G24: AT MY COMMAND (DOCTRINE.md §34) -----------------------------------
@@ -393,10 +394,18 @@ function fireForEffect() {
   // error, applied to the whole volley as a common aim error.
   const base = mission.rounds.length === 0
     ? firstRoundError(mission.rng) : { x: 0, z: 0 };
+  /* G15 — a LINEAR sheaf on a convoy spreads the volley's aimpoints along the
+     column axis (35 m apart, centered on the aimpoint), so leading the column
+     with the right sheaf genuinely catches more of it. This is aimpoint
+     geometry, not a trajectory — each round is still impact = aimpoint + error. */
+  const lin = mission.sheaf && mission.sheaf.kind === 'linear' &&
+              Scenario.type === 'convoy' && Scenario.path;
   let off = 0, tLast = 0;
   for (let i = 0; i < B.ffeRounds; i++) {
     const err = followUpError(mission.rng, otAz);
-    const impact = { x: mission.aim.x + base.x + err.x, z: mission.aim.z + base.z + err.z };
+    const lo = lin ? (i - (B.ffeRounds - 1) / 2) * 35 : 0;
+    const impact = { x: mission.aim.x + base.x + err.x + (lin ? Scenario.path.dx * lo : 0),
+                     z: mission.aim.z + base.z + err.z + (lin ? Scenario.path.dz * lo : 0) };
     tLast = tShot + tof + off;
     schedule(tLast, () => resolveImpact(impact, true));
     off += lerp(B.ffeStagger[0], B.ffeStagger[1], mission.rng());
@@ -445,7 +454,7 @@ function effBands() {
   return { rFull: c.rFull * k, rHalf: c.rHalf * k, rSupp: c.rSupp * k,
            perRound: c.perRound, neutralizePct: c.neutralizePct, destroyPct: c.destroyPct };
 }
-function addRoundEffect(impact) {
+function addRoundEffect(impact, isFFE) {
   const S = Scenario;
   if (S.type === 'convoy') return;              // convoys are assessed by vehicle kills
   const b = effBands();
@@ -458,7 +467,59 @@ function addRoundEffect(impact) {
   const band = d <= b.rFull ? 1 : d <= b.rHalf ? 0.5 : 0.25;
   const post = S.tgtClass === 'personnel'
     ? (CONFIG.EFFECTS.posture[S.posture] || 1) : 1;
-  S.eff += b.perRound * band * post;
+  // G15 — sheaf shapes the VOLLEY, so it scales FFE rounds only; a single
+  // adjusting round has no sheaf to speak of
+  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1);
+}
+
+/* ---- G15: sheaf (FM 6-30 §4-6.f / ATP 3-09.30 §4-45) -----------------------
+   Accepted by name in the call or mid-mission; inferred from the target
+   description when unrequested; doctrine default otherwise (circular, 100 m).
+   The choice is a statistical effect scale (per CLAUDE.md's ballistics rule),
+   EXCEPT on a convoy, where a linear sheaf genuinely spreads the volley's
+   aimpoints along the column axis — geometry, not a trajectory. The inference
+   is recorded with its reason so the AAR can explain itself (the row's gate). */
+function inferSheaf(desc, raw) {
+  const m = (raw || '').toLowerCase()
+    .match(/\b(converged|open|parallel|linear|circular|special)\s+sheaf\b/);
+  if (m) {
+    const kind = m[1] === 'parallel' || m[1] === 'special' ? 'linear' : m[1];
+    return { kind, source: 'requested', why: `${m[1].toUpperCase()} SHEAF requested in the call` };
+  }
+  const d = (desc || '').toLowerCase();
+  if (Scenario.type === 'convoy' || /convoy|column|vehicle|truck/.test(d))
+    return { kind: 'linear', source: 'inferred', why: 'linear target (convoy/column) — bursts spread along its axis' };
+  if (Scenario.tgtClass === 'point' || /bunker|pit|emplacement|gun|structure|building|craft|wreck/.test(d))
+    return { kind: 'converged', source: 'inferred', why: 'small hard target — every piece on the same point' };
+  if (/troops|infantry|personnel|squad|platoon|dismount/.test(d))
+    return { kind: 'open', source: 'inferred', why: 'personnel target — bursts one effective width apart' };
+  return { kind: 'circular', source: 'default', why: 'nothing requested, nothing to infer — doctrine default (circular, 100 m)' };
+}
+function sheafMult() {
+  if (!mission || !mission.sheaf) return 1;
+  const k = mission.sheaf.kind, S = Scenario;
+  if (S.tgtClass === 'point')                     // spreading fire off a point costs
+    return { converged: 1.25, circular: 1.0, open: 0.6, linear: 0.6 }[k] || 1;
+  return S.dispersed                              // spread men want spread bursts
+    ? { open: 1.2, circular: 1.0, linear: 0.9, converged: 0.6 }[k] || 1
+    : { converged: 1.1, circular: 1.0, open: 0.9, linear: 0.8 }[k] || 1;
+}
+function handleSheaf(p) {
+  if (!mission || mission.done) {
+    FDC.say('No mission on the net to shape a sheaf for, over.', { delay: 0.9 });
+    return;
+  }
+  if (p.cancel) {
+    // ATP 3-09.30 §5-30 — cancelling reverts to what the FDC would have chosen
+    mission.sheaf = inferSheaf(mission.desc, '');
+    FDC.say(`CANCEL ${p.kind.toUpperCase()} SHEAF — ${mission.sheaf.kind.toUpperCase()} SHEAF, OUT.`, { delay: 1.0 });
+    return;
+  }
+  const kind = p.kind === 'parallel' || p.kind === 'special' ? 'linear' : p.kind;
+  mission.sheaf = { kind, source: 'requested', why: `${p.kind.toUpperCase()} SHEAF requested mid-mission` };
+  if (p.kind === 'special')
+    mission.notes.push('A SPECIAL sheaf carries an attitude (long-axis azimuth) when a length is given — none was sent; fired as linear.');
+  FDC.say(`${p.kind.toUpperCase()} SHEAF, OUT.`, { delay: 1.0 });
 }
 function assessEffect() {
   const S = Scenario;
@@ -489,7 +550,7 @@ function resolveImpact(impact, isFFE) {
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
   const S = Scenario;
-  addRoundEffect(impact);   // G13 — every round's terminal effect counts, adjust or FFE
+  addRoundEffect(impact, isFFE);   // G13 — every round's terminal effect counts, adjust or FFE
   TLOG.add('impact', '', isFFE ? 'FFE round' : `adjust round ${mission.adjustRounds}`,
     { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)) });
   // convoy attrition — any round can kill vehicles

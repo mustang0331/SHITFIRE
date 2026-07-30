@@ -271,9 +271,16 @@ function handleCFF(p) {
   // G24 — "at my command" is an element of transmission 3, so it arrives inside the
   // call's own text rather than as a separate proword. CFFQ concatenates raw across
   // transmissions, so this works whether the call came one-shot or staged.
+  /* G15 — sheaf: taken from the call when named (p.raw survives CFFQ
+     concatenation, so a sheaf sent in any of the three transmissions counts),
+     inferred from the description otherwise. Logged so the observer learns
+     what the FDC chose and why — the choice is gradeable, not hidden. */
+  const sheaf = inferSheaf(p.desc, p.raw);
+  log('', `SHEAF: ${sheaf.kind.toUpperCase()} (${sheaf.source}) — ${sheaf.why}.`, 'sys');
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr,
                                          method: p.method, mto: mtoSpec,
                                          amc: p.raw.includes('at my command'),
+                                         sheaf,
                                          // G13 — an immediate mission's goal is to make
                                          // them stop shooting, not to annihilate them
                                          intent: p.imm ? 'suppress' : 'destroy' });
@@ -705,6 +712,7 @@ function onPlayerMessage(raw) {
     case 'cannotobserve': handleCannotObserve(); break;
     case 'tot': handleTimeOnTarget(p.sec); break;
     case 'suppresstgt': handleSuppressTarget(p); break;
+    case 'sheaf': handleSheaf(p); break;
     case 'posrep': handlePosRep(p); break;
     case 'otfactor':
       // G7 — snide, not a rant: it is a harmless misunderstanding, not a hazard

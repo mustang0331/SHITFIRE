@@ -73,6 +73,22 @@ function parseMessage(raw) {
   const mTot = t.match(/\btime on target\s+(\d+)\b/);
   if (mTot) return { type: 'tot', sec: parseInt(mTot[1]), raw: t, toks };
   if (t.includes('time on target')) return { type: 'tot', sec: 0, raw: t, toks };
+  /* G15 — sheaf, sent standalone mid-mission ("CONVERGED SHEAF, OVER") or
+     cancelled ("CANCEL CONVERGED SHEAF" — ATP 3-09.30 §5-30). A sheaf named
+     inside a call for fire rides in that call's raw text instead and is
+     extracted by handleCFF; this branch is only for the bare transmission,
+     which previously parsed as gibberish. */
+  const mSheaf = t.match(/\b(?:(cancel)\s+)?(converged|open|parallel|linear|circular|special)\s+sheaf\b/);
+  if (mSheaf && !t.includes('fire') && !t.includes('grid')) {
+    // claim only a BARE sheaf transmission — if real description text rides
+    // along ("converged sheaf, troops in trenches"), let it flow to the CFF
+    // queue as a description carrying a sheaf, not vanish into this branch
+    const rest = t.replace(mSheaf[0], ' ')
+      .replace(/\b(?:over|out|break|hellhound|hacksaw|fires|this|is|mustang|\d+)\b/g, ' ')
+      .split(/\s+/).filter(Boolean);
+    if (rest.length <= 2)
+      return { type: 'sheaf', kind: mSheaf[2], cancel: !!mSheaf[1], raw: t, toks };
+  }
   if (t.includes('end of mission')) {
     // RREMS: refinement and "record as target" may ride with end of mission
     const ref = { right: 0, add: 0, any: false };
