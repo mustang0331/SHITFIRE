@@ -1,0 +1,13 @@
+{
+  "name": "shitfire-tools",
+  "private": true,
+  "description": "Dev tooling for SHITFIRE. READ-ONLY against ../SHITFIRE.html per CLAUDE.md. Nothing here is needed to run the sim.",
+  "type": "module",
+  "scripts": {
+    "shots": "node shots.js",
+    "lint": "eslint --no-eslintrc -c eslint.config.js .."
+  },
+  "dependencies": {
+    "playwright-core": "^1.62.0"
+  }
+}
