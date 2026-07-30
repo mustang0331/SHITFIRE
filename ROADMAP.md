@@ -4,15 +4,18 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-29 · Head: `fbbc137` · **The file is `SHITFIRE.html`, not `index.html`**
+Last updated: 2026-07-29 · Head: `313609c` · **The file is `SHITFIRE.html`, not `index.html`**
 
 **Shipped off this board:** `13a` bino quality pin · `F1` range rounding · `13b` ACES tone mapping ·
 `13c` sky + time of day · **Track E complete** (`E1`–`E7`: legibility, SALUTE, night/NVG/thermal,
 asphalt roads, roads on the map, settlement hierarchy, rock outcrops) · **Track G-A complete**
 (`G1`–`G6`: watchtower rail, magnetic azimuth, dispersion toggle, bino zoom, mil-card z-order,
-movable comms panel) · `F8` mil-card sizes · `G19` CFF audit · `G22`–`G27` the CFF protocol rows.
+movable comms panel) · `F8` mil-card sizes · `F5`–`F7` STT/typo tolerance, danger-clothes fuzzy
+match, duplicate-DANGER-CLOSE readback · `G19` CFF audit · **G-B doctrine cluster** (`G7`/`G8`/`G9`/
+`G11` OT direction & MTO readback, `G14` immediate suppression/smoke, `G22`–`G27` the CFF protocol
+rows).
 
-**Next:** `G11`, then `G7`/`G8`/`G9` — see §3.
+**Next:** `G12`, then `G17`, then the G10/G13/G18 research bucket — see §3.
 
 > ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
 > (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
@@ -290,11 +293,11 @@ DO NOT MIL A MAN warning two panels away. Re-referenced to the 5 m truck.
 
 | ID | What | Owner | Gate | Status |
 |---|---|---|---|---|
-| G7 | **OT factor is not transmitted.** It is the *observer's* own correction arithmetic. OT **direction** is the thing that goes to the FDC, and only on **grid** missions. The trainer currently conflates them. | Opus | OT factor never appears in observer→FDC traffic; OT direction required on grid missions only; 12b's mil-relation workflow still teaches the factor as an observer tool | READY |
-| G8 | **No OT direction → the battery cannot compute the correction.** On a grid mission, if OT direction was never sent before the first adjusting round, the FDC must be *unable* to execute the adjustment — not silently accept it. | Opus | Grid mission without OT direction blocks at the adjust step with a doctrinally correct refusal, not a generic parse error | READY |
-| G9 | **Polar missions need a POS REP first** — the FDC cannot resolve a polar call without the observer's own location | Opus | Polar mission requires position report before the call is accepted; DOCTRINE.md updated to match | READY |
+| G7 | ~~**OT factor is not transmitted.** It is the *observer's* own correction arithmetic. OT **direction** is the thing that goes to the FDC, and only on **grid** missions. The trainer currently conflates them.~~ **DONE** `313609c` — audit first: the factor was already observer-side everywhere (mil card, laser readout, coach; no FDC line asked for it). The real gap was answering an observer who transmits it anyway — snide teaching line + AAR note instead of the old gibberish mock. Direction required on grid only (G8's gate). Harness 10/10. | Opus | OT factor never appears in observer→FDC traffic; OT direction required on grid missions only; 12b's mil-relation workflow still teaches the factor as an observer tool | **DONE** `313609c` |
+| G8 | ~~**No OT direction → the battery cannot compute the correction.** On a grid mission, if OT direction was never sent before the first adjusting round, the FDC must be *unable* to execute the adjustment — not silently accept it.~~ **DONE** `1944cd2` — no OT direction, no correction, on grid missions, in every mode: the old coach-once-then-execute-anyway was wrong physics, not leniency — the battery cannot orient "left 50" or "add 200" without the OT line, so the sim was doing impossible math on the observer's behalf. Refusal repeats until DIRECTION arrives; range-only corrections gated too; bare FFE passes; polar/shift exempt (their calls carry direction). Harness 12/12. | Opus | Grid mission without OT direction blocks at the adjust step with a doctrinally correct refusal, not a generic parse error | **DONE** `1944cd2` |
+| G9 | ~~**Polar missions need a POS REP first** — the FDC cannot resolve a polar call without the observer's own location~~ **DONE** `0fc9f6c` — polar missions require a POSITION REPORT ("POSITION GRID 245 523", also POS REP / MY POSITION IS), refused without one. **The mission resolves from the REPORTED position, not the true one** — a self-location error moves every round with it, no hint given (TLOG still records the true error). Parser ordering mattered: "position grid …" would otherwise have parsed as a fire mission at the observer's own position. Expires per mission. Harness 19/19. | Opus | Polar mission requires position report before the call is accepted; DOCTRINE.md updated to match | **DONE** `0fc9f6c` |
 | G10 | **Initial firing-element status request** before the first mission — round count, location, munition types, number of guns. Not repeated afterwards. **Consult JFIRE for the correct name and format** — the user is explicit that they are unsure what this initial exchange is called, and that the in-mission MTO must stay untouched. | Opus | Correct doctrinal name and format sourced from JFIRE and recorded in DOCTRINE.md *before* implementation; in-mission MTO unchanged | RESEARCH FIRST |
-| G11 | **Observer must read the MTO back** to the FDC — word-for-word intent, but accept a correct-gist readback | Opus | Readback required; gist-level match accepted; strict mode grades it tighter | READY |
+| G11 | ~~**Observer must read the MTO back** to the FDC — word-for-word intent, but accept a correct-gist readback~~ **DONE** `2f66d39` — gist scorer (3+ of the MTO's key elements); **target number is non-negotiable** — wrong/missing number is challenged even on a perfect recitation, since the number alone isn't "the entire MTO." Verbatim vs gist distinguished; strict notes a gist readback. Skipping it mirrors the OT-direction gate: strict blocks once, forgiving coaches once, AAR row either way. MTO now ends in OVER (it hands the net over for the readback). Harness 31/31. | Opus | Readback required; gist-level match accepted; strict mode grades it tighter | **DONE** `2f66d39` |
 | G12 | **Fratricide fails the mission but must NOT auto-end it.** Currently ends immediately. The mission still has to be *finished* — target destroyed / neutralized / suppressed — it is simply a failure when it ends. Same question applies to collateral damage. | Opus | Friendly hit = recorded failure + 0★, mission continues to a real conclusion; CLAUDE.md's auto-fail rule reworded from "auto-end" to "auto-fail" | READY |
 | G13 | **Effects criteria and casualty radii are probably too small.** Needs **destroyed / neutralized / suppressed** as distinct outcomes with distinct criteria, per JFIRE. Give the observer the option to **continue the mission if the target is only suppressed**. | Opus | Three graded outcomes with sourced radii/criteria; "suppressed" offers continue-or-end; `effectRadius`/`hitsToNeutralize` replaced by the graded model | RESEARCH FIRST |
 | G14 | **Immediate suppression *and* immediate smoke are one-transmission calls.** Supersedes row **12g**. Live transcript evidence: [DIALOGUE_REVISIONS.md §9.3](DIALOGUE_REVISIONS.md). | Opus | Both parse as a single transmission; FDC skips the MTO | **DONE** `fbbc137` |
@@ -363,12 +366,14 @@ code path validates and fires a mission.
 
 ~~G23~~ ✅ `d81a93e` · ~~G25~~ ✅ `33fe820` · ~~G24~~ ✅ `bd1de09` · ~~G14/G26/G27~~ ✅ `fbbc137`.
 
-**Every row the G19 audit found is now closed except G28** (sheaf/fuze, which is G15/G16's job).
+~~G11~~ ✅ `2f66d39` · ~~G8~~ ✅ `1944cd2` · ~~G9~~ ✅ `0fc9f6c` · ~~G7~~ ✅ `313609c`.
 
-**Next: G11** (observer reads back the MTO) and **G7/G8/G9** (OT factor vs OT direction, the
-no-direction block, the polar POS REP) — all four need no research and all extend `CFFQ`. Then the
-**G10/G13 doctrine research**, then G15–G18 (sheaf, fuze, per-asset callsigns and radii), then **G12**
-(fratricide must fail without auto-ending) and **G21**.
+**Every row the G19 audit found is now closed except G28** (sheaf/fuze, which is G15/G16's job), and
+the G7/G8/G9/G11 OT-direction/MTO-readback cluster is now closed too.
+
+**Next: G12** (fratricide fails the mission but must not auto-end it — the main thread is coding it
+now), then **G17** (per-asset callsigns). Then the **G10/G13/G18 doctrine research bucket**, then
+**G15/G16** (sheaf, fuze), then **G21**.
 **G20 is PARKED at the user's direction — do not action it until they raise it.**
 
 **Two G-A rows added keybinds** that the docs sweep must pick up: `[Z]` / mouse wheel cycles
@@ -436,3 +441,4 @@ work does not touch rendering.
 | 2026-07-29 | **Track G added** from [user_feedback.md](user_feedback.md) — 21 rows of feedback from the user actually flying the build, triaged into UI (G1–G6), doctrine (G7–G19) and structural (G20–G21). Inserted ahead of the rest of stage 13. Three rows need doctrine research before code (G10, G13, G18) and one is a decision, not a task (G20). Two supersede existing authority: **G12** overrides CLAUDE.md's "automatic mission fail" wording — fratricide *fails* the mission but must not *end* it — and **G14** supersedes the narrower row 12g. |
 | 2026-07-29 | Reviewed the three newer `Dialogue History/` transcripts (08-48, 12-56, 18-05). Added **F5** (STT/typo tolerance in adjust corrections), **F6** ("danger clothes" fuzzy-match), **F7** (readback duplicates DANGER CLOSE) to Track F, all found by reading real play and confirmed against the regexes. Annotated **12g** with live transcript evidence of a player hitting the immediate-suppression gap. Detail in [DIALOGUE_REVISIONS.md §9](DIALOGUE_REVISIONS.md). |
 | 2026-07-29 | **F5** `1e39359` and **F6`/`F7** `21d0dc1` shipped, closing all three transcript-evidence STT bugs. F5: a stray-number check now catches a silently half-parsed adjust correction (a mangled "left/right" or "add/drop" word) instead of letting it drop without notice. F6: a narrow fuzzy gate accepts "danger clothes" as the "danger close" proword it was misheard from, instead of rebuking the player for a call they actually made. F7: the readback no longer states DANGER CLOSE twice when the observer's own phrasing and the target description both contain it. |
+| 2026-07-29 | **G7/G8/G9/G11 shipped** — the OT cluster and the MTO readback, closing the last un-researched rows in G-B. **G8 reverses a forgiving-mode behaviour on the user's explicit correction**: the old coach-once-then-execute-anyway was wrong physics, not leniency — the battery cannot orient a correction without the observer-target line, so letting it through anyway was the trainer doing impossible math on the observer's behalf; the fix is a refusal that repeats until DIRECTION arrives, on every mode. **G9's reported-position resolution** — the mission fires off the observer's *reported* position, not the true one — makes self-location by resection gradeable by the fall of shot rather than a number nobody checks. G7 was an audit first: the OT factor was already observer-side everywhere, so the fix was teaching an observer who transmits it anyway rather than rewriting anything. G11 makes the target number non-negotiable in the MTO readback even on an otherwise perfect gist recitation. DOCTRINE.md updated with the polar-POS-REP and OT-direction-prerequisite notes; **next is G12**. |

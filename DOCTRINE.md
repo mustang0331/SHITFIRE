@@ -24,7 +24,7 @@ A CFF is a **request**, not an order. Six elements sent in three transmissions; 
 
 **Transmission 2 — Target location:**
 - **Grid:** "Grid 123 456, over." — 6-digit standard. **OT direction must be sent before or with the first correction** ("Direction 5920, over").
-- **Polar:** "Direction 1650, distance 2100, down 40, over." — direction to nearest **10 mils**, distance to nearest **100 m**, up/down only if vertical difference ≥ **35 m**, to nearest **5 m**. FDC must know observer's position.
+- **Polar:** "Direction 1650, distance 2100, down 40, over." — direction to nearest **10 mils**, distance to nearest **100 m**, up/down only if vertical difference ≥ **35 m**, to nearest **5 m**. FDC must know observer's position. **The sim enforces this: a polar CFF is refused until the observer sends a POSITION REPORT ("POSITION GRID …"), and the mission is resolved from the *reported* position.**
 - **Shift from known point:** "Direction 2340, right 110, add 400, up 55, over." — direction (OTL) nearest 10 mils, lateral shift nearest **10 m**, range shift nearest **100 m**, vertical nearest 5 m.
 - ⚠ Doctrine ties 8/10-digit grids to **laser grid** missions, not to the weapon. The sim's "mortars = 8-digit" rule is a deliberate design simplification — keep it, but strict mode should accept 6-digit as always valid.
 
@@ -53,6 +53,7 @@ Sent in order **deviation → range → height of burst**, opposite the spotting
 - **Range:** add/drop in multiples of **100 m** (minimum 100; **50 m allowed when entering FFE**). Methods: **successive bracketing** (800/400/200 → split until FFE), **hasty bracketing**, **one-round adjustment**, **creeping fire** (danger close).
 - **HOB:** up/down in 5 m multiples (airburst/steep slopes only — rare with fuze quick).
 - Enter FFE when splitting a **100 m bracket** (point target) or effects are observed.
+- **OT direction is a hard prerequisite on grid missions** — the FDC refuses any correction until it holds the observer-target line (left/right and add/drop are meaningless without it). Polar and shift carry direction in the call.
 
 ## End of mission — RREMS
 

@@ -392,13 +392,13 @@ functions. Conflict surface against another agent's edits:
 
 | Stage | Functions/regions touched |
 |---|---|
-| G0 | `CONFIG`, renderer init (450-452), `setBinos`, `QUALITY` step |
-| G1 | scene init (454-463), new `TOD` table, `rebuildWorld` |
+| G0 | `CONFIG`, the `WebGLRenderer` construction, `setBinos`, `QUALITY` step |
+| G1 | the `scene.background`/`scene.fog` init, new `TOD` table, `rebuildWorld` |
 | G2 | `buildTerrain` only |
 | G3 | `buildTerrain` + one new `buildNearPatch`, called from `rebuildWorld` |
 | G4 | new `buildVegetation`, called from `buildWorldFeatures` teardown/build |
 | G5 | ocean init block, `buildTerrain` material, one uniform write in `animate` |
-| G6 | burst pool block (1730-1822) |
+| G6 | the burst/impact pool |
 | G7 | `drawReticle` / reticle canvas + CSS |
 | G8 | renderer init + `animate` render call |
 
