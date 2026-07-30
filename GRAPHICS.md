@@ -2,13 +2,15 @@
 
 > **This is the detail spec for SPEC.md stage 13.** [ROADMAP.md](ROADMAP.md) Track A owns the order
 > and status; the G-numbers here map to ROADMAP row IDs as `13a = G0.4`, `13b = G0 rest`,
-> `13c = G1` … `13i = G7`. **G8 (bloom) is reassigned to stage 11** as row 11d — it is SUNLAMP-only,
-> so it ships with the Epilogue, not here. Work one ROADMAP row per commit.
+> `13c = G1` … `13i = G7`. **G8 (bloom) was reassigned to stage 11** as row 11d — it is SUNLAMP-only,
+> so it shipped with the Epilogue, not with the rest of Track A. Work one ROADMAP row per commit.
 >
-> **Track A / stage 13 is now closed** (2026-07-30, `13i` `5384cf1`): `13a`–`13i` all shipped, which
-> means the planned core set §G0 through §G7 is **fully landed**. The only unbuilt row in this whole
-> document is **§G8 (bloom)**, and that is deliberate — it is deferred with stage 11 as row 11d,
-> gated to the SUNLAMP directed-energy chapter and quality tier 0 only, not a gap in this plan.
+> **Track A / stage 13 closed 2026-07-30** (`13i` `5384cf1`): `13a`–`13i` all shipped, landing the
+> core set §G0 through §G7. **§G8 (bloom) shipped 2026-07-30 as ROADMAP row 11d** (`addcbe5` + LF-pin
+> follow-up `9067a2e`), gated to the SUNLAMP directed-energy chapter and quality tier 0 only, alongside
+> the rest of the Epilogue (Track C / stage 11), rather than with the rest of Track A. **This closes
+> the entire graphics plan — §G0 through §G8 are now all landed**; nothing in this document remains
+> unbuilt.
 
 Reference/strategy doc. **No code in `SHITFIRE.html` has been changed by this plan yet** — it was written
 while another agent held the file. Every item below is designed as an *additive, independently
@@ -435,8 +437,10 @@ per-impact-allocated particle system.**
 > `CONFIG.CAMERA.swayMil` instead (0.65 default, 0 disables) — the one placement difference from the
 > plan's phrasing. Yaw/pitch state elsewhere in the camera is untouched. Verified 12/12 screenshot
 > states clean; lint 0 errors; offline zero-network confirmed. The plan text below is kept as the
-> design record. **This closes the graphics plan's core set (§G0–§G7); only §G8 (bloom) remains, and
-> it is deliberately deferred to stage 11 (SUNLAMP-only) — see the appendix note below.**
+> design record. **This closes the graphics plan's core set (§G0–§G7).** §G8 (bloom) was deliberately
+> deferred to stage 11 (SUNLAMP-only) rather than a gap in this track; it shipped 2026-07-30 as
+> ROADMAP row 11d `addcbe5` — see §G8 below for the shipped shape. **§G0 through §G8 are now all
+> landed; nothing in this document remains unbuilt.**
 
 All of this is drawn into the existing 2D reticle canvas (search `drawReticle` in SHITFIRE.html) or done
 in CSS — zero GL cost, zero risk to frame rate:
@@ -454,6 +458,27 @@ target-resolution that §G0.4 exists to protect.
 ---
 
 ## G8 — Optional bloom, Epilogue only
+
+> **Shipped `addcbe5` (2026-07-30) as ROADMAP 11d** (+ LF-pin follow-up `9067a2e`), gated to the
+> SUNLAMP chapter and quality tier 0, exactly as this section specifies. `renderFrame()` runs
+> `EffectComposer`+`RenderPass`+`UnrealBloomPass` (bloom at half resolution) **only** when
+> `CONFIG.GFX.bloom && chapter asset === 'sunlamp' && QUALITY.tier === 0`; every other frame keeps the
+> direct `renderer.render()` path this section warned not to break. The composer is created lazily
+> and disposed the instant any one of the three gates drops — a chapter change, a quality step-down,
+> or a resize — so the quality system's step-down path switches the composer off rather than merely
+> lowering pixel ratio, per this section's closing reminder. A finding not anticipated by the plan:
+> the eight r160 postprocessing/shader addon files (~26 KB) are vendored and inlined as `data:` URLs,
+> and their **relative** import specifiers (e.g. `./Pass.js`) cannot resolve from a `data:` URL with
+> no path of its own, so `tools/build.js` rewrites them to the bare `three/addons/...` names already
+> used elsewhere in the import map — a deterministic substitution confined to third-party files, no
+> hand-authored code touched. Threshold tuning: the first bloom threshold (0.85) sat under the
+> tone-mapped sky and hazed the whole horizon, caught by screenshot and raised to 0.93 so only the
+> beam, muzzle flashes, and glint actually bloom — everything else in the frame stays under threshold.
+> The follow-up commit pinned `vendor/**` to LF in `.gitattributes`: vendor bytes are base64-inlined
+> artifact bytes, and a CRLF checkout would have failed the byte-exact gate on any fresh clone.
+> Verified 9/9 SUNLAMP e2e with the composer active, 12/12 direct-path shots unchanged (proving the
+> non-SUNLAMP path is untouched), offline zero-network, lint 0. **This closes the graphics plan
+> whole — §G0 through §G8 are all now landed.** The plan text below is kept as the design record.
 
 `EffectComposer` + `UnrealBloomPass` from `three/addons/`, at half resolution, **gated behind
 `CONFIG.GFX.bloom` and only enabled for the SUNLAMP directed-energy chapter**, and only at quality
