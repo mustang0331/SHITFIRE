@@ -438,7 +438,9 @@ function fireForEffect() {
    remembers it via everSuppressed even after the enemy is back up. */
 function effBands() {
   const S = Scenario, E = CONFIG.EFFECTS;
-  const c = E[S.tgtClass] || E.personnel;
+  // G18 — the firing asset picks the band set; the chapter says which asset fires
+  const asset = (activeChapter && activeChapter.asset === 'mortar60') ? 'mortar60' : 'arty';
+  const c = E[asset][S.tgtClass] || E[asset].personnel;
   const k = S.effScale || 1;
   return { rFull: c.rFull * k, rHalf: c.rHalf * k, rSupp: c.rSupp * k,
            perRound: c.perRound, neutralizePct: c.neutralizePct, destroyPct: c.destroyPct };

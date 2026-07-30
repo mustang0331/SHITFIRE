@@ -95,7 +95,10 @@ const CAMPAIGN = [
     { id: '4.1', title: 'STRICT NET', blurb: 'doctrine enforced — full format or silence', impl: true, type: 'strongpoint', seed: 401, par: 360, strict: true,
       story: 'A black-sand fortress island, and a new FDC posture: STRICT NET. Full format or the net stays silent — callsigns, warning order, location, description, OVER, correct rounding, real surveillance. The book, verbatim, under fire.',
       outro: 'The net stayed clean. Doctrine is just courtesy under fire.' },
-    { id: '4.2', title: 'TEN METERS', blurb: '60mm mortars — 8-digit precision', impl: true, type: 'troops', seed: 402, par: 330, asset: 'mortar60', scn: { effR: 30 },
+    /* G18 — the old scn:{effR:30} knob is gone here: the mortar60 asset now
+       carries its own FM 7-90 band set (rFull 20 m vs the 155's 30), which IS
+       the precision constraint this chapter was faking with a scaled radius. */
+    { id: '4.2', title: 'TEN METERS', blurb: '60mm mortars — 8-digit precision', impl: true, type: 'troops', seed: 402, par: 330, asset: 'mortar60',
       story: 'The 155s are displacing, so today you own a 60mm mortar section. Small tubes, tight sheaf, ten-meter grids — EIGHT digits, read right then up. At this precision, "close enough" is a contradiction.',
       outro: 'Ten-meter work with a sixty. The mortar section names a tube after you. It is the ugly one.' },
     { id: '4.3', title: 'NO SECOND CHANCES', blurb: 'hard only. one pass, tight clock.', impl: true, type: 'bunker', seed: 403, par: 240, diffs: ['hard'],

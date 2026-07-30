@@ -76,13 +76,32 @@ const CONFIG = {
   EFFECTS: {
     suppressSec: 90,                        // suppression outlives the last round by this
     posture: { standing: 1.0, prone: 0.4 }, // FM 7-90 App. B: posture alone swings ~2.5x
-    // per-round contribution (%) at full effect, and the distance bands:
-    // full inside rFull, half to rHalf, quarter (suppression credit) to rSupp
-    personnel: { rFull: 30, rHalf: 50, rSupp: 75, perRound: 8,
-                 neutralizePct: 10, destroyPct: 30 },
-    // hard point targets (bunker, derelict): tight bands, structural-damage scale
-    point:     { rFull: 15, rHalf: 25, rSupp: 45, perRound: 55,
-                 neutralizePct: 40, destroyPct: 100 },
+    /* G18 — per-asset band sets: a 60mm round and a 155 do not do the same
+       thing. Per-round contribution (%) at full effect, and the distance
+       bands: full inside rFull, half to rHalf, quarter (suppression credit)
+       to rSupp. 'point' is hard targets (bunker, derelict) on a
+       structural-damage scale.
+
+       arty (155): bands from the lethal-area/FPF proxies (DOCTRINE.md §G18 —
+       the true JMEM figures are classified, flagged ⚠ there).
+       mortar60: bands are FM 7-90 App. B verbatim (20 m "probably
+       suppressed", 35 m 50%, beyond 50 m little effect); perRound 2 makes the
+       manual's own check case come out right — a section volley of 10 rounds
+       on a standing platoon ≈ 20% (neutralized), the same volley prone 8%
+       (fails, suppression only). Mortars suppress and neutralize; destruction
+       with sixties is meant to take several volleys. */
+    arty: {
+      personnel: { rFull: 30, rHalf: 50, rSupp: 75, perRound: 8,
+                   neutralizePct: 10, destroyPct: 30 },
+      point:     { rFull: 15, rHalf: 25, rSupp: 45, perRound: 55,
+                   neutralizePct: 40, destroyPct: 100 },
+    },
+    mortar60: {
+      personnel: { rFull: 20, rHalf: 35, rSupp: 50, perRound: 2,
+                   neutralizePct: 10, destroyPct: 30 },
+      point:     { rFull: 10, rHalf: 18, rSupp: 35, perRound: 25,
+                   neutralizePct: 40, destroyPct: 100 },
+    },
   },
   /* G2 — declination. The world, the grid, the map sheet and every azimuth on the
      fire net are GRID (true) mils. The observer's own instruments — compass, HUD
