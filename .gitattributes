@@ -5,6 +5,9 @@
 # machine, regardless of core.autocrlf.
 SHITFIRE.html   text eol=lf
 src/**          text eol=lf
+# vendor files are base64-inlined INTO the artifact by the build — a CRLF
+# checkout would change the inlined bytes and fail the byte-exact check
+vendor/**       text eol=lf
 tools/*.js      text eol=lf
 tools/*.ps1     text eol=lf
 *.md            text eol=lf
