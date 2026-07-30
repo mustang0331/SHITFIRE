@@ -183,9 +183,11 @@ function genScenario(type, seed) {
     }
     S.enemy = enemy || findSpot(1200, 2800, 2, 60, true) || { x: OP.x + 1800, z: OP.z };
     S.village = vil;
-    S.brief = `Raiders are hitting the civilian village${vil ? ' of ' + vil.name : ''}, grid ${gridOf(S.enemy.x, S.enemy.z)} area.` +
-      (seen ? '' : ' The village is masked from your tower — work it off the map and the smoke.') +
-      ' The huts are NO-STRIKE — one round in the village fails the mission. Cut the raiders down without touching it.';
+    // 14b — the DIALOGUE_REVISIONS §6 copy pass: the clauses now read as one
+    // brief instead of three concatenated fragments; content unchanged
+    S.brief = `Raiders are hitting the civilian village${vil ? ' of ' + vil.name : ''} — grid ${gridOf(S.enemy.x, S.enemy.z)} area.` +
+      (seen ? '' : ' The village is masked from your tower; work it off the map and the smoke.') +
+      ' The huts are NO-STRIKE: one round inside the village fails the mission, full stop. Cut the raiders down without touching it.';
   } else if (type === 'bunker') {
     S.enemy = findSpot(1200, 3000, 22, 140, true) ||
               findSpot(1200, 3000, 8, 999, true) || { x: OP.x + 1800, z: OP.z };

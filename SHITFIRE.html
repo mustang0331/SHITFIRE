@@ -2880,9 +2880,11 @@ function genScenario(type, seed) {
     }
     S.enemy = enemy || findSpot(1200, 2800, 2, 60, true) || { x: OP.x + 1800, z: OP.z };
     S.village = vil;
-    S.brief = `Raiders are hitting the civilian village${vil ? ' of ' + vil.name : ''}, grid ${gridOf(S.enemy.x, S.enemy.z)} area.` +
-      (seen ? '' : ' The village is masked from your tower — work it off the map and the smoke.') +
-      ' The huts are NO-STRIKE — one round in the village fails the mission. Cut the raiders down without touching it.';
+    // 14b — the DIALOGUE_REVISIONS §6 copy pass: the clauses now read as one
+    // brief instead of three concatenated fragments; content unchanged
+    S.brief = `Raiders are hitting the civilian village${vil ? ' of ' + vil.name : ''} — grid ${gridOf(S.enemy.x, S.enemy.z)} area.` +
+      (seen ? '' : ' The village is masked from your tower; work it off the map and the smoke.') +
+      ' The huts are NO-STRIKE: one round inside the village fails the mission, full stop. Cut the raiders down without touching it.';
   } else if (type === 'bunker') {
     S.enemy = findSpot(1200, 3000, 22, 140, true) ||
               findSpot(1200, 3000, 8, 999, true) || { x: OP.x + 1800, z: OP.z };
@@ -8212,9 +8214,9 @@ const CAMPAIGN = [
       outro: 'HELLHOUND logs the grid without comment, which from HELLHOUND is a medal.' },
     { id: '1.2', title: 'KNOCK KNOCK', blurb: 'dug-in bunker — bracket it', impl: true, type: 'bunker', seed: 102, par: 360,
       story: 'A bunker with a roof and opinions. Precision matters now: bracket it — over, short, split the difference — and put one through the front door. The book calls it successive bracketing. Gunny called it "haggling."',
-      outro: 'The engineers send their thanks. They did not want to walk up there.' },
+      outro: 'The engineers send their thanks and a request that you never again make them identify a bunker by smell.' },
     { id: '1.3', title: 'HOLD THE LINE', blurb: 'near the perimeter, not on it', impl: true, type: 'strongpoint', seed: 103, par: 360,
-      story: 'A friendly strongpoint is getting pressed and the perimeter is shrinking by the minute. Your rounds go NEXT to our people, not ON them. There is a village behind the wire, too. Everyone on this island is watching your math.',
+      story: 'A friendly strongpoint is getting pressed and the perimeter is shrinking by the minute. Your rounds go NEXT to our people, not ON them. There is a village behind the wire, too. Everyone on this island is watching your math, and none of them are being polite about it.',
       outro: 'The strongpoint holds. Somebody inside the wire owes you a beer and will deny it.' },
     { id: '1.4', title: 'DO IT AGAIN, SLOWER', blurb: 'format discipline on the clock', impl: true, type: 'troops', seed: 104, par: 210,
       story: 'HELLHOUND has read your file aloud to the gun crews, twice, doing voices. Today the standard is the FULL format, correct, fast — par is tight and the guns are bored. Prove the schoolhouse took.',
@@ -8228,7 +8230,7 @@ const CAMPAIGN = [
       story: 'The registration points on this island have names — the kind of names positions earn. The guns already know them cold. SHIFT from a known point: direction, lateral, range. Ride on data somebody already paid for.',
       outro: 'The known points hold. That is why we register them before we need them.' },
     { id: '2.3', title: 'DEFILADE BLUES', blurb: 'crest-masked target — fire on what you cannot see', impl: true, type: 'troops', seed: 203, par: 420, scn: { mask: true },
-      story: 'Enemy infantry assembling in defilade behind the ridge. You will not see them, and you will not see your bursts — just smoke drifting over the crest and the sound arriving late. Fight this one on the map. The map does not blink.',
+      story: 'Enemy infantry assembling in defilade behind the ridge. You will not see them, and you will not see your bursts — just smoke drifting over the crest and the sound arriving late. Fight this one on the map. The map does not blink. It also does not care that you are scared. Fight it anyway.',
       outro: 'You never saw them. They never saw it coming. Fair trade.' },
     { id: '2.4', title: 'THE PERIMETER', blurb: 'your choice of method, under pressure', impl: true, type: 'strongpoint', seed: 204, par: 330,
       story: 'Another strongpoint, worse ground, less time. Nobody is telling you which location method to use — that is the point. Pick the right tool, first try, while the perimeter shrinks.',
@@ -8239,7 +8241,7 @@ const CAMPAIGN = [
       story: 'The big push is on and everything on this island is moving. An enemy column is running the coast road. Intel says they stop for fuel — columns always stop. Lead a moving target, or ambush a sitting one. Choose.',
       outro: 'Burning trucks on a coast road: the war\'s most honest progress report.' },
     { id: '3.2', title: 'CLOSE ENOUGH TO SMELL IT', blurb: 'danger close — say it, creep it', impl: true, type: 'assault', seed: 302, par: 420,
-      story: 'Friendlies assaulting an objective with the enemy inside six hundred meters of them. That is DANGER CLOSE — say the proword like you mean it, and creep the fire in from the safe side. A hundred meters at a time. No heroes.',
+      story: 'Friendlies assaulting an objective with the enemy inside six hundred meters of them. That is DANGER CLOSE — say the proword like you mean it, and creep the fire in from the safe side. A hundred meters at a time. No heroes, no funerals, no phone calls to a general at 0300.',
       outro: 'The assault element walks the objective. Every one of them upright. That was the mission.' },
     { id: '3.3', title: 'UNINVITED GUESTS', blurb: 'raiders in the village — huts are no-strike', impl: true, type: 'raid', seed: 303, par: 390,
       story: 'First light. Raiders are hitting the fishing village — and the village is full of people whose war this is not. Fire on the raiders. The huts are no-strike. If discrimination were easy, they would not need an observer.',
@@ -8248,7 +8250,7 @@ const CAMPAIGN = [
       story: 'A full combined-arms push: our infantry advancing, their line breaking, the target shifting while your rounds are in the air. Timing is everything and everything is on the move.',
       outro: 'Fires and maneuver, actually coordinated. Doctrine writers weep with joy.' },
     { id: '3.5', title: 'THE WRONG KIND OF FAMOUS', blurb: 'friendlies interleaved — do not make the news', impl: true, type: 'assault', seed: 305, par: 390, scn: { fClose: true },
-      story: 'The lines have collapsed into each other and the map looks like spilled paint. Friendlies are INSIDE your sheaf distances. The chapter title is the threat: observers who guess wrong here get famous in the worst way.',
+      story: 'The lines have collapsed into each other and the map looks like spilled paint. Friendlies are INSIDE your sheaf distances. The chapter title is the threat: observers who guess wrong here get famous in the worst way: a name read aloud at a service nobody wanted to attend.',
       outro: 'Nobody wrote your name in any report today. Stay unfamous.' },
   ]},
   { id: 'V4', tab: 'IV', name: 'VOLUME IV — BLACK SAND', need: 24, tseed: 66600, palette: 'black', chapters: [
