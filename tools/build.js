@@ -30,8 +30,21 @@ const manifest = JSON.parse(fs.readFileSync(path.join(srcDir, 'manifest.json'), 
 
 function read(rel) { return fs.readFileSync(path.join(srcDir, rel)); }
 
+/* Vendor inlining: three.js goes INTO the artifact as base64 data: URLs in the
+   import map. Chrome refuses ES-module imports over file:// (CORS), so a
+   vendored sibling file cannot serve a double-clicked SHITFIRE.html — inlining
+   is the only shape that is simultaneously one-file, offline, and
+   double-clickable. Deterministic: same vendor bytes, same output. */
+function dataUrl(rel) {
+  return 'data:text/javascript;base64,' +
+    fs.readFileSync(path.join(root, 'vendor', rel)).toString('base64');
+}
+let head = read(manifest.head).toString('latin1');
+head = head.replace('__VENDOR_THREE_CORE__', dataUrl('three/three.module.js'))
+           .replace('__VENDOR_THREE_SKY__', dataUrl('three/addons/objects/Sky.js'));
+
 const parts = [];
-parts.push(read(manifest.head));
+parts.push(Buffer.from(head, 'latin1'));
 for (const js of manifest.js) parts.push(read(js));
 parts.push(read(manifest.tail));
 const built = Buffer.concat(parts);

@@ -218,10 +218,18 @@
 </style>
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  "three": "__VENDOR_THREE_CORE__",
+  "three/addons/objects/Sky.js": "__VENDOR_THREE_SKY__"
 } }
 </script>
+<!-- three.js r160 is INLINED into this import map as data: URLs by tools/build.js
+     from vendor/three/ (see its README). Why not a plain local file next to this
+     one: Chrome blocks ES-module imports over file:// (CORS null origin), so a
+     vendored sibling file cannot be double-clicked — which is also why the
+     original directive reached for a CDN. data: URLs keep the whole trainer ONE
+     file that opens anywhere with ZERO network. Sky.js's own `import ... from
+     'three'` resolves through this same map. Upgrading three = replace the
+     vendor files and rebuild; never point this back at a CDN. -->
 </head>
 <body>
 <canvas id="gl"></canvas>

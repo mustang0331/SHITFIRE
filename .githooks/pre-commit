@@ -17,8 +17,11 @@ staged=$(git diff --cached --name-only)
 if echo "$staged" | grep -qE '^(src/|SHITFIRE\.html$|tools/build\.js$)'; then
   echo "[gate] building SHITFIRE.html from src/ and checking it is staged & identical"
   "$NODE" tools/build.js || { echo "[gate] BUILD FAILED"; exit 1; }
-  if ! git diff --quiet SHITFIRE.html || ! git diff --cached --quiet SHITFIRE.html; then
-    # rebuild changed the file, or a staged SHITFIRE.html differs from the build
+  # After the rebuild, the WORKING TREE file is the truth of src/. If it differs
+  # from what is staged, either the rebuild changed it (forgot to rebuild before
+  # staging) or a hand-edit was staged. Comparing staged-to-HEAD here would be
+  # wrong: every legitimate artifact update differs from HEAD by definition.
+  if ! git diff --quiet SHITFIRE.html; then
     git diff --stat SHITFIRE.html
     echo "[gate] SHITFIRE.html is not the current build of src/. Rebuild (node tools/build.js) and stage it."
     exit 1

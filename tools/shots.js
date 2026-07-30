@@ -23,6 +23,13 @@ fs.mkdirSync(outDir, { recursive: true });
 const errors = [];
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+// OFFLINE PROOF: abort every network request. The trainer must run with no
+// connectivity (CLAUDE.md golden rule), so any surviving http(s) dependency —
+// a CDN three.js, a web font, an analytics ping — makes the run FAIL here
+// rather than passing silently on a connected machine. file:// is not routed
+// through this, so local vendored modules load normally.
+const blocked = [];
+await page.route(/^https?:\/\//, r => { blocked.push(r.request().url()); r.abort(); });
 page.on('pageerror', e => errors.push('pageerror: ' + e.message));
 page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 
@@ -79,8 +86,13 @@ await key('p');
 await shot('12-library-sheet', 'printed sheet: monochrome line art only');
 await key('Escape');
 
+if (blocked.length)
+  console.log('OFFLINE FAIL: ' + blocked.length + ' network request(s) attempted — the ' +
+              'trainer is not self-contained:\n  ' + [...new Set(blocked)].join('\n  '));
+else
+  console.log('offline OK — zero network requests; runs fully local.');
 console.log(errors.length
   ? 'BOOT/RUNTIME ERRORS:\n  ' + errors.join('\n  ')
   : 'no page errors — boots clean.');
 await browser.close();
-process.exit(errors.length ? 1 : 0);
+process.exit(errors.length || blocked.length ? 1 : 0);
