@@ -4239,7 +4239,17 @@ function parseMessage(raw) {
   if (mAD) { corr.add = (mAD[1] === 'add' ? 1 : -1) * parseInt(mAD[2]); any = true; }
   if (any || ffe) return { type: 'adjust', corr, any, ffe };
   if (/\brepeat\b/.test(t)) return { type: 'repeat' };
-  return { type: 'unknown' };
+  /* G22 — a bare WARNING ORDER is doctrinal Transmission 1 ("HELLHOUND FIRES,
+     this is MUSTANG 12, adjust fire, over"). It used to fall through to `unknown`
+     and be answered with the reply reserved for gibberish, which meant an observer
+     who had learned the real three-transmission format could not use it.
+
+     Bare "fire for effect" is deliberately NOT caught here: it is already the
+     mid-mission command to shift into effect, and it reaches this function as
+     `adjust` with `any === false`. onPlayerMessage decides which one it is from
+     mission state, because that is the only place that knows. */
+  if (/\badjust fire\b/.test(t)) return { type: 'warno', warno: 'adjust', raw: t, toks };
+  return { type: 'unknown', raw: t, toks };
 }
 
 function formatNotes(p) {
@@ -4257,6 +4267,97 @@ function formatNotes(p) {
   if (!p.toks.includes('over'))
     notes.push('End each transmission with OVER.');
   return notes;
+}
+
+/* ================================================ G22: THE THREE-TRANSMISSION CFF
+   DOCTRINE.md §15 and CLAUDE.md both say a call for fire is SIX ELEMENTS IN THREE
+   TRANSMISSIONS, each read back by the FDC. Before this row there was no state
+   between messages at all: parseMessage pulled warning order, location and
+   description out of ONE string, so the doctrinal Transmission 1 fell through to
+   `unknown` and got answered with the mockery reserved for gibberish. An observer
+   who had learned the real format could not use it. Measured in the G19 audit: 16
+   of 29 doctrinal transmissions classified as `unknown`.
+
+   THE RULE THAT SHAPES THIS DESIGN. DOCTRINE.md §5 is explicit that the scripts
+   are guidelines, not gates, and the forgiving one-shot call is what every
+   existing chapter, tutorial and saved transcript uses. So this is PURELY
+   ADDITIVE: a complete call in one message takes exactly the path it always did,
+   byte for byte. The queue only engages when the observer sends a partial
+   transmission, which previously did not work at all. Nothing that worked before
+   can break, because nothing that worked before enters this code.
+
+   Assembly, not reimplementation: partial transmissions accumulate here and the
+   completed result is handed to the SAME handleCFF() the one-shot path uses. There
+   is one code path for validating and firing a mission, so the two forms cannot
+   drift into disagreeing about danger close, strict mode, grid bounds or anything
+   else. `raw` and `toks` are concatenated across the transmissions, which is what
+   lets callsigns sent in T1 satisfy strict mode and "danger close" sent in T3
+   satisfy the danger-close gate. */
+const CFFQ = { on: false, stage: 0, warno: 'none', loc: null,
+               raw: '', toks: [], t0: 0 };
+function cffqReset() {
+  CFFQ.on = false; CFFQ.stage = 0; CFFQ.warno = 'none'; CFFQ.loc = null;
+  CFFQ.raw = ''; CFFQ.toks = [];
+}
+function cffqAdd(p) {                       // fold a transmission's text in
+  CFFQ.raw = (CFFQ.raw ? CFFQ.raw + ' ' : '') + (p.raw || '');
+  CFFQ.toks = CFFQ.toks.concat(p.toks || []);
+}
+/* The observer can abandon a half-sent call. Left dangling, the next bare grid
+   would be silently absorbed into a call started minutes ago, which is worse than
+   not having a queue at all — so it lapses, and says so rather than going quiet. */
+const CFFQ_LAPSE = 75;
+function cffqTick() {
+  if (!CFFQ.on) return;
+  if (sim.now - CFFQ.t0 < CFFQ_LAPSE) return;
+  cffqReset();
+  FDC.say('MUSTANG 12, you started a call for fire and never finished it. ' +
+          'Net is clear. Start again when you have all six elements, out.', { delay: 0.4 });
+}
+function cffqStart(warno, p) {
+  cffqReset();
+  CFFQ.on = true; CFFQ.stage = 1; CFFQ.warno = warno; CFFQ.t0 = sim.now;
+  cffqAdd(p);
+  // Transmission 1 read back, per CLAUDE.md: the FDC reads back EACH transmission
+  FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ` +
+          `${warno === 'ffe' ? 'FIRE FOR EFFECT' : 'ADJUST FIRE'}, OUT.`,
+          { delay: CONFIG.FDC.readbackDelay });
+  FDC.say('SEND YOUR TARGET LOCATION, OVER.', { delay: 1.5 });
+}
+/* Transmission 2 accepted. Read back the LOCATION only — not the whole call —
+   because that is the transmission the observer just sent and reading back more
+   than was said is how a readback stops being a check. */
+function cffqLocation(p, locEcho) {
+  CFFQ.stage = 2; CFFQ.loc = p; CFFQ.t0 = sim.now;
+  cffqAdd(p);
+  FDC.say(`${locEcho}, OUT.`, { delay: CONFIG.FDC.readbackDelay });
+  FDC.say('SEND YOUR TARGET DESCRIPTION, OVER.', { delay: 1.5 });
+}
+/* Transmission 3 completes it. Build the object handleCFF expects by merging the
+   queued location with the accumulated text, then hand it over. */
+function cffqComplete(desc, p) {
+  const loc = CFFQ.loc;
+  cffqAdd(p);
+  const merged = Object.assign({}, loc, {
+    type: 'cff', warno: CFFQ.warno !== 'none' ? CFFQ.warno : loc.warno,
+    desc, raw: CFFQ.raw, toks: CFFQ.toks, staged: true,
+  });
+  cffqReset();
+  handleCFF(merged);
+}
+/* A short echo of just the location, for the T2 readback. Mirrors the strings
+   handleCFF builds; kept deliberately terse because it is a readback, not a brief. */
+function locEchoOf(p) {
+  if (p.method === 'polar')
+    return `DIRECTION ${fmtMils(p.dirMils % 6400)}, DISTANCE ${p.distM}`;
+  if (p.method === 'shift')
+    return `SHIFT KNOWN POINT ${p.kpId}` +
+      (p.dirMils !== null ? `, DIRECTION ${fmtMils(p.dirMils % 6400)}` : '') +
+      (p.sRight ? `, ${p.sRight > 0 ? 'RIGHT' : 'LEFT'} ${Math.abs(p.sRight)}` : '') +
+      (p.sAdd ? `, ${p.sAdd > 0 ? 'ADD' : 'DROP'} ${Math.abs(p.sAdd)}` : '');
+  if (p.digits && p.digits.length === 6)
+    return `GRID ${p.digits.slice(0, 3)} ${p.digits.slice(3)}`;
+  return `GRID ${p.digits}`;
 }
 
 /* ============================================================ MESSAGE HANDLING */
@@ -4348,8 +4449,17 @@ function handleCFF(p) {
     notes.push(`This chapter required a ${activeChapter.method.toUpperCase()} target location — you sent ${p.method.toUpperCase()} (chapter capped at 2★).`);
   const warno = p.warno === 'none' ? 'adjust' : p.warno;
   const warnoText = warno === 'ffe' ? 'FIRE FOR EFFECT' : 'ADJUST FIRE';
-  FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
-          (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
+  /* G22 — read back what was actually just said. On the staged path the warning
+     order and the location were each already read back when they were sent, so
+     repeating the whole call here would be a third readback of two things the
+     observer has already confirmed. Read back the third transmission only. The
+     one-shot path is unchanged: everything arrived at once, so all of it is read
+     back at once. */
+  FDC.say(p.staged
+    ? `${p.desc ? p.desc.toUpperCase() : 'NO DESCRIPTION'}` +
+      (p.raw.includes('danger close') ? ', DANGER CLOSE' : '') + ', OUT.'
+    : `${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
+      (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
           { delay: CONFIG.FDC.readbackDelay });
   FDC.say(activeChapter && activeChapter.asset === 'mortar60'
     ? 'MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.'
@@ -4576,6 +4686,41 @@ function onPlayerMessage(raw) {
     }
   }
   if (p.type !== 'unknown' && p.type !== 'empty') unknownStreak = 0;
+  /* G22 — the three-transmission CFF. Every branch below is reached only by a
+     PARTIAL transmission, which did not work at all before this row; a complete
+     one-shot call skips all of it and takes its original path. Ordered before the
+     switch because a queued call changes what a bare grid or a bare description
+     MEANS, and that decision cannot be made inside handlers that never see the
+     queue. */
+  if (!(mission && !mission.done)) {
+    // T1: a bare warning order opens a call.
+    if (p.type === 'warno') { cffqStart(p.warno, p); return; }
+    // T1 with FIRE FOR EFFECT. Bare "fire for effect" parses as `adjust` because
+    // mid-mission it is the command to shift into effect; with no mission running
+    // it can only be a warning order, and only here is that knowable.
+    if (p.type === 'adjust' && p.ffe && !p.any) { cffqStart('ffe', p); return; }
+    if (CFFQ.on) {
+      // T2: a location with no warning order of its own, while a call is open.
+      if (p.type === 'cff' && CFFQ.stage === 1 && p.warno === 'none') {
+        if (p.desc) { cffqComplete(p.desc, p); return; }   // T2 and T3 in one, fine
+        cffqLocation(p, locEchoOf(p));
+        return;
+      }
+      // T3: the description. Anything unparseable becomes the target description
+      // ONLY while a call is open and waiting for one — outside that it stays
+      // `unknown`, so the forgiving-but-mocking default is untouched.
+      if (CFFQ.stage === 2 && (p.type === 'unknown' || p.type === 'warno')) {
+        const d = (p.raw || '').replace(/\b(over|out|break)\b/g, '')
+                               .replace(/\s{2,}/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
+        // it parsed as `unknown` but it was a valid transmission, so it must not
+        // leave a strike on the gibberish counter that feeds the FDC's rantLost
+        if (d) { unknownStreak = 0; cffqComplete(d, p); return; }
+      }
+      // A complete call, or end of mission, or anything else deliberate abandons
+      // the queue rather than merging into it.
+      if (p.type === 'cff' || p.type === 'eom') cffqReset();
+    }
+  }
   switch (p.type) {
     case 'empty': break;
     case 'sayagain':
@@ -6151,6 +6296,7 @@ function newMission(first, type, chapter) {
   clearEvents();
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   FDC.lastT = 0;
+  cffqReset();            // G22 — a half-sent call must not survive into a new mission
   mission = null;
   bursts.forEach(b => { b.active = false; b.group.visible = false; });
   activeChapter = chapter || null;
@@ -6533,6 +6679,7 @@ function animate(tMs) {
   }
   // scenario dynamics + battle ambience
   updateScenario();
+  cffqTick();             // G22 — lapse a call for fire the observer never finished
   updateCivilians(t);
   legibilityPass(eye.x, eye.y, eye.z);
   const flashOn = enemyAlive && Scenario &&
