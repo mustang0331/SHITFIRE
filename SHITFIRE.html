@@ -413,7 +413,14 @@ const CONFIG = {
      a real and very findable mistake, and handleDirection() calls it out by name
      rather than as a generic "you are off by N mils". */
   NAV: { declEastDeg: 7 },
-  FDC: { obs: 'MUSTANG 12', fdc: 'HELLHOUND FIRES', readbackDelay: 1.3, shotDelay: 4.0 },
+  /* G17 — one net, two fire units. HELLHOUND FIRES is the 155 battery;
+     HACKSAW FIRES is the 60mm mortar section (Volume IV precision shoots).
+     Different units answer different calls, and the observer is expected to
+     address the right one — strict net enforces it. HACKSAW chosen to be
+     phonetically far from HELLHOUND so speech recognition cannot confuse the
+     two, and clear of every existing name (MUSTANG, GUNNY, SUNLAMP). */
+  FDC: { obs: 'MUSTANG 12', fdc: 'HELLHOUND FIRES', fdc60: 'HACKSAW FIRES',
+         readbackDelay: 1.3, shotDelay: 4.0 },
   VOICE: { lang: 'en-US', ttsLang: 'en-IN', rate: 1.05, pitch: 0.8, volume: 1.0,
            ttsEnabled: true,
            preferredVoices: ['ravi', 'heera', 'en-in', 'india',
@@ -723,6 +730,14 @@ const saidDangerClose = raw => DC_RE.test(raw);
    to take effect. */
 const binoPower = () => CONFIG.CAMERA.binoZooms[CONFIG.CAMERA.binoZoom];
 const binoFovNow = () => CONFIG.CAMERA.fov / binoPower();
+
+/* G17 — who is on the other end of the net. Full form for traffic, short form
+   for the vocative ("MUSTANG 12, HACKSAW — ..."), lowercase for parsing the
+   observer's own transmissions. Everything asks these; nothing asks CONFIG
+   directly, so a chapter's asset is the single switch. */
+const fdcCall = () => activeChapter && activeChapter.asset === 'mortar60'
+  ? CONFIG.FDC.fdc60 : CONFIG.FDC.fdc;
+const fdcShort = () => fdcCall().replace(/\s+FIRES$/, '');
 
 const declMils = () => CONFIG.NAV.declEastDeg / 360 * 6400;
 const gridToMag = m => ((m - declMils()) % 6400 + 6400) % 6400;
@@ -2683,9 +2698,20 @@ const FDC = {
     const t = Math.max(sim.now, this.lastT) + delay;
     this.lastT = t;
     schedule(t, () => {
+      /* G17 — the callsign swap happens HERE, at the single point every FDC
+         utterance passes through, rather than in the ~40 strings that mention
+         HELLHOUND. Every FDC.say is the fire unit speaking, and on a mortar
+         chapter the unit speaking is HACKSAW — including in the quip pools,
+         which would otherwise have the mortar section referring to itself by
+         the artillery's name. Applied at DELIVERY time, not queue time, so a
+         line queued during a chapter transition names whoever actually owns
+         the net when it airs. */
+      if (activeChapter && activeChapter.asset === 'mortar60')
+        msg = msg.replace(/\bHELLHOUND(\s+FIRES)?\b/g,
+                          (m0, f) => f ? CONFIG.FDC.fdc60 : fdcShort());
       this.lastMsg = msg;
       squelch();
-      log(CONFIG.FDC.fdc, msg, 'fdc');
+      log(fdcCall(), msg, 'fdc');
       speakFDC(msg);
     });
     return t;
@@ -3059,7 +3085,7 @@ function sendSpotReport(reason) {
   const loc = spotLocation(S.enemy.x, S.enemy.z, S.difficulty);
 
   if (reason === 'displace') {
-    FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc} — UPDATED SPOT REPORT. ` +
+    FDC.say(`${CONFIG.FDC.obs}, ${fdcCall()} — UPDATED SPOT REPORT. ` +
             `SIZE UNCHANGED. ACTIVITY: DISPERSING AND GOING TO GROUND. ` +
             `LOCATION: ${loc}. RE-ACQUIRE AND SEND YOUR CORRECTION, OVER.`, { delay: P.gap });
     TLOG.add('spot', '', loc, { form: 'update', diff: S.difficulty, scn: S.type });
@@ -3070,13 +3096,13 @@ function sendSpotReport(reason) {
   const mins = 2 + Math.floor(rng() * 18);
   const salute = rng() < P.saluteChance;
   if (salute) {
-    FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc} — I HAVE A SPOT REPORT FOR YOU, ` +
+    FDC.say(`${CONFIG.FDC.obs}, ${fdcCall()} — I HAVE A SPOT REPORT FOR YOU, ` +
             `RELAYED FROM ${src}. SALUTE FORMAT. STAND BY, OVER.`, { delay: P.lead });
     FDC.say(`SIZE: ${d.size}. ACTIVITY: ${d.act}. LOCATION: ${loc}, OVER.`, { delay: P.gap });
     FDC.say(`UNIT: ${SPOT_UNIT[Math.floor(rng() * SPOT_UNIT.length)]}. ` +
             `TIME: ${mins} MINUTES OLD. EQUIPMENT: ${d.eq}. OVER.`, { delay: P.gap });
   } else {
-    FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc} — ${src} REPORTS ACTIVITY ` +
+    FDC.say(`${CONFIG.FDC.obs}, ${fdcCall()} — ${src} REPORTS ACTIVITY ` +
             `IN THIS GENERAL AREA — ${loc}. ${d.act}. ` +
             `${mins} MINUTES OLD, OVER.`, { delay: P.lead });
     FDC.say(`THAT IS ALL THEY GAVE ME. ${d.size}, ${d.eq}. NOTHING FINER, OVER.`, { delay: P.gap });
@@ -4569,7 +4595,7 @@ function parseMessage(raw) {
     const sAD = t.match(/\b(add|drop)\s+(\d+)/);
     if (sAD) sAdd = (sAD[1] === 'add' ? 1 : -1) * parseInt(sAD[2]);
     const sDir = t.match(/\bdirection\s+(\d+)\b/);
-    const kw = new Set(['hellhound', 'fires', 'this', 'is', 'mustang', 'adjust',
+    const kw = new Set(['hellhound', 'hacksaw', 'fires', 'this', 'is', 'mustang', 'adjust',
       'fire', 'for', 'effect', 'shift', 'from', 'known', 'point', 'kp', 'a', 'b',
       'ab', 'left', 'right', 'add', 'drop', 'direction', 'over', 'out', 'break',
       'danger', 'close',
@@ -4663,7 +4689,7 @@ function parseMessage(raw) {
      firing", all of which are already handled above, so this only fires when FIRE
      is the whole transmission apart from callsigns and prowords. */
   {
-    const strip = new Set(['over', 'out', 'break', 'hellhound', 'fires',
+    const strip = new Set(['over', 'out', 'break', 'hellhound', 'hacksaw', 'fires',
                            'this', 'is', 'mustang', '12']);
     const core = toks.filter(w => !strip.has(w) && !/^\d+$/.test(w));
     if (core.length === 1 && core[0] === 'fire') return { type: 'fire', raw: t, toks };
@@ -4675,8 +4701,8 @@ function parseMessage(raw) {
 function formatNotes(p) {
   const notes = [];
   const t = p.raw;
-  if (!t.includes('hellhound') || !t.includes('mustang'))
-    notes.push('Open with both callsigns: "HELLHOUND FIRES, THIS IS MUSTANG 12".');
+  if (!t.includes(fdcShort().toLowerCase()) || !t.includes('mustang'))
+    notes.push(`Open with both callsigns: "${fdcCall()}, THIS IS MUSTANG 12".`);
   if (p.warno === 'none')
     notes.push('No warning order — say ADJUST FIRE or FIRE FOR EFFECT.');
   if (p.method === 'grid' && p.digits.length === 8 &&
@@ -4739,7 +4765,7 @@ function cffqStart(warno, p) {
   CFFQ.on = true; CFFQ.stage = 1; CFFQ.warno = warno; CFFQ.t0 = sim.now;
   cffqAdd(p);
   // Transmission 1 read back, per CLAUDE.md: the FDC reads back EACH transmission
-  FDC.say(`${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ` +
+  FDC.say(`${CONFIG.FDC.obs}, ${fdcCall()}, ` +
           `${warno === 'ffe' ? 'FIRE FOR EFFECT' : 'ADJUST FIRE'}, OUT.`,
           { delay: CONFIG.FDC.readbackDelay });
   FDC.say('SEND YOUR TARGET LOCATION, OVER.', { delay: 1.5 });
@@ -4795,8 +4821,11 @@ function handleCFF(p) {
   // strict net (Volume IV): full format or the call is rejected
   if (activeChapter && activeChapter.strict) {
     let challenge = null;
-    if (!p.raw.includes('hellhound') || !p.raw.includes('mustang'))
-      challenge = 'this net runs callsigns. Identify yourself and your addressee and say again your last, over.';
+    // G17 — the RIGHT callsign: on a mortar net, addressing HELLHOUND is a miss
+    if (!p.raw.includes(fdcShort().toLowerCase()) || !p.raw.includes('mustang'))
+      challenge = p.raw.includes('hellhound') && fdcShort() !== 'HELLHOUND'
+        ? `HELLHOUND is the one-five-five battery and they are not on this net. You are talking to ${fdcCall()}. Say again your last, addressed to the right people, over.`
+        : 'this net runs callsigns. Identify yourself and your addressee and say again your last, over.';
     else if (p.warno === 'none')
       challenge = 'no warning order heard. ADJUST FIRE or FIRE FOR EFFECT, then location. Say again, over.';
     else if (!p.desc)
@@ -4923,7 +4952,7 @@ function handleCFF(p) {
     : p.staged
       ? `${p.desc ? p.desc.toUpperCase() : 'NO DESCRIPTION'}` +
         (saidDangerClose(p.raw) ? ', DANGER CLOSE' : '') + ', OUT.'
-      : `${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
+      : `${CONFIG.FDC.obs}, ${fdcCall()}, ${warnoText}, ${locStr}` +
         (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
           { delay: p.imm ? 0.7 : CONFIG.FDC.readbackDelay });
   /* G11 — the MTO expectation. Built LOCALLY and handed to fireMission via meta,
@@ -6995,7 +7024,7 @@ function newMission(first, type, chapter) {
     if (chapter.strict)
       log('', 'STRICT NET: full format enforced — callsigns, warning order, location, description, OVER; corrections rounded (deviation in tens, range in hundreds — fifties only entering fire for effect); surveillance term at end of mission.', 'sys');
     if (chapter.asset === 'mortar60')
-      log('', 'ASSET: 60mm mortar section — 8-digit grids (10 m precision) required. Tighter dispersion, tighter target.', 'sys');
+      log('', `ASSET: 60mm mortar section, callsign ${CONFIG.FDC.fdc60} — address THEM, not HELLHOUND; strict net will bounce the wrong callsign. 8-digit grids (10 m precision) required. Tighter dispersion, tighter target.`, 'sys');
     if (chapter.par)
       log('', `Par time for full stars: ${fmtTime(chapter.par)}.`, 'sys');
     if (chapter.tut) tutStart(chapter);
