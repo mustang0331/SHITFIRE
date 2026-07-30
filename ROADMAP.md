@@ -4,7 +4,7 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-30 · Head: `57532a5` · **The file is `SHITFIRE.html`, not `index.html`**
+Last updated: 2026-07-30 · Head: `1ed1dcd` · **The file is `SHITFIRE.html`, not `index.html`**
 
 **Shipped off this board:** `13a` bino quality pin · `F1` range rounding · `13b` ACES tone mapping ·
 `13c` sky + time of day · **Track E complete** (`E1`–`E7`: legibility, SALUTE, night/NVG/thermal,
@@ -17,21 +17,28 @@ rows) · **Track A / stage 13 visual overhaul complete** (`13a`–`13i`: bino qu
 optics presentation — vignette, sway) · **Track B / stage 12 complete** (`12a`–`12k`: coach through
 balance pass — closed by `12i` wind `861c610`, `12j` degraded optics audit, `12k` balance audit) ·
 `F2`/`F1b` asset-keyed danger close (battery 600 m / mortar60 250 m, inclusive `<=`) `74727e3` ·
-`11a` E.1 THE GREAT CHOW RAID (Epilogue opens) `57532a5`.
+`11a` E.1 THE GREAT CHOW RAID (Epilogue opens) `57532a5` · `11b` E.2 CLAWS OUT (kaiju scenario type,
+per-target armor divisor, DESTROYED-only kill rule) `1ed1dcd`.
 
-**Next:** **`11b` (Stage 11 / Epilogue — E.2 CLAWS OUT).** `11a` shipped `57532a5`: a chapter-only
-`chow` scenario type (never in skirmish rotation) — barbecue pit on a beach terrace, COOKS as a
-no-fire line under standard fratricide rules, a gull flock massing 150–210 m off the pit that is
-inherently danger close, full doctrine applying per the Epilogue thesis. Flock rendered as troop
-figures at gull scale (scale-reset guard added to `placeUnits`); grill smokes; near misses scatter the
-flock via the existing dispersal machinery. Humor dialed to 11 per the rules (briefing/outro/two GUNNY
-lines) while the FDC stays deadpan and the readback stays sacred. Verified 8/8 live e2e (Epilogue
-unlocked, E.1 launched through the real menu, scenario shape checked, danger-close FFE flown with zero
-fratricide, graded PASS on ordinary machinery); 12/12 shots; lint 0. Track A / stage 13 and Track G are
-both complete (Track G modulo `G20`, PARKED at the user's direction); Track F holds only the PARKED
-**F4**. With `11a` closed, the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 +
-Track F) advances to **`11b`**, marked NEXT below. Stage 14 (dialogue punch-up, Track D) is READY and
-has zero conflict surface with stage 11, so it can still be pulled forward on request.
+**Next:** **`11c` (Stage 11 / Epilogue — E.3 SUNLAMP ACTUAL).** `11b` shipped `1ed1dcd`: a new
+chapter-only `kaiju` scenario type — a church-sized crimson crab (the bunker mesh scaled, with leak
+guards) wades ashore at 2.1 m/s on a convoy-style path from open water toward the nearest village;
+landfall both fails the mission and ends it (convoy-escape precedent, a type-aware verdict
+"FAIL — LANDFALL"). The effect engine gained `S.armor` — divides every round's contribution, so the
+crab is easy to hit and hard to hurt (effect bands doubled via `effScale` to compensate) — and a
+kaiju-specific rule that only DESTROYED counts as felling it; there is no "combat-ineffective" out,
+across `assessFFE`, `missionAccomplished`, the AAR ("FAIL — IT IS STILL WALKING"), and star grading
+alike. Found mid-build: the first optimal volley "neutralized" the crab into merely stopping, which is
+what forced the DESTROYED-only rule. Optimal fire runs ≈2 volleys while it's still moving, sloppy fire
+≈4, with the landfall clock always running. Humor per the rules: battalion rules it "a surface target
+and therefore yours," HELLHOUND elects not to react, and the AAR files one (1) hard structure, mobile,
+destroyed. Verified 7/7 live e2e (menu launch, wading measured, armor holding volley one, correction +
+REPEAT carrying it to DESTROYED before landfall); 12/12 shots; g13 e2e 15/15 and the effects harness
+48/48 unchanged; lint 0. Track A / stage 13 and Track G are both complete (Track G modulo `G20`,
+PARKED at the user's direction); Track F holds only the PARKED **F4**. With `11b` closed, the standing
+order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) advances to **`11c`**, marked
+NEXT below. Stage 14 (dialogue punch-up, Track D) is READY and has zero conflict surface with stage
+11, so it can still be pulled forward on request.
 
 > ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
 > (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
@@ -212,14 +219,14 @@ carried as open work. No further rows remain in this track; board advances per t
 Deferred 2026-07-29 behind stage 13 and the stage 12 remainder. Both have since shipped whole (Track A
 complete, Track B complete, and Track F's two schedulable side fixes F2/F1b closed alongside them
 `74727e3`), so the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) now
-reaches this track for the first time. `11a` shipped `57532a5`; `11b` is NEXT, `11c`–`11e` stay queued
-behind it, one row at a time per the workflow rule.
+reaches this track for the first time. `11a` shipped `57532a5`; `11b` shipped `1ed1dcd`; `11c` is NEXT,
+`11d`–`11e` stay queued behind it, one row at a time per the workflow rule.
 
 | ID | What | Owner | Status |
 |---|---|---|---|
 | 11a | ~~E.1 THE GREAT CHOW RAID~~ **DONE** `57532a5` — chapter-only `chow` scenario type (never in skirmish rotation): barbecue pit on a beach terrace, COOKS as a no-fire line (standard fratricide rules), gull flock massing 150–210 m off the pit — inherently danger close, full doctrine applies (the Epilogue thesis, NARRATIVE.md). Flock rendered as troop figures at gull scale (scale-reset guard added to `placeUnits`); grill smokes; near misses scatter the flock via the ordinary dispersal machinery. Humor per the rules: dial-11 briefing/outro plus two GUNNY coach lines; FDC stays deadpan; readback sacred throughout. Verified 8/8 live e2e (Epilogue unlocked, E.1 launched through the real menu, scenario shape checked, danger-close FFE flown with zero fratricide, graded PASS on ordinary machinery); 12/12 shots; lint 0. | Opus | **DONE** `57532a5` |
-| 11b | E.2 CLAWS OUT | Opus | **NEXT** |
-| 11c | E.3 SUNLAMP ACTUAL — **still `impact = aimpoint + error`**; only pacing, prowords, beam visual, audio differ | Opus | READY |
+| 11b | ~~E.2 CLAWS OUT~~ **DONE** `1ed1dcd` — new chapter-only `kaiju` scenario type: a church-sized crimson crab (the bunker mesh scaled, with leak guards) wades ashore at 2.1 m/s on a convoy-style path from open water toward the nearest village; landfall fails **and** ends the mission (convoy-escape precedent, type-aware verdict "FAIL — LANDFALL"). Effect engine gained `S.armor` (divides every round's contribution — easy to hit, hard to hurt; bands doubled via `effScale`) and a kaiju rule that only DESTROYED fells it, no "combat-ineffective" out (`assessFFE`, `missionAccomplished`, AAR "FAIL — IT IS STILL WALKING", star grading all agree) — found when the first optimal volley "neutralized" the crab into merely stopping. Optimal fire ≈2 volleys on the move, sloppy ≈4, landfall clock running throughout. Humor per the rules: battalion rules it "a surface target and therefore yours," HELLHOUND elects not to react, AAR files one (1) hard structure, mobile, destroyed. Verified 7/7 live e2e (menu launch, wading measured, armor holds volley one, correction+REPEAT to DESTROYED before landfall); 12/12 shots; g13 e2e 15/15 and effects harness 48/48 unchanged; lint 0. | Opus | **DONE** `1ed1dcd` |
+| 11c | E.3 SUNLAMP ACTUAL — **still `impact = aimpoint + error`**; only pacing, prowords, beam visual, audio differ | Opus | **NEXT** |
 | 11d | G8 bloom, gated to SUNLAMP + quality tier 0 only | Opus | READY |
 | 11e | Campaign-wide star par balance pass | Opus | READY |
 
@@ -492,3 +499,4 @@ work does not touch rendering.
 | 2026-07-30 | **12i shipped `861c610`, 12j and 12k closed by audit — Track B / STAGE 12 IS NOW COMPLETE.** 12i: wind rolls per island off its own seeded stream (deterministic across boots, 1.5–6 m/s), reported at mission start as a MET line; every smoke source obeys the one vector — burst columns lean downwind (replacing the old hardcoded +x lean every column shared), 13h wisps drift, 12h screens sag downwind with upper puffs leading, the illum chute rides it; rounds stay unaffected per the ballistics rule, and the MET line says so. 12j: audited rather than built — the noLaser mechanism and chapter 2.1 "NUMBERS ON A COMPASS" (polar, dead laser) already shipped with stage 10; verified live by driving the real menu in headless Chrome (unlocked Volume II, raised binos, pressed [L]: "LRF FAULT — NO RETURN", mil card auto-opens, no errors) — the gate was already satisfied, the board just hadn't flipped it. 12k: audited the star-par balance against the post-G13/G18 graded model — par clock excludes pre-call observation time, perfect-run floors leave 2–3× headroom against every chapter's par, neutralization is *looser* than the old binary rule, and the 4.2 mortar prone-spiral fits its par as intended; conclusion is no chapter data needed to change. With these three closed, **stage 12 has no open rows left**; board advances to **stage 11 (Epilogue)** per the standing order, with Track F's F2/F1b available as schedulable-anytime side fixes and stage 14 pullable forward on request. |
 | 2026-07-30 | **F2 shipped `74727e3`, F1b folded in — Track F's schedulable-anytime side fixes are closed, and the deferral queue ahead of Track C has fully emptied.** BALLISTICS_RESEARCH.md §6 was followed both ways: the flat, un-tiered danger-close gate is a deliberate and correct simplification and stays — the row's original ≤800/≤700/≤600 radio-tension bands are deliberately **not** built — but danger close is weapon-specific, and the 60mm mortar chapters were demanding the proword at an artillery distance. A single `dangerCloseRadius()` helper, sited next to `assetScale()`, keys `CONFIG.MISSION.dangerClose` off the chapter's asset (battery 600 m / mortar60 250 m) so the figure can never fork between call sites again. F1b (the boundary was exclusive `<`; DOCTRINE's "within 600 m" is inclusive) folded into the same edit as `<=`, rather than a second pass over the same line. DOCTRINE.md's danger-close section annotated implemented-as-shipped. Verified: extracted-helper check (600/250 by asset), 15/15 danger-close mission e2e, 12/12 shots, lint 0. **With Track F now holding only the PARKED F4, and Track A/B both complete, the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) reaches stage 11 for the first time. Track C is un-parked; `11a` (E.1 THE GREAT CHOW RAID) is marked NEXT.** |
 | 2026-07-30 | **11a shipped `57532a5` — the Epilogue opens with E.1 THE GREAT CHOW RAID.** New chapter-only scenario type `chow` (never entering the skirmish rotation): a barbecue pit on a beach terrace, COOKS as a no-fire line under the standard fratricide rules, and a seagull flock massing 150–210 m off the pit — inherently danger close, so full doctrine applies exactly as NARRATIVE.md's Epilogue thesis promises ("doctrine remains in full effect, which is the joke"). The flock is rendered as troop figures at gull scale, which needed a scale-reset guard added to `placeUnits` so gull-scale figures can't leak their scale into a later normal-scale spawn; grill smokes for atmosphere; near misses scatter the flock through the existing dispersal machinery rather than any new code path. Humor lands per the rules: a dial-11 briefing and outro plus two GUNNY coach lines, while the FDC itself stays deadpan and the readback stays sacred throughout. Verified 8/8 live e2e (Epilogue unlocked, E.1 launched through the real menu, scenario shape checked, a danger-close FFE flown with zero fratricide, graded PASS on the ordinary grading machinery — no bespoke chow-specific grading was needed); 12/12 shots; lint 0. **Board advances to `11b` (E.2 CLAWS OUT), the first not-DONE row in Track C.** |
+| 2026-07-30 | **11b shipped `1ed1dcd` — E.2 CLAWS OUT, a moving target that is also a crab.** New chapter-only scenario type `kaiju`: a church-sized crimson crab (the bunker mesh scaled up, with leak guards) wades in from open water toward the nearest village at 2.1 m/s on a convoy-style path; landfall both fails the mission and ends it outright, reusing the convoy-escape precedent for a type-aware verdict, "FAIL — LANDFALL". The effect engine gained two new pieces: `S.armor`, which divides every round's contribution to the effect roll (easy to hit, hard to hurt — effect bands doubled via `effScale` so the mission stays fair), and a kaiju-only rule that only DESTROYED counts as felling it, with no "combat-ineffective" pass — `assessFFE`, `missionAccomplished`, the AAR verdict ("FAIL — IT IS STILL WALKING"), and star grading all agree on this. The DESTROYED-only rule exists because the first optimal volley, under the ordinary rules, "neutralized" the crab into just stopping in place — not the intended outcome for a kaiju chapter. Optimal fire clears it in roughly 2 volleys while it's still wading; sloppy fire needs roughly 4, with the landfall clock running the whole time. Humor lands per the rules without breaking the readback: battalion rules the crab "a surface target and therefore yours," HELLHOUND elects not to react to any of it, and the AAR files exactly one (1) hard structure, mobile, destroyed. Verified 7/7 live e2e (menu launch, wading speed measured, armor holding through volley one, a correction plus REPEAT carrying it to DESTROYED before landfall); 12/12 shots; the G13 effects e2e (15/15) and effects harness (48/48) both unchanged; lint 0. **Board advances to `11c` (E.3 SUNLAMP ACTUAL), the first not-DONE row in Track C.** |

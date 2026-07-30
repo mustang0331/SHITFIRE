@@ -98,6 +98,13 @@ The war is won. The paperwork isn't. Doctrine remains in full effect, which is t
 *E.1 is built as specified above — chapter-only `chow` scenario, COOKS as a no-fire line, the flock
 inherently danger close, doctrine enforced in full. Shipped `57532a5`; see ROADMAP.md `11a`.*
 
+*E.2 is built as specified above — chapter-only `kaiju` scenario, the crab wading ashore on a
+convoy-style path at 2.1 m/s, landfall a fail-and-end verdict ("FAIL — LANDFALL"), and a
+DESTROYED-only kill rule (armor divides every round's contribution, and no "combat-ineffective" out
+exists for it) so the fight can't resolve as merely stopping a still-standing crab. Battalion rules it
+"a surface target and therefore yours"; HELLHOUND declines to react to any of it. Shipped `1ed1dcd`;
+see ROADMAP.md `11b`.*
+
 ## VOLUME V — ON WINGS *(FUTURE — locked tease, do not build yet)*
 
 Close air support: 9-line briefs, talk-ons, attack geometry. Appears on the shelf as a locked spine — "VOLUME V: ON WINGS — awaiting aircraft." Built only after the surface-to-surface campaign is complete.
