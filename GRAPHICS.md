@@ -4,6 +4,11 @@
 > and status; the G-numbers here map to ROADMAP row IDs as `13a = G0.4`, `13b = G0 rest`,
 > `13c = G1` … `13i = G7`. **G8 (bloom) is reassigned to stage 11** as row 11d — it is SUNLAMP-only,
 > so it ships with the Epilogue, not here. Work one ROADMAP row per commit.
+>
+> **Track A / stage 13 is now closed** (2026-07-30, `13i` `5384cf1`): `13a`–`13i` all shipped, which
+> means the planned core set §G0 through §G7 is **fully landed**. The only unbuilt row in this whole
+> document is **§G8 (bloom)**, and that is deliberate — it is deferred with stage 11 as row 11d,
+> gated to the SUNLAMP directed-energy chapter and quality tier 0 only, not a gap in this plan.
 
 Reference/strategy doc. **No code in `SHITFIRE.html` has been changed by this plan yet** — it was written
 while another agent held the file. Every item below is designed as an *additive, independently
@@ -415,6 +420,23 @@ per-impact-allocated particle system.**
 ---
 
 ## G7 — Optics presentation (no WebGL cost)
+
+> **Shipped `5384cf1` (2026-07-30) as ROADMAP 13i — closes Track A / stage 13 whole.** The field stop
+> landed exactly as scoped below, as CSS on the existing vignette element: interior edge-darkening
+> plus a thin warm/cool chromatic fringe hugging the stop, zero WebGL cost. The first attempt used a
+> wide amber halo that dominated the field — caught visually and tightened to a hairline rim before
+> landing, since the row's gate is that mil graduations stay at full contrast and unencroached, and a
+> wide halo would have crept onto them. Sway shipped as a two-frequency constant-angle wobble added in
+> `lookDir` while glassing, rather than a single damped oscillator — the view, the reticle measurement,
+> and the laser ray all read off the same wobbled `lookDir`, so the three agree instead of the reticle
+> drawing sway the raycast doesn't share. The raise transient settles ~1 s, matching the plan; a lase
+> steadies the hold to near zero by resetting the wobble state before the scheduled ray fires, so a
+> held lase reads as steady even though sway resumes right after. `CONFIG.GFX.swayMil` lives at
+> `CONFIG.CAMERA.swayMil` instead (0.65 default, 0 disables) — the one placement difference from the
+> plan's phrasing. Yaw/pitch state elsewhere in the camera is untouched. Verified 12/12 screenshot
+> states clean; lint 0 errors; offline zero-network confirmed. The plan text below is kept as the
+> design record. **This closes the graphics plan's core set (§G0–§G7); only §G8 (bloom) remains, and
+> it is deliberately deferred to stage 11 (SUNLAMP-only) — see the appendix note below.**
 
 All of this is drawn into the existing 2D reticle canvas (search `drawReticle` in SHITFIRE.html) or done
 in CSS — zero GL cost, zero risk to frame rate:
