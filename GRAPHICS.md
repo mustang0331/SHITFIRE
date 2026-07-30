@@ -456,6 +456,8 @@ Anything that fails becomes a Track F row on ROADMAP — **not** a silent revert
 | 13 | G2 | `MAG` in the topbar; the sheet's new declination diagram | Diagram illegible in black and white; `MAG` mistaken for the old `AZ` at a glance |
 | 14 | G5 | Open the mil card `[R]` with the comms panel up | Card still overlapped, or fighting the touch bar in a small window |
 | 15 | G6 | Drag the comms header, resize from the corner, double-click to reset | Resize corner invisible against the border; transcript clipped instead of resized; scroll not pinned to bottom |
+| 16 | 13d | The island's relief at midday and at dawn (`applyTOD`), and a Volume IV black-sand chapter | Ridges/draws not visibly deeper than pre-13d; dawn not raking the relief; black sand crushed to illegibility; or the [M] map/sheets picking up any tint |
+| 17 | F3 | `[H]` cheat sheet over a running mission | Text illegible at 12px; panel fighting the mil card or comms panel; [ESC] not closing it |
 
 ---
 
