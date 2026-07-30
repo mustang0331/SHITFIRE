@@ -4,7 +4,7 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-30 · Head: `74727e3` · **The file is `SHITFIRE.html`, not `index.html`**
+Last updated: 2026-07-30 · Head: `57532a5` · **The file is `SHITFIRE.html`, not `index.html`**
 
 **Shipped off this board:** `13a` bino quality pin · `F1` range rounding · `13b` ACES tone mapping ·
 `13c` sky + time of day · **Track E complete** (`E1`–`E7`: legibility, SALUTE, night/NVG/thermal,
@@ -16,20 +16,22 @@ match, duplicate-DANGER-CLOSE readback · `G19` CFF audit · **G-B doctrine clus
 rows) · **Track A / stage 13 visual overhaul complete** (`13a`–`13i`: bino quality pin through
 optics presentation — vignette, sway) · **Track B / stage 12 complete** (`12a`–`12k`: coach through
 balance pass — closed by `12i` wind `861c610`, `12j` degraded optics audit, `12k` balance audit) ·
-`F2`/`F1b` asset-keyed danger close (battery 600 m / mortar60 250 m, inclusive `<=`) `74727e3`.
+`F2`/`F1b` asset-keyed danger close (battery 600 m / mortar60 250 m, inclusive `<=`) `74727e3` ·
+`11a` E.1 THE GREAT CHOW RAID (Epilogue opens) `57532a5`.
 
-**Next:** **`11a` (Stage 11 / Epilogue — E.1 THE GREAT CHOW RAID).** Track B / stage 12 is closed whole
-(`12i`/`12j`/`12k` flipped DONE 2026-07-30) and Track F's F2/F1b — the last schedulable-anytime side
-fixes that were open alongside it — landed the same day: **F2** `74727e3` asset-keys danger close
-(battery 600 m / mortar60 250 m) off the chapter's asset instead of building the tiered 800/700/600
-radio-tension bands BALLISTICS_RESEARCH.md §6 argued against, and **F1b** (inclusive `<=`) folded into
-the same edit. Track A / stage 13 and Track G are both complete (Track G modulo `G20`, PARKED at the
-user's direction). With Track F now holding only the PARKED **F4** (multi-phase MEAT GRINDER chaining,
-pending single-mission balance), the deferral queue ahead of Track C — stage 13, then stage 12 remainder
-— has fully emptied, and the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 +
-Track F) reaches **stage 11 (Epilogue)** for the first time. Track C's rows are un-parked accordingly;
-**`11a`** is marked NEXT below. Stage 14 (dialogue punch-up, Track D) is READY and has zero conflict
-surface with stage 11, so it can still be pulled forward on request.
+**Next:** **`11b` (Stage 11 / Epilogue — E.2 CLAWS OUT).** `11a` shipped `57532a5`: a chapter-only
+`chow` scenario type (never in skirmish rotation) — barbecue pit on a beach terrace, COOKS as a
+no-fire line under standard fratricide rules, a gull flock massing 150–210 m off the pit that is
+inherently danger close, full doctrine applying per the Epilogue thesis. Flock rendered as troop
+figures at gull scale (scale-reset guard added to `placeUnits`); grill smokes; near misses scatter the
+flock via the existing dispersal machinery. Humor dialed to 11 per the rules (briefing/outro/two GUNNY
+lines) while the FDC stays deadpan and the readback stays sacred. Verified 8/8 live e2e (Epilogue
+unlocked, E.1 launched through the real menu, scenario shape checked, danger-close FFE flown with zero
+fratricide, graded PASS on ordinary machinery); 12/12 shots; lint 0. Track A / stage 13 and Track G are
+both complete (Track G modulo `G20`, PARKED at the user's direction); Track F holds only the PARKED
+**F4**. With `11a` closed, the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 +
+Track F) advances to **`11b`**, marked NEXT below. Stage 14 (dialogue punch-up, Track D) is READY and
+has zero conflict surface with stage 11, so it can still be pulled forward on request.
 
 > ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
 > (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
@@ -210,13 +212,13 @@ carried as open work. No further rows remain in this track; board advances per t
 Deferred 2026-07-29 behind stage 13 and the stage 12 remainder. Both have since shipped whole (Track A
 complete, Track B complete, and Track F's two schedulable side fixes F2/F1b closed alongside them
 `74727e3`), so the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) now
-reaches this track for the first time. `11a` is NEXT; `11b`–`11e` stay queued behind it, one row at a
-time per the workflow rule.
+reaches this track for the first time. `11a` shipped `57532a5`; `11b` is NEXT, `11c`–`11e` stay queued
+behind it, one row at a time per the workflow rule.
 
 | ID | What | Owner | Status |
 |---|---|---|---|
-| 11a | E.1 THE GREAT CHOW RAID | Opus | **NEXT** |
-| 11b | E.2 CLAWS OUT | Opus | READY |
+| 11a | ~~E.1 THE GREAT CHOW RAID~~ **DONE** `57532a5` — chapter-only `chow` scenario type (never in skirmish rotation): barbecue pit on a beach terrace, COOKS as a no-fire line (standard fratricide rules), gull flock massing 150–210 m off the pit — inherently danger close, full doctrine applies (the Epilogue thesis, NARRATIVE.md). Flock rendered as troop figures at gull scale (scale-reset guard added to `placeUnits`); grill smokes; near misses scatter the flock via the ordinary dispersal machinery. Humor per the rules: dial-11 briefing/outro plus two GUNNY coach lines; FDC stays deadpan; readback sacred throughout. Verified 8/8 live e2e (Epilogue unlocked, E.1 launched through the real menu, scenario shape checked, danger-close FFE flown with zero fratricide, graded PASS on ordinary machinery); 12/12 shots; lint 0. | Opus | **DONE** `57532a5` |
+| 11b | E.2 CLAWS OUT | Opus | **NEXT** |
 | 11c | E.3 SUNLAMP ACTUAL — **still `impact = aimpoint + error`**; only pacing, prowords, beam visual, audio differ | Opus | READY |
 | 11d | G8 bloom, gated to SUNLAMP + quality tier 0 only | Opus | READY |
 | 11e | Campaign-wide star par balance pass | Opus | READY |
@@ -489,3 +491,4 @@ work does not touch rendering.
 | 2026-07-30 | **12h shipped** `6b7fd3c` — smoke and illumination mission types, closing the last row that was waiting on 13c's TOD. Shell is now a real method-of-engagement element like sheaf/fuze: named in the call (SHELL SMOKE / WP → smoke / ILLUMINATION), switched bare mid-mission ("SHELL SMOKE, OVER"), with immediate smoke riding the same one-transmission path as immediate suppression. The MTO announces the real nature (155 SMOKE / 155 ILLUMINATION FUZE TIME) rather than the shell words verbatim, which are stripped from the description readback. **SMOKE** pools standing screens (~90 s) and scores ZERO casualties — only HE feeds the graded model, since smoke can't kill convoy vehicles — but a screen within `EFFECTS.screen.radius` (120 m) of the enemy suppresses by OBSCURATION, so a screening mission still grades PASS — TARGET SUPPRESSED; intent follows the shell rather than a body count. **ILLUMINATION** never touches the ground: no crater, casualties, fratricide, or alerts, just one pooled PointLight + flare sprite riding down over ~55 s. r160's physical light units needed roughly 240k candela to pool visible light on terrain 300 m below — a first attempt at 2.8 legacy units lit nothing, caught by the night screenshot rather than the parse gate. Graded PASS — ILLUMINATION PROVIDED; the strict net doesn't demand casualty BDA for a mission whose entire point is light. This is what 13c's night TOD existed to support. **Absorbs G14's immediate smoke**, which now drives a real screen/obscuration effect instead of parsing to inert flavor text — supersedes nothing else on the board. Verified 11/11 e2e (parse aliases, a live immediate-smoke mission with obscuration-suppression PASS, a live night illumination mission with a screenshot of the lit terrain pool); 12/12 shots; effects harness 48/48 unchanged; replay over 247 recorded transmissions unchanged. **Board advances to 12i** (wind model — drifts smoke so it reads as a tool, now that 12h gives it a real screen to drift). |
 | 2026-07-30 | **12i shipped `861c610`, 12j and 12k closed by audit — Track B / STAGE 12 IS NOW COMPLETE.** 12i: wind rolls per island off its own seeded stream (deterministic across boots, 1.5–6 m/s), reported at mission start as a MET line; every smoke source obeys the one vector — burst columns lean downwind (replacing the old hardcoded +x lean every column shared), 13h wisps drift, 12h screens sag downwind with upper puffs leading, the illum chute rides it; rounds stay unaffected per the ballistics rule, and the MET line says so. 12j: audited rather than built — the noLaser mechanism and chapter 2.1 "NUMBERS ON A COMPASS" (polar, dead laser) already shipped with stage 10; verified live by driving the real menu in headless Chrome (unlocked Volume II, raised binos, pressed [L]: "LRF FAULT — NO RETURN", mil card auto-opens, no errors) — the gate was already satisfied, the board just hadn't flipped it. 12k: audited the star-par balance against the post-G13/G18 graded model — par clock excludes pre-call observation time, perfect-run floors leave 2–3× headroom against every chapter's par, neutralization is *looser* than the old binary rule, and the 4.2 mortar prone-spiral fits its par as intended; conclusion is no chapter data needed to change. With these three closed, **stage 12 has no open rows left**; board advances to **stage 11 (Epilogue)** per the standing order, with Track F's F2/F1b available as schedulable-anytime side fixes and stage 14 pullable forward on request. |
 | 2026-07-30 | **F2 shipped `74727e3`, F1b folded in — Track F's schedulable-anytime side fixes are closed, and the deferral queue ahead of Track C has fully emptied.** BALLISTICS_RESEARCH.md §6 was followed both ways: the flat, un-tiered danger-close gate is a deliberate and correct simplification and stays — the row's original ≤800/≤700/≤600 radio-tension bands are deliberately **not** built — but danger close is weapon-specific, and the 60mm mortar chapters were demanding the proword at an artillery distance. A single `dangerCloseRadius()` helper, sited next to `assetScale()`, keys `CONFIG.MISSION.dangerClose` off the chapter's asset (battery 600 m / mortar60 250 m) so the figure can never fork between call sites again. F1b (the boundary was exclusive `<`; DOCTRINE's "within 600 m" is inclusive) folded into the same edit as `<=`, rather than a second pass over the same line. DOCTRINE.md's danger-close section annotated implemented-as-shipped. Verified: extracted-helper check (600/250 by asset), 15/15 danger-close mission e2e, 12/12 shots, lint 0. **With Track F now holding only the PARKED F4, and Track A/B both complete, the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) reaches stage 11 for the first time. Track C is un-parked; `11a` (E.1 THE GREAT CHOW RAID) is marked NEXT.** |
+| 2026-07-30 | **11a shipped `57532a5` — the Epilogue opens with E.1 THE GREAT CHOW RAID.** New chapter-only scenario type `chow` (never entering the skirmish rotation): a barbecue pit on a beach terrace, COOKS as a no-fire line under the standard fratricide rules, and a seagull flock massing 150–210 m off the pit — inherently danger close, so full doctrine applies exactly as NARRATIVE.md's Epilogue thesis promises ("doctrine remains in full effect, which is the joke"). The flock is rendered as troop figures at gull scale, which needed a scale-reset guard added to `placeUnits` so gull-scale figures can't leak their scale into a later normal-scale spawn; grill smokes for atmosphere; near misses scatter the flock through the existing dispersal machinery rather than any new code path. Humor lands per the rules: a dial-11 briefing and outro plus two GUNNY coach lines, while the FDC itself stays deadpan and the readback stays sacred throughout. Verified 8/8 live e2e (Epilogue unlocked, E.1 launched through the real menu, scenario shape checked, a danger-close FFE flown with zero fratricide, graded PASS on the ordinary grading machinery — no bespoke chow-specific grading was needed); 12/12 shots; lint 0. **Board advances to `11b` (E.2 CLAWS OUT), the first not-DONE row in Track C.** |

@@ -95,6 +95,9 @@ The war is won. The paperwork isn't. Doctrine remains in full effect, which is t
 | E.2 | **CLAWS OUT** | A B-movie kaiju crab wades ashore. It's a moving target. It is also a crab the size of a church. HELLHOUND refuses to acknowledge that anything is unusual. |
 | E.3 | **SUNLAMP ACTUAL** | The finale: a call for fire to **SUNLAMP** — an intergalactic space cannon satellite of mass destruction, on loan "from a partner force." Same doctrine, same direct-impact model. TOF is a charging whine from everywhere at once; "SHOT" becomes "DISCHARGE"; "SPLASH" becomes "SOLAR EVENT, OVER"; the beam is a column of noon-colored light. SUNLAMP ACTUAL cheerfully requests a 10-digit grid; HELLHOUND, patched into the net, has never sounded more tired. |
 
+*E.1 is built as specified above — chapter-only `chow` scenario, COOKS as a no-fire line, the flock
+inherently danger close, doctrine enforced in full. Shipped `57532a5`; see ROADMAP.md `11a`.*
+
 ## VOLUME V — ON WINGS *(FUTURE — locked tease, do not build yet)*
 
 Close air support: 9-line briefs, talk-ons, attack geometry. Appears on the shelf as a locked spine — "VOLUME V: ON WINGS — awaiting aircraft." Built only after the surface-to-surface campaign is complete.
