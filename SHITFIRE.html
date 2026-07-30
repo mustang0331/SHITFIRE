@@ -3894,10 +3894,102 @@ function fireMission(targetLocation, warno, meta) {
                             // with dispersion off; blocks star recording
     checkFire: false,       // G25 — safety hold active; blocks new firing
     usedCheckFire: false,   // G25 — sticky, for the AAR
+    /* G24 — method of fire and control. `amc` persists for the whole mission once
+       requested and until CANCEL AT MY COMMAND, per DOCTRINE.md §34; it is not a
+       one-shot. `pendingFire` holds the firing call that is waiting on the
+       observer's FIRE, and `released` is the one-shot latch that lets the retried
+       call through without immediately re-arming the hold. */
+    amc: !!(meta && meta.amc), pendingFire: null, released: false,
+    cannotObserve: false,   // §34 — observer has declared he cannot spot
+    tot: null,              // §34 — time on target, accepted and acknowledged
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
   };
   if (warno === 'ffe') fireForEffect();
   else fireAdjustRound();
+}
+
+/* ---- G24: AT MY COMMAND (DOCTRINE.md §34) -----------------------------------
+   Method of fire and control. The default is "when ready" — the FDC fires as soon
+   as it has data. Under AT MY COMMAND it lays the guns, reports READY, and waits
+   for the observer to say FIRE. It persists for the whole mission until CANCEL AT
+   MY COMMAND; it is not a one-shot, which is the detail most easily got wrong.
+
+   Absorbs the old row 12f, which had been blocked behind the parser work.
+
+   `released` is a one-shot latch rather than a second flag on the call: the held
+   firing function is re-invoked verbatim when FIRE arrives, so without the latch
+   it would arm the hold again on the way in and never fire. */
+function armAtMyCommand(fn) {
+  if (!mission || !mission.amc) return false;
+  if (mission.released) { mission.released = false; return false; }
+  mission.pendingFire = fn;
+  setState('AT MY COMMAND');
+  FDC.say('READY, OVER.', { delay: 1.0 });
+  return true;
+}
+function handleFire() {
+  if (!mission || mission.done) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  if (!mission.pendingFire) {
+    FDC.say(mission.amc
+      ? 'NOTHING IS LAID AND WAITING, MUSTANG. Send your correction first, over.'
+      : 'You are not AT MY COMMAND, MUSTANG — I fire when ready. Nothing is waiting on you, over.',
+      { delay: 0.9 });
+    return;
+  }
+  const fn = mission.pendingFire;
+  mission.pendingFire = null;
+  mission.released = true;
+  FDC.say('FIRE, OUT.', { delay: 0.5 });
+  fn();
+}
+function handleAtMyCommand(on) {
+  if (!mission || mission.done) {
+    // Legal in a call for fire, so say so rather than mocking a correct proword.
+    FDC.say(on
+      ? 'AT MY COMMAND is method of fire and control — send it with your call for fire, over.'
+      : 'No mission running, nothing to cancel, out.', { delay: 0.9 });
+    return;
+  }
+  mission.amc = on;
+  FDC.say(on ? 'AT MY COMMAND, OUT.' : 'CANCEL AT MY COMMAND, OUT.', { delay: 0.7 });
+  if (!on && mission.pendingFire) {
+    // Cancelling reverts to "when ready", so anything already laid goes now —
+    // leaving it held would strand the mission on a proword that no longer applies.
+    const fn = mission.pendingFire;
+    mission.pendingFire = null;
+    mission.released = true;
+    log('', 'CANCEL AT MY COMMAND — reverting to WHEN READY. The round already laid goes now.', 'sys');
+    fn();
+  }
+}
+function handleDoNotLoad() {
+  if (!mission || mission.done) { FDC.say('DO NOT LOAD, OUT. Nothing is loaded.', { delay: 0.7 }); return; }
+  // Doctrinally distinct from CEASE LOADING but has the same effect on this model:
+  // nothing new goes up. Reuses G25's hold rather than inventing a second one.
+  mission.checkFire = true;
+  mission.usedCheckFire = true;
+  setState('DO NOT LOAD');
+  FDC.say('DO NOT LOAD, OUT.', { delay: 0.7 });
+  log('', 'DO NOT LOAD — the guns stay empty. Send a correction or FIRE FOR EFFECT to resume.', 'sys');
+}
+function handleCannotObserve() {
+  if (!mission || mission.done) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  mission.cannotObserve = true;
+  mission.notes.push('Declared CANNOT OBSERVE — the FDC stops expecting spotting corrections.');
+  FDC.say('CANNOT OBSERVE, OUT. We will fire the mission blind on your last data. ' +
+          'Send END OF MISSION when you are done, over.', { delay: 1.0 });
+}
+function handleTimeOnTarget(sec) {
+  if (!mission || mission.done) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  mission.tot = sec;
+  FDC.say(`TIME ON TARGET ${sec}, OUT.`, { delay: 0.8 });
+  /* Honest about the model, in the same spirit as DOCTRINE.md §76's note on sheaf
+     and volume of fire: the proword is understood and read back, but this sim has
+     no multi-battery synchronisation for it to coordinate, so it does not change
+     when rounds land. Recorded so it is gradeable as format. */
+  log('', `TIME ON TARGET ${sec} acknowledged. Note: this trainer models a single ` +
+    `firing unit, so TOT is accepted and graded as format but does not change ` +
+    `impact timing.`, 'sys');
 }
 
 // Public interface: OT-frame correction -> world delta on the aimpoint.
@@ -3921,6 +4013,9 @@ function fireAdjustRound() {
             { delay: 0.8 });
     return;
   }
+  // G24 — lay the gun and wait for FIRE. Before markDispersion and the round
+  // counter, so a held round is not counted or logged until it actually goes.
+  if (armAtMyCommand(fireAdjustRound)) return;
   markDispersion();
   mission.adjustRounds++;
   const otAz = azTo(OP.x, OP.z, mission.aim.x, mission.aim.z);
@@ -3942,6 +4037,7 @@ function fireForEffect() {
             { delay: 0.8 });
     return;
   }
+  if (armAtMyCommand(fireForEffect)) return;   // G24
   markDispersion();
   setState('FIRE FOR EFFECT');
   if (Math.random() < 0.4) FDC.say(pick(QUIPS.ffeAck), { delay: 0.8 });
@@ -4178,6 +4274,16 @@ function parseMessage(raw) {
      anything else so no future keyword can shadow them. */
   if (t.includes('check firing')) return { type: 'checkfire', raw: t, toks };
   if (t.includes('cease loading')) return { type: 'ceaseload', raw: t, toks };
+  /* G24 — method of fire and control (DOCTRINE.md §34), all previously `unknown`.
+     Order matters twice here: CANCEL AT MY COMMAND must be tested before AT MY
+     COMMAND (it contains it), and both must be tested before the bare FIRE below,
+     since every one of these transmissions contains the word "fire". */
+  if (t.includes('cancel at my command')) return { type: 'amc', on: false, raw: t, toks };
+  if (t.includes('do not load')) return { type: 'donotload', raw: t, toks };
+  if (t.includes('cannot observe')) return { type: 'cannotobserve', raw: t, toks };
+  const mTot = t.match(/\btime on target\s+(\d+)\b/);
+  if (mTot) return { type: 'tot', sec: parseInt(mTot[1]), raw: t, toks };
+  if (t.includes('time on target')) return { type: 'tot', sec: 0, raw: t, toks };
   if (t.includes('end of mission')) {
     // RREMS: refinement and "record as target" may ride with end of mission
     const ref = { right: 0, add: 0, any: false };
@@ -4292,6 +4398,21 @@ function parseMessage(raw) {
      mid-mission command to shift into effect, and it reaches this function as
      `adjust` with `any === false`. onPlayerMessage decides which one it is from
      mission state, because that is the only place that knows. */
+  /* G24 — these two must be tested HERE, after grid/shift/polar, not up with the
+     other prowords. "at my command" is a legal element of transmission 3, so a
+     complete call for fire contains it; matching it early would misread the whole
+     call as a bare fire-control request. */
+  if (t.includes('at my command')) return { type: 'amc', on: true, raw: t, toks };
+  /* The bare FIRE proword that releases a round held at my command. Deliberately
+     strict: "fire" appears inside "adjust fire", "fire for effect" and "check
+     firing", all of which are already handled above, so this only fires when FIRE
+     is the whole transmission apart from callsigns and prowords. */
+  {
+    const strip = new Set(['over', 'out', 'break', 'hellhound', 'fires',
+                           'this', 'is', 'mustang', '12']);
+    const core = toks.filter(w => !strip.has(w) && !/^\d+$/.test(w));
+    if (core.length === 1 && core[0] === 'fire') return { type: 'fire', raw: t, toks };
+  }
   if (/\badjust fire\b/.test(t)) return { type: 'warno', warno: 'adjust', raw: t, toks };
   return { type: 'unknown', raw: t, toks };
 }
@@ -4547,7 +4668,12 @@ function handleCFF(p) {
   if (minCiv < 250) FDC.say(pick(QUIPS.nearCiv), { delay: 1.2 });
   if (H(cx, cz) < 0) FDC.say(pick(QUIPS.water), { delay: 1 });
   setState('MISSION SENT');
-  fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr, method: p.method });
+  // G24 — "at my command" is an element of transmission 3, so it arrives inside the
+  // call's own text rather than as a separate proword. CFFQ concatenates raw across
+  // transmissions, so this works whether the call came one-shot or staged.
+  fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr,
+                                         method: p.method,
+                                         amc: p.raw.includes('at my command') });
 }
 
 /* ---- G25: the safety stops (DOCTRINE.md §67) --------------------------------
@@ -4880,6 +5006,11 @@ function onPlayerMessage(raw) {
     case 'adjust': handleAdjust(p); break;
     case 'checkfire': handleCheckFiring(); break;
     case 'ceaseload': handleCeaseLoading(); break;
+    case 'amc': handleAtMyCommand(p.on); break;
+    case 'fire': handleFire(); break;
+    case 'donotload': handleDoNotLoad(); break;
+    case 'cannotobserve': handleCannotObserve(); break;
+    case 'tot': handleTimeOnTarget(p.sec); break;
     case 'repeat':
       if (mission && !mission.done && state === 'ADJUSTING') {
         FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
