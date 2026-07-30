@@ -87,12 +87,16 @@ From JFO evaluation standards (JFO-SSUP-2001, adjust-fire mission): initiate the
 - **Default if unrequested**: circular, 100 m radius (both editions).
 Requested by name in the method-of-engagement segment; cancelled with **"CANCEL CONVERGED [or OPEN] SHEAF"** (ATP 3-09.30 §5-30). Convoy → linear/special along the road; bunker → converged.
 
+**Implemented `8b406e7`.** Sheaf is requested by name in any transmission of the call (raw survives CFFQ concatenation), inferred otherwise (linear for convoy/column, converged for hard point, open for personnel, doctrine default circular 100 m), updated mid-mission by a bare "CONVERGED SHEAF, OVER", and reverted to the FDC's own inferred choice by "CANCEL ... SHEAF" per §5-30 above. PARALLEL/SPECIAL fire as linear (special without attitude gets a format note). Effect scales FFE rounds only: converged ×1.25 on point targets / ×0.6 on dispersed men; open ×1.2 on dispersed personnel / ×0.6 on a point target. On a convoy, LINEAR is real aimpoint geometry rather than an effect multiplier — the volley spreads 35 m apart along the column axis, with each individual round still `impact = aimpoint + error`. Choice, source, and reason are logged at fire time, shown in the AAR, and recorded in TLOG. Verified 37/37 numeric + 15/15 live e2e + replay unchanged.
+
 **G16 — fuze.** Current codified list (**ATP 3-09.30 §4-43**): **PD** (point detonating — the old "fuze quick"), **VT** (variable time/proximity), **MT**/**ET** (mechanical/electronic time), **MTSQ**, **DELAY**, **MOF** (multi-option, mortars only). Target guidance, sourced from **FM 6-30 §4-15**, corroborated for mortars by **FM 7-90 App. B**:
 - **Quick/PD** — standing or prone personnel in the open, unarmored vehicles, light materiel; loses effect vs. trenches, dug-in troops, earthworks.
 - **Delay** — dense woods, light earthworks/frame buildings, unarmored vehicles (ricochet/penetration).
 - **Time/VT** — troops in the open, in trenches, in deep foxholes, soft-skin vehicles (airburst); VT preferred over time — self-adjusts height of burst, works high-angle and aerial-observer.
 - **Concrete-piercing/heavy delay** — bunkers, hardened overhead cover.
 Requested by name in method-of-engagement ("SHELL HE, FUZE VT, OVER"); FUZE TIME may also be called mid-adjustment, after range/deviation but before FIRE FOR EFFECT (ATP 3-09.30 §5-55).
+
+**Implemented `5d3fbe3`.** Fuze is requested in the call ("SHELL HE, FUZE VT") or bare mid-adjustment ("FUZE TIME, OVER", legal before FFE per §5-55 above); inferred DELAY for hard/overhead-cover targets, VT for troops under cover, PD by default. VICTOR TANGO/VARIABLE TIME/QUICK/POINT DETONATING all normalize. The MTO now announces the actual fuze instead of a hardcoded FUZE PD. Effect scales every round: VT ×1.5 vs. prone (defeats going flat) and ×0.35 vs. a bunker roof; DELAY ×1.3 on point targets, ×0.45 vs. men in the open; stacks with sheaf and posture. VT/time is never fired DANGER CLOSE — the FDC overrides to PD and says so, at call time and mid-mission. G23's height-of-burst hook is live under VT/time (an UP/DOWN correction is acknowledged and moves the burst height); under PD the refusal stands. Verified 48/48 numeric + 15/15 live e2e + replay unchanged.
 
 **G18 — per-asset effects.** Two different numbers — don't conflate:
 - **Risk-estimate distances (RED, safety, not effect)** — **JFIRE Dec 2007 App. F, Tables 29–30** (predecessor to the 2019 edition DOCTRINE.md cites; ⚠ not re-verified against the 2019 text, but its "danger close is usually 600 m for cannon and mortars" line matches this file exactly, so the tables are likely stable): **60mm mortar (M224)** 0.1% PI = 100/150/175 m, 10% PI = 60/65/65 m (1/3, 2/3, max range); **155mm Howitzer HE (M109/M198/M777)** 0.1% PI = 200/280/450 m, 10% PI = 100/100/125 m.
@@ -103,5 +107,7 @@ Requested by name in method-of-engagement ("SHELL HE, FUZE VT, OVER"); FUZE TIME
 ## What the sim deliberately ignores ⚠
 
 - **Angle T / gun-target line** effects — corrections apply perfectly in the OT frame (per SPEC ballistics).
-- Sheaf choice, trajectory, volume-of-fire math — accepted in a call, but they don't change the model.
+- Trajectory, true volume-of-fire ballistics — accepted in a call, but don't change the model; `impact = aimpoint + error` stays the only thing that places a round.
 - Authentication challenges after readback — could be a Volume IV strict-mode flavor beat, not a mechanic.
+
+**No longer on this list:** sheaf and fuze were accepted-but-inert until G15/G16 (`8b406e7`/`5d3fbe3`). Both now change the graded effect — sheaf scales FFE-round casualty/damage weighting (and, uniquely, a convoy LINEAR sheaf is real aimpoint geometry: a 35 m volley spread along the column axis, not just a multiplier); fuze scales every round by target posture/type and interacts with G23's height-of-burst hook. See the G15/G16 "Implemented" notes above.
