@@ -20,6 +20,12 @@ function animate(tMs) {
   const dt = Math.min(0.05, t - lastFrame);
   lastFrame = t;
   sim.now = t;
+  // 13g — three scalar writes into preallocated uniforms; no allocation
+  if (CONFIG.GFX.water) {
+    WATER_U.uTime.value = t;
+    WATER_U.uSun.value.copy(sun.position).normalize();
+    WATER_U.uSunI.value = sun.intensity;
+  }
   runEvents();
   pollGamepad(dt);
   QUALITY.ema = QUALITY.ema * 0.94 + dt * 0.06;

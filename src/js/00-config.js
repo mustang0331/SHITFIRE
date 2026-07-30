@@ -204,7 +204,7 @@ const CONFIG = {
     legOnset: 800,      // m — never touch a figure closer than this
     contactShadow: true,// dark disc at the feet so figures don't merge into terrain
     hillshade: true, aoStrength: 0.35, hillFloor: 0.55, // 13d — see the bake in buildTerrain()
-    water: false,       // 13g
+    water: true,        // 13g — shoreline foam + ocean sun glint (fragment-side)
     craters: 0,         // 13h
     bloom: false,       // 11d — SUNLAMP only
   },

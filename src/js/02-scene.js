@@ -143,16 +143,81 @@ var visionReady = false;
 applyTOD('day');
 
 // Ocean
+/* 13g — the water uniforms, preallocated ONCE (the row's gate: one uTime
+   uniform, no per-frame allocation). The render loop writes three scalars a
+   frame; the GLSL below reads them. Optics variants are material CLONES and
+   clone() does not carry onBeforeCompile, so NVG/thermal see plain water —
+   which is also physically the right answer (no glint through a tube; the
+   E3 shoreline readability comes from the shallows band, not the foam). */
+const WATER_U = {
+  uTime: { value: 0 },
+  uSun: { value: new THREE.Vector3(0, 1, 0) },
+  uSunI: { value: 1 },
+};
+// tiny value-noise shared by both patches; scrolled by uTime for movement
+const GLSL_NOISE = `
+  uniform float uTime;
+  float h13(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float vnz(vec2 p){
+    vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(h13(i), h13(i + vec2(1, 0)), f.x),
+               mix(h13(i + vec2(0, 1)), h13(i + vec2(1, 1)), f.x), f.y);
+  }`;
+// vertex-side: world position, computed from `transformed` so it is correct
+// for every mesh the material lands on (base sheet and 13e patch alike)
+function waterVertexPatch(sh) {
+  sh.vertexShader = 'varying vec3 vWpos13;\n' + sh.vertexShader.replace(
+    '#include <begin_vertex>',
+    '#include <begin_vertex>\n  vWpos13 = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+}
+function terrainFoamPatch(sh) {
+  sh.uniforms.uTime = WATER_U.uTime;
+  waterVertexPatch(sh);
+  sh.fragmentShader = ('varying vec3 vWpos13;\n' + GLSL_NOISE + '\n' + sh.fragmentShader)
+    .replace('#include <opaque_fragment>', `
+  {
+    // 13g — surf: a breathing white band where the ground meets the sea
+    float nz = vnz(vWpos13.xz * 0.11 + vec2(uTime * 0.35, uTime * 0.22));
+    float band = smoothstep(1.5, 0.55, vWpos13.y) * smoothstep(-0.8, -0.1, vWpos13.y);
+    outgoingLight = mix(outgoingLight, vec3(0.93), band * smoothstep(0.32, 0.78, nz) * 0.85);
+  }
+  #include <opaque_fragment>`);
+}
+function oceanGlintPatch(sh) {
+  sh.uniforms.uTime = WATER_U.uTime;
+  sh.uniforms.uSun = WATER_U.uSun;
+  sh.uniforms.uSunI = WATER_U.uSunI;
+  waterVertexPatch(sh);
+  sh.fragmentShader = ('varying vec3 vWpos13;\nuniform vec3 uSun;\nuniform float uSunI;\n' +
+    GLSL_NOISE + '\n' + sh.fragmentShader)
+    .replace('#include <opaque_fragment>', `
+  {
+    // 13g — sun glint: a specular lobe off a noise-perturbed water normal,
+    // gated by sun elevation so it dies with the light instead of glowing
+    // at night. Fragment-only: the ocean plane has no subdivisions to move.
+    vec3 vd = normalize(cameraPosition - vWpos13);
+    vec2 gp = vWpos13.xz * 0.045 + vec2(uTime * 0.55, -uTime * 0.42);
+    vec3 wn = normalize(vec3(vnz(gp) - 0.5, 5.5, vnz(gp * 1.7 + 31.0) - 0.5));
+    float g = pow(max(dot(reflect(-uSun, wn), vd), 0.0), 90.0);
+    outgoingLight += vec3(1.0, 0.95, 0.8) * g * 1.3 * uSunI * max(uSun.y, 0.0);
+  }
+  #include <opaque_fragment>`);
+}
+
 let oceanShallows = null;
 {
   // water absorbs near-IR (almost black under a tube) and has a high heat
   // capacity (slightly WARMER than the land it borders at night, so the
   // shoreline stays readable in thermal). Both are physical, and both happen to
   // keep the coast usable as a terrain-association feature after dark.
+  const oceanMat = visTag(new THREE.MeshLambertMaterial({ color: gfxPal(0x1E5A7A) }),
+                          { nvg: 0.06, th: [0.22, 0.22, 0.22] });
+  if (CONFIG.GFX.water) {
+    oceanMat.onBeforeCompile = oceanGlintPatch;
+    oceanMat.customProgramCacheKey = () => 'ocean13g';
+  }
   const ocean = new THREE.Mesh(
-    new THREE.PlaneGeometry(44000, 44000).rotateX(-Math.PI / 2),
-    visTag(new THREE.MeshLambertMaterial({ color: gfxPal(0x1E5A7A) }),
-           { nvg: 0.06, th: [0.22, 0.22, 0.22] }));
+    new THREE.PlaneGeometry(44000, 44000).rotateX(-Math.PI / 2), oceanMat);
   ocean.position.y = 0;
   scene.add(ocean);
   oceanShallows = new THREE.Mesh(
@@ -344,6 +409,12 @@ function buildTerrain() {
   const tMat = visTag(
     new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
     { nvg: 0.55, th: [0.14, 0.14, 0.14] });   // vegetation is NIR-bright
+  if (CONFIG.GFX.water) {
+    // 13g — the surf band rides the terrain material, so it lands on the base
+    // sheet and the 13e patch alike (they share this material)
+    tMat.onBeforeCompile = terrainFoamPatch;
+    tMat.customProgramCacheKey = () => 'terra13g';
+  }
   terrainMesh = new THREE.Mesh(geo, tMat);
   scene.add(terrainMesh);
   if (pGeo) {
