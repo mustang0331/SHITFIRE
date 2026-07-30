@@ -356,6 +356,7 @@ function buildWorldFeatures() {
   WORLD.rocks.length = 0;
   const wSeed = (CONFIG.SEED.terrain ^ (DEM ? strHash(DEM.name) : 0)) >>> 0;
   const rng = mulberry32(wSeed);
+  rollWind(wSeed);   // 12i — new island, new wind (independent stream)
   // E4+ placement draws from a SECOND stream derived from the same island seed.
   // Everything added from E4 onward is seeded and reproducible, but it takes no
   // draws out of `rng`, so every island built before this row — and every
@@ -915,6 +916,24 @@ function buildWorldFeatures() {
    sheet's terrain-association features stay identifiable in 3D; and
    vegMissionCull() zeroes instances around each mission's elements so the
    observer can always SEE what he is shooting at and what he must not hit. */
+/* 12i — the island's wind, seeded with the island. ONE vector that every
+   smoke system obeys (burst columns, marker wisps, screens, the illum flare's
+   chute), which is what makes drift READABLE AS A TOOL: the observer watches
+   any smoke on the island and knows the wind everywhere on it. Rounds are
+   NOT wind-affected — impact = aimpoint + error stands (CLAUDE.md ballistics
+   rule); wind here is observation, the same honesty as TOD. `fromMils` is the
+   direction the wind blows FROM (how wind is reported); dx/dz is the drift
+   direction smoke actually travels (downwind), in m/s. */
+const WIND = { dx: 0, dz: 0, speed: 0, fromMils: 0 };
+function rollWind(seed) {
+  const r = mulberry32((seed ^ 0x517CC1B7) >>> 0);
+  const from = r() * Math.PI * 2;
+  WIND.speed = 1.5 + r() * 4.5;                       // 1.5–6 m/s
+  WIND.fromMils = Math.round(radToMils(from) / 100) * 100 % 6400;
+  WIND.dx = -Math.sin(from) * WIND.speed;             // FROM az → TO vector
+  WIND.dz = Math.cos(from) * WIND.speed;
+}
+
 const VEG = { canopy: null, scatter: null, placements: [] };
 let _vegTex = null;
 function vegTexture() {

@@ -484,10 +484,15 @@ function updateScreens() {
     if (a < 0 || a >= 1) { for (const m of s.sprs) m.visible = false; continue; }
     const grow = Math.min(1, a * 6);                    // builds over the first sixth
     const fade = Math.min(1, (1 - a) * 4);              // collapses over the last quarter
+    // 12i — the screen sags downwind; lower puffs lag, upper puffs lead
+    const dw = (sim.now - s.t0) * 0.55;
     for (let j = 0; j < s.sprs.length; j++) {
       const m = s.sprs[j];
       m.visible = true;
-      m.position.set(s.x + (j - 1) * 13, s.y + 9 + j * 4 + a * 6, s.z + (j - 1) * 5);
+      const lead = 0.6 + j * 0.35;
+      m.position.set(s.x + (j - 1) * 13 + WIND.dx * dw * lead,
+                     s.y + 9 + j * 4 + a * 6,
+                     s.z + (j - 1) * 5 + WIND.dz * dw * lead);
       const sc = (18 + 20 * grow + a * 8) * (0.85 + j * 0.15);
       m.scale.set(sc, sc * 0.72, 1);
       m.material.opacity = 0.5 * grow * fade;
@@ -518,7 +523,8 @@ function updateIllum(dt) {
     return;
   }
   ILLUM.y -= 6.5 * dt;                                  // the flare rides its chute down
-  ILLUM.x += 1.6 * dt;                                  // a hint of drift
+  ILLUM.x += WIND.dx * 0.8 * dt;                        // 12i — the chute drifts downwind
+  ILLUM.z += WIND.dz * 0.8 * dt;
   ILLUM.light.position.set(ILLUM.x, ILLUM.y, ILLUM.z);
   ILLUM.light.intensity = 240000 * (0.9 + 0.1 * Math.sin(sim.now * 13));
   ILLUM.spr.visible = true;
@@ -613,13 +619,17 @@ function updateBursts(dt) {
         if (d.m.position.y < 0.3) d.m.visible = false;
       }
     } else b.debris.forEach(d => d.m.visible = false);
-    // smoke column
+    // smoke column — 12i: the old drift was a HARDCODED +x lean (pt*26), i.e.
+    // every column on the island lied about the wind in the same direction.
+    // Now it leans with the real island wind, so the burst column, the wisps
+    // and the screens all tell the observer the same story.
     for (let i = 0; i < b.puffs.length; i++) {
       const p = b.puffs[i];
       const pt = clamp((t - i * 0.55) / 11, 0, 1);
       if (pt <= 0) { p.visible = false; continue; }
       p.visible = true;
-      p.position.set(4 * Math.sin(i * 2.1) + pt * 26, 2 + pt * 105, 4 * Math.cos(i * 1.7) + pt * 9);
+      p.position.set(4 * Math.sin(i * 2.1) + WIND.dx * pt * 9, 2 + pt * 105,
+                     4 * Math.cos(i * 1.7) + WIND.dz * pt * 9);
       p.scale.setScalar(5 + pt * 24);
       p.material.opacity = 0.66 * (1 - pt);
     }
@@ -630,7 +640,9 @@ function updateBursts(dt) {
     const a = (sim.now - w.t0) / 75;
     if (a < 0 || a >= 1) { w.m.visible = false; continue; }
     w.m.visible = true;
-    w.m.position.set(w.x, w.y + 8 + a * 26, w.z);
+    // 12i — a thin wisp is the island's cheapest wind sock
+    const dw = (sim.now - w.t0) * 0.7;
+    w.m.position.set(w.x + WIND.dx * dw, w.y + 8 + a * 26, w.z + WIND.dz * dw);
     w.m.scale.set(2.5 + a * 5, 8 + a * 14, 1);
     w.m.material.opacity = 0.32 * (1 - a) * (VISION.mode === 'day' ? 1 : 0.5);
   }

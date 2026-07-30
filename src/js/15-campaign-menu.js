@@ -479,6 +479,10 @@ function newMission(first, type, chapter) {
   } else {
     log('', `SKIRMISH: ${SCN_META[currentType].name} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
   }
+  // 12i — the met line: wind is reported the way an observer would get it, and
+  // every smoke source on the island (bursts, wisps, screens, illum chutes)
+  // drifts to match, so the report can be CHECKED against what the eye sees
+  log('', `MET: wind from ${fmtMils(WIND.fromMils)} mils at ${Math.round(WIND.speed)} m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).`, 'sys');
   log('', `Your OP: watchtower at grid ${gridOf(OP.x, OP.z)}, ground elev ${Math.round(OP.h)} m, deck +${Math.round(CONFIG.CAMERA.towerHeight)} m. ` +
     `Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. ` +
     `Hold [SPACE] to transmit by voice, or type below.`, 'sys');

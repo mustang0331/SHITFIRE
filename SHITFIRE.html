@@ -1857,6 +1857,7 @@ function buildWorldFeatures() {
   WORLD.rocks.length = 0;
   const wSeed = (CONFIG.SEED.terrain ^ (DEM ? strHash(DEM.name) : 0)) >>> 0;
   const rng = mulberry32(wSeed);
+  rollWind(wSeed);   // 12i — new island, new wind (independent stream)
   // E4+ placement draws from a SECOND stream derived from the same island seed.
   // Everything added from E4 onward is seeded and reproducible, but it takes no
   // draws out of `rng`, so every island built before this row — and every
@@ -2416,6 +2417,24 @@ function buildWorldFeatures() {
    sheet's terrain-association features stay identifiable in 3D; and
    vegMissionCull() zeroes instances around each mission's elements so the
    observer can always SEE what he is shooting at and what he must not hit. */
+/* 12i — the island's wind, seeded with the island. ONE vector that every
+   smoke system obeys (burst columns, marker wisps, screens, the illum flare's
+   chute), which is what makes drift READABLE AS A TOOL: the observer watches
+   any smoke on the island and knows the wind everywhere on it. Rounds are
+   NOT wind-affected — impact = aimpoint + error stands (CLAUDE.md ballistics
+   rule); wind here is observation, the same honesty as TOD. `fromMils` is the
+   direction the wind blows FROM (how wind is reported); dx/dz is the drift
+   direction smoke actually travels (downwind), in m/s. */
+const WIND = { dx: 0, dz: 0, speed: 0, fromMils: 0 };
+function rollWind(seed) {
+  const r = mulberry32((seed ^ 0x517CC1B7) >>> 0);
+  const from = r() * Math.PI * 2;
+  WIND.speed = 1.5 + r() * 4.5;                       // 1.5–6 m/s
+  WIND.fromMils = Math.round(radToMils(from) / 100) * 100 % 6400;
+  WIND.dx = -Math.sin(from) * WIND.speed;             // FROM az → TO vector
+  WIND.dz = Math.cos(from) * WIND.speed;
+}
+
 const VEG = { canopy: null, scatter: null, placements: [] };
 let _vegTex = null;
 function vegTexture() {
@@ -4281,10 +4300,15 @@ function updateScreens() {
     if (a < 0 || a >= 1) { for (const m of s.sprs) m.visible = false; continue; }
     const grow = Math.min(1, a * 6);                    // builds over the first sixth
     const fade = Math.min(1, (1 - a) * 4);              // collapses over the last quarter
+    // 12i — the screen sags downwind; lower puffs lag, upper puffs lead
+    const dw = (sim.now - s.t0) * 0.55;
     for (let j = 0; j < s.sprs.length; j++) {
       const m = s.sprs[j];
       m.visible = true;
-      m.position.set(s.x + (j - 1) * 13, s.y + 9 + j * 4 + a * 6, s.z + (j - 1) * 5);
+      const lead = 0.6 + j * 0.35;
+      m.position.set(s.x + (j - 1) * 13 + WIND.dx * dw * lead,
+                     s.y + 9 + j * 4 + a * 6,
+                     s.z + (j - 1) * 5 + WIND.dz * dw * lead);
       const sc = (18 + 20 * grow + a * 8) * (0.85 + j * 0.15);
       m.scale.set(sc, sc * 0.72, 1);
       m.material.opacity = 0.5 * grow * fade;
@@ -4315,7 +4339,8 @@ function updateIllum(dt) {
     return;
   }
   ILLUM.y -= 6.5 * dt;                                  // the flare rides its chute down
-  ILLUM.x += 1.6 * dt;                                  // a hint of drift
+  ILLUM.x += WIND.dx * 0.8 * dt;                        // 12i — the chute drifts downwind
+  ILLUM.z += WIND.dz * 0.8 * dt;
   ILLUM.light.position.set(ILLUM.x, ILLUM.y, ILLUM.z);
   ILLUM.light.intensity = 240000 * (0.9 + 0.1 * Math.sin(sim.now * 13));
   ILLUM.spr.visible = true;
@@ -4410,13 +4435,17 @@ function updateBursts(dt) {
         if (d.m.position.y < 0.3) d.m.visible = false;
       }
     } else b.debris.forEach(d => d.m.visible = false);
-    // smoke column
+    // smoke column — 12i: the old drift was a HARDCODED +x lean (pt*26), i.e.
+    // every column on the island lied about the wind in the same direction.
+    // Now it leans with the real island wind, so the burst column, the wisps
+    // and the screens all tell the observer the same story.
     for (let i = 0; i < b.puffs.length; i++) {
       const p = b.puffs[i];
       const pt = clamp((t - i * 0.55) / 11, 0, 1);
       if (pt <= 0) { p.visible = false; continue; }
       p.visible = true;
-      p.position.set(4 * Math.sin(i * 2.1) + pt * 26, 2 + pt * 105, 4 * Math.cos(i * 1.7) + pt * 9);
+      p.position.set(4 * Math.sin(i * 2.1) + WIND.dx * pt * 9, 2 + pt * 105,
+                     4 * Math.cos(i * 1.7) + WIND.dz * pt * 9);
       p.scale.setScalar(5 + pt * 24);
       p.material.opacity = 0.66 * (1 - pt);
     }
@@ -4427,7 +4456,9 @@ function updateBursts(dt) {
     const a = (sim.now - w.t0) / 75;
     if (a < 0 || a >= 1) { w.m.visible = false; continue; }
     w.m.visible = true;
-    w.m.position.set(w.x, w.y + 8 + a * 26, w.z);
+    // 12i — a thin wisp is the island's cheapest wind sock
+    const dw = (sim.now - w.t0) * 0.7;
+    w.m.position.set(w.x + WIND.dx * dw, w.y + 8 + a * 26, w.z + WIND.dz * dw);
     w.m.scale.set(2.5 + a * 5, 8 + a * 14, 1);
     w.m.material.opacity = 0.32 * (1 - a) * (VISION.mode === 'day' ? 1 : 0.5);
   }
@@ -8284,6 +8315,10 @@ function newMission(first, type, chapter) {
   } else {
     log('', `SKIRMISH: ${SCN_META[currentType].name} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
   }
+  // 12i — the met line: wind is reported the way an observer would get it, and
+  // every smoke source on the island (bursts, wisps, screens, illum chutes)
+  // drifts to match, so the report can be CHECKED against what the eye sees
+  log('', `MET: wind from ${fmtMils(WIND.fromMils)} mils at ${Math.round(WIND.speed)} m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).`, 'sys');
   log('', `Your OP: watchtower at grid ${gridOf(OP.x, OP.z)}, ground elev ${Math.round(OP.h)} m, deck +${Math.round(CONFIG.CAMERA.towerHeight)} m. ` +
     `Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. ` +
     `Hold [SPACE] to transmit by voice, or type below.`, 'sys');
