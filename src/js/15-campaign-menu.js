@@ -450,6 +450,9 @@ function newMission(first, type, chapter) {
   // 13e — move the high-res terrain patch onto the new target area, so burst
   // deviation there is judged against real micro-relief, not 33 m facets
   setTerrainFocus(Scenario.enemy.x, Scenario.enemy.z);
+  // 13f — clear vegetation off this mission's elements and corridors: the
+  // observer must always be able to see the target and the fall of shot
+  vegMissionCull();
   if (chapter) {
     log('', `CHAPTER ${chapter.id} — ${chapter.title} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
     if (chapter.method)

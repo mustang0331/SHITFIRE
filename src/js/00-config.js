@@ -183,6 +183,10 @@ const CONFIG = {
     toneMap: true,      // 13b — ACES filmic tone mapping
     exposure: 1.15,     // 13b — renderer.toneMappingExposure
     satComp: 1.0,       // 13b — palette saturation trim; see gfxPal(). 1.0 = neutral.
+    /* 13f — instanced vegetation. vegMaxH caps the canopy so foliage can never
+       hide a burst plume (training rule, GRAPHICS.md §G4); the budget and the
+       OP-centred radius are perf knobs. Black-sand palette runs at 30% budget. */
+    veg: true, vegBudget: 4000, vegRadius: 2600, vegMaxH: 6,
     // --- forward declarations: inert until the row that consumes them lands ---
     sky: true,          // 13c — Sky.js + time of day
     // --- target legibility -------------------------------------------------
@@ -200,8 +204,6 @@ const CONFIG = {
     legOnset: 800,      // m — never touch a figure closer than this
     contactShadow: true,// dark disc at the feet so figures don't merge into terrain
     hillshade: true, aoStrength: 0.35, hillFloor: 0.55, // 13d — see the bake in buildTerrain()
-    nearLOD: false, nearLODSize: 2400, nearLODSeg: 300, // 13e
-    veg: false, vegBudget: 4000, vegRadius: 2600,       // 13f
     water: false,       // 13g
     craters: 0,         // 13h
     bloom: false,       // 11d — SUNLAMP only
