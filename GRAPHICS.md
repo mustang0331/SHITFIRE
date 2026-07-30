@@ -332,6 +332,26 @@ Skip it if it costs more than an hour; still frames read fine at this art level.
 
 ## G5 — Shoreline and water
 
+> **Shipped `35e0ed5` (2026-07-30) as ROADMAP 13g.** Both effects landed as fragment-side
+> `onBeforeCompile` patches on the existing Lambert materials, exactly as planned below, sharing one
+> preallocated uniform set (`WATER_U`) instead of two separate ones: the frame loop writes three
+> scalars per frame — `uTime`, the normalized sun vector, and sun intensity — with zero per-frame
+> allocation, which is the row's gate. Both patches share one tiny GLSL value-noise function rather
+> than each rolling their own. The foam band rides the **terrain** material, so it appears on the base
+> sheet and the 13e near-field patch alike: a breathing white band keyed on world-space Y across the
+> waterline (−0.1 to +1.5 m, close to the −0.5/+1.2 m figure below), scroll-modulated so it isn't
+> static. The glint rides the **ocean** material as planned — a specular lobe off a noise-perturbed
+> water normal around the reflected sun vector — additionally gated by sun elevation and intensity, so
+> it rakes hard at dawn/dusk and fades to nothing at night, which the plan text below did not call out
+> but follows directly from G1's TOD table already existing. One consequence found while building:
+> optics variants (NVG/thermal) are produced via `.clone()`, and `clone()` does not carry
+> `onBeforeCompile` patches, so those modes render plain unpatched water. This was kept rather than
+> fixed — it is the physically correct answer, since shoreline readability after dark is supposed to
+> come from the shallows/foam band's brightness under night vision, not from a sun-glint effect that
+> has no sun to key off at night anyway. Verified 12/12 screenshot states clean (a dawn frame shows surf
+> and glint raking along the coastline; a day frame shows a subtler shoreline edge); lint 0 errors;
+> offline zero-network confirmed. The plan text below is kept as the design record.
+
 Two effects, both fragment-side, both roughly free:
 
 **Foam band.** In the terrain material's `onBeforeCompile`, add a term keyed on world-space Y near 0
