@@ -537,7 +537,7 @@ const CONFIG = {
     legMaxScale: 2.5,   // hard clamp on the silhouette exaggeration
     legOnset: 800,      // m — never touch a figure closer than this
     contactShadow: true,// dark disc at the feet so figures don't merge into terrain
-    hillshade: false, aoStrength: 0.35,                 // 13d
+    hillshade: true, aoStrength: 0.35, hillFloor: 0.55, // 13d — see the bake in buildTerrain()
     nearLOD: false, nearLODSize: 2400, nearLODSeg: 300, // 13e
     veg: false, vegBudget: 4000, vegRadius: 2600,       // 13f
     water: false,       // 13g
@@ -921,9 +921,12 @@ function applyTOD(name) {
       ? acesFilmic(t.hemiSky, CONFIG.GFX.exposure)
       : new THREE.Color(t.hemiSky);
   }
-  // 13d bakes sun direction into terrain vertex colours; when it lands, a TOD change
-  // must trigger a terrain rebuild. Inert until then.
-  if (CONFIG.GFX.hillshade && typeof buildTerrain === 'function') buildTerrain();
+  // 13d bakes sun direction into terrain vertex colours, so a TOD change must
+  // re-bake. terrainReady is a hoisted `var`: the boot-time applyTOD('day') runs
+  // before the terrain block's `let` bindings exist, and a rebuild attempt there
+  // would throw on the TDZ — undefined is falsy, so boot skips it and the first
+  // real build owns itself.
+  if (CONFIG.GFX.hillshade && terrainReady) buildTerrain();
   // The optics sit DOWNSTREAM of the lighting authority: applyTOD always writes
   // the base sun/hemi/fog first, then applyVision multiplies its gain on top and
   // re-derives the material variants and the overlay for the new ambient level.
@@ -967,17 +970,53 @@ function buildTerrain() {
   const cSandLo = gfxPal(blk ? 0x3A3733 : 0xC7B383), cSand = gfxPal(blk ? 0x4A4640 : 0xD8C89A);
   const cJunA = gfxPal(blk ? 0x3E5A34 : 0x4E7A3D), cJunB = gfxPal(blk ? 0x2E4526 : 0x3B5E2E);
   const cRokA = gfxPal(blk ? 0x403C38 : 0x5A544E), cRokB = gfxPal(blk ? 0x524D46 : 0x6E665C);
+  /* 13d — baked hillshade + ambient occlusion (GRAPHICS.md G2, the plan's
+     highest-value row). Lambert on flat-shaded 33 m facets gives each facet ONE
+     shade, so ridgelines and draws vanish at range — exactly the relief the
+     printed contours promise. Baking a per-vertex sun term + a concavity term
+     into the vertex colours costs zero per frame and makes the 3D island agree
+     with its own map sheet.
+
+       shade  one-sided gradient from the two slope samples already taken (no
+              extra H calls), dotted with the CURRENT TOD sun via todDir —
+              which is why applyTOD re-bakes on a TOD change.
+       AO     concavity against a 48 m ring (4 extra H calls): ground sitting
+              below its surroundings is a draw and darkens by up to aoStrength.
+
+     hillFloor clamps the COMBINED multiplier: the Volume IV black-sand palette
+     starts dark, and shade*occlusion could push it below legibility — the gate
+     on this row says the palette must not crush, so the floor is config, not
+     hope. Water and beach are left unshaded (flat anyway, and the shallows
+     band is doing its own work). Build cost: 7 H() per vertex vs 3 before. */
+  const doShade = CONFIG.GFX.hillshade;
+  let sunX = 0, sunY = 1, sunZ = 0;
+  if (doShade) {
+    const sd = todDir(TOD_TABLE[TOD] || TOD_TABLE.day, _bakeSun);
+    sunX = sd.x; sunY = sd.y; sunZ = sd.z;
+  }
+  const aoK = CONFIG.GFX.aoStrength, mFloor = CONFIG.GFX.hillFloor;
   const tmp = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
     const h = H(x, z);
     pos.setY(i, h);
-    const sl = Math.hypot(H(x + 9, z) - h, H(x, z + 9) - h) / 9;
+    const hx = H(x + 9, z), hz = H(x, z + 9);
+    const sl = Math.hypot(hx - h, hz - h) / 9;
     const patch = vnoise(x * 0.012, z * 0.012, 999);
     if (h < 1.2)      tmp.copy(cSandLo);
     else if (h < 5.5) tmp.copy(cSand);
     else if (sl > 0.62 || h > 120) tmp.lerpColors(cRokA, cRokB, patch);
     else              tmp.lerpColors(cJunA, cJunB, patch);
+    if (doShade && h > 1.2) {
+      const gx = (hx - h) / 9, gz = (hz - h) / 9;
+      const inv = 1 / Math.sqrt(gx * gx + gz * gz + 1);
+      const dot = (-gx * sunX + sunY - gz * sunZ) * inv;
+      let m = 0.74 + 0.40 * Math.max(0, dot);            // sun term, floored
+      const ring = (H(x + 48, z) + H(x - 48, z) + H(x, z - 48) + H(x, z + 48)) * 0.25;
+      m *= 1 - clamp((ring - h) / 22, 0, 1) * aoK;       // concavity term
+      m = Math.max(mFloor, m);
+      tmp.r *= m; tmp.g *= m; tmp.b *= m;
+    }
     colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -1000,7 +1039,10 @@ function buildTerrain() {
   if (visionReady) applyVision();
 }
 let terrainMesh = null;
+const _bakeSun = new THREE.Vector3();   // 13d — todDir scratch for the bake
+var terrainReady = false;               // 13d — var: hoisted, boot-safe (see applyTOD)
 buildTerrain();
+terrainReady = true;
 
 /* ============================================================ DEM INGESTION */
 // Drop any grayscale heightmap image (real-island DEM export, e.g. Iwo Jima)
