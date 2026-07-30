@@ -7,7 +7,7 @@ A single-file browser trainer for the FORWARD OBSERVER (not the gun crew).
 Scope per stage lives in **SPEC.md** ("BUILD ORDER"). The campaign storyline (volumes, chapters, characters, humor rules) lives in **NARRATIVE.md**. **DOCTRINE.md** (distilled from JFIRE 2019 + the JFO Student Handout) is the authority for CFF formats, prowords, rounding, readback protocol, and strict-mode rules — check it before writing any parser or FDC traffic.
 
 ## Golden rules (do not violate)
-- **One `index.html`.** No build step, no bundler, no npm, no backend, no API keys.
+- **One `SHITFIRE.html`.** (renamed from index.html 2026-07-29; still one self-contained file, no build step, no bundler, no npm, no backend, no API keys.)
 - Three.js + addons via **CDN import map** only. No other external deps.
 - Only optional external input: a grayscale terrain heightmap/DEM (see SPEC "TERRAIN").
 - Voice = browser **Web Speech API** (`SpeechRecognition` + `SpeechSynthesis`), client-side, keyless. **Typed input is a mandatory fallback.**
@@ -44,12 +44,12 @@ Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed
 - Seeded PRNG for reproducible scenarios; dispersion draws from the same stream.
 
 ## Testing
-- Open `index.html` directly in **Chrome** (voice + print are Chrome/Edge desktop).
+- Open `SHITFIRE.html` directly in **Chrome** (voice + print are Chrome/Edge desktop).
 - Voice needs mic permission on a real tab. Test print/save via the browser print dialog.
 - If ever run as a claude.ai Artifact: use **in-memory state, not `localStorage`** (blocked there).
 
 ## Don't
-- **Don't ever have two agents editing `index.html` at once.** This has already gone wrong once — GRAPHICS.md was written blind because another agent held the file. One writer, always.
+- **Don't ever have two agents editing `SHITFIRE.html` at once.** This has already gone wrong once — GRAPHICS.md was written blind because another agent held the file. One writer, always.
 - Don't build a whole stage at once when it has lettered rows — ship one ROADMAP row, commit, then the next.
 - Don't add a trajectory sim, angle-T math, a bundler, a server, or npm deps.
 - Don't let voice be load-bearing — the typed core must fully work on its own.
@@ -61,7 +61,7 @@ Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed
 2. **One row = one commit**, message prefixed with the row ID: `stage 13c: sky + time of day`, `fix F1: range rounding gate`. Matches existing history (`stage 12e: OT direction and RREMS end of mission`).
 3. **Pass the row's gate before committing.** The gate is in the ROADMAP table; graphics rows also run [GRAPHICS.md](GRAPHICS.md) §Verification checklist. Code existing ≠ row done.
 4. **Docs land in a separate follow-up commit** — never bundled into the code commit, or the diff stops being reviewable. That follow-up is what flips the row to `DONE`.
-5. **Model split.** Sim (`index.html`) code → **Fable**, worked directly rather than dispatched. Doc/planning files (README, SPEC, NARRATIVE, CLAUDE, QUICKSTART, DOCTRINE, TLO, CHEATSHEET, ROADMAP, GRAPHICS, DIALOGUE_REVISIONS) → **Sonnet subagent**.
+5. **Model split.** Sim (`SHITFIRE.html`) code → **Fable**, worked directly rather than dispatched. Doc/planning files (README, SPEC, NARRATIVE, CLAUDE, QUICKSTART, DOCTRINE, TLO, CHEATSHEET, ROADMAP, GRAPHICS, DIALOGUE_REVISIONS) → **Sonnet subagent**.
    - **Do not dispatch to Fable.** As of 2026-07-29 there are no Fable credits on this account, so a Fable dispatch fails outright and wastes the turn. Earlier docs and commit messages reference Fable as the sim model — that is history, not instruction.
 6. If a row turns out to be two things, **split the row in ROADMAP.md first**, then build.
 - Review diffs before merging. If a row gets messy, `git restore .` and re-prompt narrower — a clean partial beats a broken whole.

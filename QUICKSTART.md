@@ -19,15 +19,15 @@ git add . && git commit -m "spec + project memory"
 claude
 ```
 - Sign in on first launch.
-- Select the model: type `/model` and choose **Opus**. Sim (`index.html`) work is done directly by Opus; doc-only passes can be handed to a Sonnet subagent. **Fable has no credits on this account — don't route work to it.**
+- Select the model: type `/model` and choose **Opus**. Sim (`SHITFIRE.html`) work is done directly by Opus; doc-only passes can be handed to a Sonnet subagent. **Fable has no credits on this account — don't route work to it.**
 
 ## 3. Build stage 1 (the MVP core loop)
 Paste this as your first prompt:
 
-> Read SPEC.md and CLAUDE.md. Build **BUILD ORDER stage 1 only**: procedural stand-in island via `H(x,z)`, first-person OP camera, ONE static target (Position-under-attack, Normal), **typed input only**, rule-based GRID parser, direct-impact ballistics (first-round wide / follow-up tight), OT-frame corrections, shot/splash timing, burst effect, comms log, and AAR. Get the full loop working: observe → locate → transmit → observe impact → correct → fire for effect → assess. Single `index.html`, Three.js via CDN import map, no build step. Stop after stage 1 so I can test.
+> Read SPEC.md and CLAUDE.md. Build **BUILD ORDER stage 1 only**: procedural stand-in island via `H(x,z)`, first-person OP camera, ONE static target (Position-under-attack, Normal), **typed input only**, rule-based GRID parser, direct-impact ballistics (first-round wide / follow-up tight), OT-frame corrections, shot/splash timing, burst effect, comms log, and AAR. Get the full loop working: observe → locate → transmit → observe impact → correct → fire for effect → assess. Single `SHITFIRE.html`, Three.js via CDN import map, no build step. Stop after stage 1 so I can test.
 
 ## 4. Test, then commit
-- Open `index.html` in **Chrome**. Run a full mission. Fix issues with Claude.
+- Open `SHITFIRE.html` in **Chrome**. Run a full mission. Fix issues with Claude.
 - `git add . && git commit -m "stage 1: core loop"`
 
 ## 5. Continue stage by stage
@@ -51,7 +51,7 @@ Then flip the row to `DONE` in ROADMAP.md as a **separate doc commit** — never
 
 ### The two rules that keep this from going sideways
 
-1. **One agent in `index.html` at a time.** This already went wrong once — GRAPHICS.md had to be written blind because another agent held the file.
+1. **One agent in `SHITFIRE.html` at a time.** This already went wrong once — GRAPHICS.md had to be written blind because another agent held the file.
 2. **Never mark a row done from memory.** Grep the code or run it.
 
 ## Testing notes

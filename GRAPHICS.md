@@ -5,14 +5,14 @@
 > `13c = G1` … `13i = G7`. **G8 (bloom) is reassigned to stage 11** as row 11d — it is SUNLAMP-only,
 > so it ships with the Epilogue, not here. Work one ROADMAP row per commit.
 
-Reference/strategy doc. **No code in `index.html` has been changed by this plan yet** — it was written
+Reference/strategy doc. **No code in `SHITFIRE.html` has been changed by this plan yet** — it was written
 while another agent held the file. Every item below is designed as an *additive, independently
-landable block* so it can be merged against a moving `index.html` with minimal conflict.
+landable block* so it can be merged against a moving `SHITFIRE.html` with minimal conflict.
 
 Governing constraint (from CLAUDE.md, unchanged): one file, no build step, no npm, CDN import map
 only, 60 fps target, preallocate, no per-frame allocation. **Nothing here adds a dependency** — the
 only new imports are `three/addons/`, which the existing import map already resolves
-([index.html:156-160](index.html#L156-L160)).
+(the `<script type="importmap">` block in SHITFIRE.html).
 
 Second governing constraint, specific to this app: **this is a training instrument, not a demo.**
 Any graphics change that reduces the observer's ability to (a) resolve a target at 1500–3200 m
@@ -26,16 +26,16 @@ justified primarily on training value, not looks.
 
 | Area | Today | Anchor |
 |---|---|---|
-| Renderer | `antialias: true`, pixelRatio ≤1.75, no tone mapping, no shadows | [index.html:450-452](index.html#L450-L452) |
-| Sky | flat `Color(0xBFE0EA)` background | [index.html:455](index.html#L455) |
-| Fog | linear `Fog(0xE3EADB, 4500, 15000)` | [index.html:456](index.html#L456) |
-| Light | 1 directional + 1 hemisphere, fixed | [index.html:460-463](index.html#L460-L463) |
-| Terrain | 300 seg / 10 000 m = **33 m per quad**, vertex colors by height+slope, flat shaded | [index.html:482-514](index.html#L482-L514) |
-| Ocean | two flat Lambert planes | [index.html:466-478](index.html#L466-L478) |
+| Renderer | `antialias: true`, pixelRatio ≤1.75, no tone mapping, no shadows | the `WebGLRenderer` init in SHITFIRE.html |
+| Sky | flat `Color(0xBFE0EA)` background | the `scene.background` assignment in SHITFIRE.html |
+| Fog | linear `Fog(0xE3EADB, 4500, 15000)` | the `scene.fog` assignment in SHITFIRE.html |
+| Light | 1 directional + 1 hemisphere, fixed | the scene lighting setup in SHITFIRE.html |
+| Terrain | 300 seg / 10 000 m = **33 m per quad**, vertex colors by height+slope, flat shaded | `buildTerrain()` in SHITFIRE.html |
+| Ocean | two flat Lambert planes | the ocean plane setup in SHITFIRE.html |
 | Vegetation | **none** — jungle is a green vertex color | — |
-| World features | per-object `Mesh` + `BoxGeometry`, shared materials | [index.html:685-727](index.html#L685-L727) |
-| Impact FX | pool of 10: sprite flash, ring, dust hemi, 5 puffs, 6 debris, 14 s life | [index.html:1730-1822](index.html#L1730-L1822) |
-| Quality | pixelRatio EMA step-down, 4 tiers | [index.html:3836-3841](index.html#L3836-L3841) |
+| World features | per-object `Mesh` + `BoxGeometry`, shared materials | `buildWorldFeatures()` in SHITFIRE.html |
+| Impact FX | pool of 10: sprite flash, ring, dust hemi, 5 puffs, 6 debris, 14 s life | the burst/impact pool in SHITFIRE.html |
+| Quality | pixelRatio EMA step-down, 4 tiers | `QUALITY` in SHITFIRE.html |
 
 **Three defects worth naming before any beautification:**
 
@@ -73,7 +73,7 @@ polish that can be skipped without leaving the codebase in a half-state.
 ## G0 — Config gate and no-regret renderer settings
 
 Everything in this document hangs off one new `CONFIG` block, so the whole plan can be A/B'd or
-reverted with one flag. Insert into `CONFIG` at [index.html:302](index.html#L302), after `WORLD`:
+reverted with one flag. Insert into `CONFIG` (search for the `WORLD:` key in SHITFIRE.html), after `WORLD`:
 
 ```js
   GFX: {
@@ -94,7 +94,7 @@ which are therefore interpreted as sRGB and converted correctly. **Verify this b
 anything** (`console.log(renderer.outputColorSpace)`); do not "fix" it — the existing palette was
 tuned under these defaults and a change would shift every colour in the app, the map sheets included.
 
-**G0.2 — Tone mapping.** Add at [index.html:452](index.html#L452):
+**G0.2 — Tone mapping.** Add at the renderer init (near the `WebGLRenderer` construction) in SHITFIRE.html:
 
 ```js
 if (CONFIG.GFX.toneMap) {
@@ -134,8 +134,8 @@ guarantee a target at max engagement range (3200 m) stays fully legible. `FogExp
 more natural and is harder to bound — not worth the trade here.
 
 **G0.4 — Pin quality while glassing (correctness fix).** In `setBinos`
-([index.html:1911](index.html#L1911)) force tier 0 while binos are up and restore on exit; and in the
-quality step at [index.html:3852](index.html#L3852) skip step-down entirely when `binos === true`.
+(search `function setBinos` in SHITFIRE.html) force tier 0 while binos are up and restore on exit; and in the
+quality step (search `QUALITY` in SHITFIRE.html) skip step-down entirely when `binos === true`.
 Land this one on its own, ahead of the rest — it is a training-fidelity bug, and it is a two-line diff.
 
 ---
@@ -181,7 +181,7 @@ static per mission and `H(x,z)` is cheap and already available, the same visual 
 almost all of the training value — can be *baked into the existing vertex colour attribute at build
 time for zero frame cost*.
 
-Extend `buildTerrain()` ([index.html:482](index.html#L482)). Split the existing single loop into two
+Extend `buildTerrain()` (search `function buildTerrain` in SHITFIRE.html). Split the existing single loop into two
 passes: pass 1 writes heights into a `Float32Array` (it already computes them), pass 2 computes
 shading and writes colours.
 
@@ -201,7 +201,7 @@ function sunOcclusion(x, z, h, sx, sz, sy) {   // sx,sz = sun azimuth unit vec, 
 Combine three terms into the vertex colour:
 
 - **Lambert hillshade** — `dot(normal, sunDir)`, from the analytic gradient already computed for `sl`
-  at [index.html:496](index.html#L496). Cheapest half of the effect; do this even if nothing else.
+  in `buildTerrain()` in SHITFIRE.html. Cheapest half of the effect; do this even if nothing else.
 - **Cast shadow** — `sunOcclusion` above. This is what makes ridgelines and draws legible: the
   shadowed side of a spur is what an observer actually uses to read relief.
 - **Valley AO** — sky occlusion, same march repeated over ~6 azimuths at a fixed short radius
@@ -210,7 +210,7 @@ Combine three terms into the vertex colour:
 
 **Budget.** 301² ≈ 90 k vertices. Cast shadow ≈13 `H()` calls, AO ≈6×5 = 30 → ~3.9 M `H()` calls per
 rebuild. `H_proc` is a 5-octave fbm, so expect **300–700 ms** — and `buildTerrain()` runs on *every*
-mission regen via `rebuildWorld()` ([index.html:522](index.html#L522)). Mitigations, in preference order:
+mission regen via `rebuildWorld()` (search `function rebuildWorld` in SHITFIRE.html). Mitigations, in preference order:
 
 1. Compute shading on a coarser grid (e.g. 128²) and bilinearly sample it per vertex — cuts the cost
    ~50× and the loss is invisible, since shading is low-frequency by nature.
@@ -219,7 +219,7 @@ mission regen via `rebuildWorld()` ([index.html:522](index.html#L522)). Mitigati
    the terrain is already visible with flat colours meanwhile.
 
 **Must respect `TERRAIN_PALETTE === 'black'`** (Volume IV black sand,
-[index.html:487-490](index.html#L487-L490)). Dark sand plus shadow terms will crush to black; clamp
+search `TERRAIN_PALETTE` in SHITFIRE.html). Dark sand plus shadow terms will crush to black; clamp
 the shading multiplier to a higher floor (≈0.55 vs ≈0.35) when `blk` is true.
 
 **Verification:** load a chapter, open `[M]`, and confirm a ridge visible in 3D corresponds to the
@@ -247,7 +247,7 @@ under 300 k, comfortably inside budget for a static scene at 60 fps).
 base tris) and shrink the patch to 1200 m / 300 seg (4 m/quad). Slightly more total cost, no seam
 management. Try the patch first; it is the cheaper of the two.
 
-**Caveat:** `groundHit()`/`hasLOS()` ([index.html:400](index.html#L400), [419](index.html#L419)) march
+**Caveat:** `groundHit()`/`hasLOS()` (search those names in SHITFIRE.html) march
 `H()` directly, not the mesh, so LOS and impact placement stay consistent automatically. Don't
 "optimise" either of them onto the mesh.
 
@@ -314,7 +314,7 @@ uniform object — no per-frame allocation.
 
 ## G6 — Impact persistence
 
-Two additions to the burst system ([index.html:1730](index.html#L1730)), both with direct doctrinal value:
+Two additions to the burst system (search the impact/burst pool in SHITFIRE.html), both with direct doctrinal value:
 
 **Persistent craters.** An `InstancedMesh` ring buffer of `CONFIG.GFX.craters` (40) dark discs, lifted
 slightly with polygon offset, oldest recycled. Beyond looking right, this lets the observer **see
@@ -325,8 +325,8 @@ reading, and today it evaporates in 14 s.
 walked bracket stays legible while the correction is being composed and transmitted. Keep it thin
 enough not to mask the target — this is a marker, not a smoke screen.
 
-Also worth the ten minutes: the water/ground differentiation at
-[index.html:1772-1774](index.html#L1772-L1774) already recolours the dust; give the water case a
+Also worth the ten minutes: the water/ground differentiation in the burst pool's water-case
+recolour logic in SHITFIRE.html already recolours the dust; give the water case a
 taller, narrower column so a round splashing offshore is unmistakably a miss into the sea rather than
 an ambiguous puff on the beach. That is a real spotting distinction.
 
@@ -337,14 +337,14 @@ per-impact-allocated particle system.**
 
 ## G7 — Optics presentation (no WebGL cost)
 
-All of this is drawn into the existing 2D reticle canvas ([index.html:1850](index.html#L1850)) or done
+All of this is drawn into the existing 2D reticle canvas (search `drawReticle` in SHITFIRE.html) or done
 in CSS — zero GL cost, zero risk to frame rate:
 
 - Vignette + slight edge darkening in bino mode; a faint warm/cool fringe at the field stop.
 - Keep the mil graduations at full contrast — they are a measuring instrument, and vignetting must
   never encroach on them.
 - A small damped sway while glassing, settling over ~1 s, cut to near zero when the laser is held
-  ([index.html:1926](index.html#L1926) region). Sells the optic and subtly rewards a steady hold.
+  (near the laser-hold sway logic in SHITFIRE.html). Sells the optic and subtly rewards a steady hold.
 
 **Explicitly skipped:** full-screen heat shimmer / SVG displacement filters. Full-screen CSS filters
 on a WebGL canvas are expensive and unpredictable across GPUs, and shimmer actively degrades the
@@ -360,7 +360,7 @@ tier 0. A directed-energy weapon is the one thing in this app that genuinely wan
 
 For everything else, **do not add a composer.** It costs a full-screen render target plus several
 passes, breaks the direct `renderer.render()` path the quality system assumes
-([index.html:3908](index.html#L3908)), and the additive sprite flashes already fake it well enough.
+(search the direct `renderer.render()` call in SHITFIRE.html), and the additive sprite flashes already fake it well enough.
 If bloom lands, the quality step-down must also switch the composer off, not just lower pixel ratio.
 
 Reminder from CLAUDE.md: SUNLAMP **still uses the direct-impact ballistics model**. Bloom is pacing
@@ -475,13 +475,13 @@ Run after every stage, in Chrome desktop:
    measurable off the reticle. Confirm G4 vegetation didn't mask it.
 5. **Map sheets unaffected** — `[M]` map, all five printed sheets, and the answer key render
    identically. Structures, roads, and the legend must still be present and correct.
-6. **DEM path** — load a heightmap via the DEM ingestion path ([index.html:531](index.html#L531)) and
+6. **DEM path** — load a heightmap via the DEM ingestion path (`demSample` in SHITFIRE.html) and
    confirm G2 hillshade and G4 placement work off DEM-derived `H()`, not just procedural.
 7. **Black-sand palette** — run a Volume IV chapter; confirm terrain doesn't crush to black and
    vegetation rules applied.
 8. **Rebuild cost** — time `rebuildWorld()`; a mission regen should stay under ~250 ms perceived.
 9. **`window.SHITFIRE` interfaces intact** — `H`, `fireMission`, `applyCorrection`, `FDC.say`,
-   `Scenario`, `gradeMission`, `TLOG` unchanged in shape ([index.html:3916](index.html#L3916)).
+   `Scenario`, `gradeMission`, `TLOG` unchanged in shape (search `window.SHITFIRE` in SHITFIRE.html).
 
 ---
 
@@ -548,7 +548,7 @@ only at close range, which this app's camera geometry never visits.
   CSM over a 1M-tri terrain needs a separate shadow LOD or it blows the 16.6 ms frame budget outright.
   Integrated graphics will not hold 60 fps at this tier.
 - **The adaptive quality system becomes load-bearing, not a nicety** — the same step-down mechanism
-  §G0.4 currently patches for bino correctness ([index.html:3836-3841](index.html#L3836-L3841)) is what
+  §G0.4 currently patches for bino correctness (search `QUALITY` in SHITFIRE.html) is what
   keeps the max version inside frame budget on mid-tier hardware.
 - **Maintainability is the real casualty.** Several thousand lines of GLSL inside an ~8000-line
   single-file HTML document, with no shader compilation step to catch errors early, is genuinely
@@ -566,7 +566,7 @@ than the "ship it" plan wants, but both dominate on pure ceiling-per-LOC.
    `H(x,z)` as the sole authority afterward so `groundHit`/`hasLOS` stay consistent with what's drawn
    — same constraint §G3 already calls out for the near-field LOD patch.
 2. **Real DEM data.** The heightmap is the *one* external input the golden rules already permit
-   ([index.html:531](index.html#L531) ingestion path). Dropping in a real island's DEM gives
+   (`demSample` in SHITFIRE.html). Dropping in a real island's DEM gives
    geological structure no noise function can fake, for **zero new code.** Cheapest large realism win
    available, full stop.
 
