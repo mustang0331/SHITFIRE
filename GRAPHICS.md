@@ -230,6 +230,22 @@ contours on the sheet. If hillshade is right, resection off the airfield/mast/vi
 
 ## G3 — Near-field terrain LOD patch
 
+> **Shipped `76a5cce` (2026-07-30) as ROADMAP 13e.** The implemented shape differs from both options
+> below: instead of an overlaid patch with polygon offset, or a wider base mesh with a shrunk patch,
+> `buildTerrain` **cuts a hole in the base mesh on its own grid lines** and lays a high-res patch
+> (`CONFIG.TERRAIN.patchSize` 1200 m, `patchDiv` 4 → **8.3 m facets**, not the 8 m/2400 m or 4 m/1200 m
+> figures below) over the mission target area, re-sampling the same analytic `H()`. Patch boundary
+> vertices are computed with the base mesh's own float expression and lerp the base corners' heights,
+> so the two meshes share the boundary polyline bit-for-bit — **no z-fight, no polygon offset, no seam
+> management needed at all**, which the alternative below was written assuming would still be a
+> concern. `setTerrainFocus(x,z)` re-centres the patch on the mission target area at mission start
+> (moves under 250 m are no-ops); one shared material and one hillshade/AO bake closure covers both
+> sheets. Cost: +1 draw call, ~44k triangles (well under the ~180k this section estimated), re-focus
+> rebuild measured 182 ms against a 250 ms gate. `groundHit()`/`hasLOS()` confirmed untouched — both
+> still march `H()` directly, per the caveat below. Verified 10/10 live geometry harness + 12/12
+> screenshot states (faceting visible at 14x, no seam artifact, map sheets untouched). The plan text
+> below is kept as the design record; it is no longer the shipped shape.
+
 Fixes defect #1. Add a second terrain mesh covering `CONFIG.GFX.nearLODSize` (2400 m) at 300 segments
 = **8 m per quad**, centred on the midpoint of the OP→target line, rebuilt when the mission target
 changes. Draw it over the base sheet with polygon offset:
