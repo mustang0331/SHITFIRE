@@ -8,9 +8,27 @@ document.addEventListener('mousemove', e => {
   yaw += e.movementX * s;
   pitch = clamp(pitch - e.movementY * s, -CONFIG.CAMERA.pitchClamp, CONFIG.CAMERA.pitchClamp);
 });
+/* 13i — hold sway. A hand-held optic is never perfectly still: a small damped
+   two-frequency wobble rides the view while glassing. Raising the binos adds a
+   settling transient (~1 s); a lase steadies the hold to near zero for a
+   moment (the squeeze). The sway is CONSTANT-ANGLE, so higher magnification
+   makes it look bigger all by itself — which is exactly what real glass does.
+   It lives here in lookDir so the view, the reticle measurements and the laser
+   ray all agree about where the optic is actually pointing. Never applied to
+   the naked eye, and yaw/pitch state is untouched — sway is presentation. */
+const SWAY = { t0: -9e9, steadyUntil: -9e9 };
 function lookDir(out) {
-  const cp = Math.cos(pitch);
-  out.set(Math.sin(yaw) * cp, Math.sin(pitch), -Math.cos(yaw) * cp);
+  let y = yaw, p = pitch;
+  if (binos && CONFIG.CAMERA.swayMil > 0) {
+    const t = sim.now;
+    const settle = 1 + 2.4 * Math.exp(-(t - SWAY.t0) / 0.45);
+    const steady = t < SWAY.steadyUntil ? 0.08 : 1;
+    const A = CONFIG.CAMERA.swayMil * 0.00098 * settle * steady;   // mils → rad
+    y += A * (Math.sin(t * 1.1) + 0.45 * Math.sin(t * 2.7 + 1.3));
+    p += A * (Math.sin(t * 0.83 + 0.7) + 0.45 * Math.sin(t * 2.1 + 4.2));
+  }
+  const cp = Math.cos(p);
+  out.set(Math.sin(y) * cp, Math.sin(p), -Math.cos(y) * cp);
   return out;
 }
 
@@ -98,7 +116,7 @@ function drawReticle() {
 }
 function setBinos(on) {
   binos = on;
-  if (on) tutEvent('binos');
+  if (on) { tutEvent('binos'); SWAY.t0 = sim.now; }   // 13i — raise transient
   camera.fov = on ? binoFovNow() : CONFIG.CAMERA.fov;
   camera.updateProjectionMatrix();
   binoEl.classList.toggle('on', on);
@@ -160,6 +178,9 @@ function doLase() {
     return;
   }
   const tok = ++laseToken;
+  // 13i — the squeeze: the hold steadies through the lase and its readout,
+  // set BEFORE the scheduled raycast so the ray itself is fired steady
+  SWAY.steadyUntil = sim.now + 1.4;
   laseTick();
   laseEl.textContent = 'LASING…';
   schedule(sim.now + 0.55, () => {

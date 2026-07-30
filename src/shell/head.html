@@ -86,9 +86,17 @@
   /* Binoculars */
   #bino { position: fixed; inset: 0; display: none; pointer-events: none; }
   #bino.on { display: block; }
+  /* 13i — layered field stop: a gentle interior edge-darkening (real glass is
+     dimmer off-axis), a faint warm/cool chromatic fringe just inside the stop,
+     then the hard black. The fringe sits INSIDE 52% while the reticle's
+     graduated arms stop 30 px short of the half-screen — the mil graduations
+     are a measuring instrument and stay at full contrast, unencroached. */
   #vignette { position: absolute; inset: 0;
-    background: radial-gradient(circle at 50% 50%,
-      transparent 33%, rgba(0,0,0,.28) 45%, #000 61%); }
+    background:
+      radial-gradient(circle at 50% 50%,
+        transparent 54.5%, rgba(255,178,96,.07) 56.5%, rgba(110,170,255,.06) 58%, transparent 59.5%),
+      radial-gradient(circle at 50% 50%,
+        transparent 26%, rgba(0,0,0,.13) 38%, rgba(0,0,0,.30) 45%, #000 61%); }
   #reticle { position: absolute; inset: 0; }
   #binoinfo { position: absolute; left: 50%; bottom: 15%; transform: translateX(-50%);
     color: #e6eecd; font-size: 14px; letter-spacing: .12em; text-align: center; }

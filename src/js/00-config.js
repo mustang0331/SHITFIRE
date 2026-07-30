@@ -30,6 +30,9 @@ const CONFIG = {
                  7X   fov  8.57 — the M22 the doctrine assumes. Default.
                 14X   fov  4.29 — precision mil measurement on a small target. */
             binoZooms: [4, 7, 14], binoZoom: 1,
+            /* 13i — hand-held sway amplitude in mils (constant angle; higher
+               power magnifies it optically, as real glass does). 0 disables. */
+            swayMil: 0.65,
             mouseSens: 0.0022, pitchClamp: 1.35 },
   BALLISTICS: {
     tofDivisor: 300, tofBase: 8, tofMin: 15, tofMax: 40, splashLead: 5,
