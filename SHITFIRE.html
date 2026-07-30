@@ -3908,6 +3908,38 @@ function fireMission(targetLocation, warno, meta) {
   else fireAdjustRound();
 }
 
+/* G27 — recorded targets, by number. Survives across missions within a session
+   (that is what "on file" means) but is not persisted, because a target number is
+   only meaningful to the fire unit that assigned it. */
+const RECTGT = {};
+function handleSuppressTarget(p) {
+  if (mission && !mission.done) {
+    FDC.say('MUSTANG 12, we are mid-mission. Finish this one, over.', { delay: 1 });
+    return;
+  }
+  const tgt = RECTGT[p.tgtNum];
+  if (!tgt) {
+    const known = Object.keys(RECTGT);
+    FDC.say(`NEGATIVE — I have no target ${p.tgtNum} on file. ` +
+      (known.length ? `I hold ${known.join(', ')}. ` : 'Nothing is recorded on this net yet. ') +
+      'Say again, over.', { delay: 1 });
+    return;
+  }
+  /* Doctrine sends duration with a suppress mission. This model has no sustained
+     fire, so the duration is read back and graded as format rather than simulated —
+     the same honesty applied to sheaf, volume of fire and time on target. */
+  const mins = p.minutes;
+  FDC.say(`SUPPRESS TARGET ${p.tgtNum}${mins ? ', ' + mins + ' MINUTES' : ''}, OUT.`,
+          { delay: 0.8 });
+  if (!mins)
+    log('', 'A suppress mission carries a duration — "SUPPRESS TARGET ' + p.tgtNum +
+      ', 10 MINUTES, OVER". Firing anyway.', 'sys');
+  setState('MISSION SENT');
+  fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
+    { notes: mins ? [] : ['Suppress mission sent without a duration.'],
+      desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid' });
+}
+
 /* ---- G24: AT MY COMMAND (DOCTRINE.md §34) -----------------------------------
    Method of fire and control. The default is "when ready" — the FDC fires as soon
    as it has data. Under AT MY COMMAND it lays the guns, reports READY, and waits
@@ -4300,21 +4332,43 @@ function parseMessage(raw) {
     return { type: 'eom', refine: ref, record: /record as target/.test(t), bda };
   }
   const ffe = t.includes('fire for effect');
+  /* G14/G26 — the IMMEDIATE mission types (DOCTRINE.md §22) are sent as ONE
+     transmission: ID + warning order + location, and the FDC sends no MTO. Before
+     this, "immediate suppression, grid …" parsed as an ordinary HE grid mission and
+     the mission type was silently lost, which is worse than being unrecognised. */
+  const imm = t.includes('immediate suppression') ? 'suppress'
+            : t.includes('immediate smoke') ? 'smoke' : null;
+  /* G27 — SUPPRESS on a previously recorded target, by number and duration.
+     Tested before location parsing because it carries a target number, not a grid. */
+  const mSup = t.match(/\bsuppress\s+(?:target\s+)?([a-z]{2})\s*(\d{4})\b/);
+  if (mSup && !imm) {
+    const mMin = t.match(/(\d+)\s*(?:minute|minutes|min)\b/);
+    return { type: 'suppresstgt', tgtNum: (mSup[1] + mSup[2]).toUpperCase(),
+             minutes: mMin ? parseInt(mMin[1]) : null, raw: t, toks };
+  }
   // grid extraction
   const gi = toks.indexOf('grid');
   let digits = '';
   if (gi >= 0) {
     for (let i = gi + 1; i < toks.length && /^\d+$/.test(toks[i]); i++) digits += toks[i];
   }
+  /* An immediate call is shouted under fire, and the observer routinely drops the
+     word "grid" — a real transcript has "IMMEDIATE SUPPRESSION 253535 OUT", which
+     used to parse as nothing at all. Accept a bare 6/8-digit run when the
+     transmission is already unambiguously an immediate mission. */
+  if (!digits && imm)
+    for (const w of toks)
+      if (/^\d+$/.test(w) && (w.length === 6 || w.length === 8)) { digits = w; break; }
   if (digits) {
-    const warno = ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none');
+    const warno = imm ? 'ffe' : (ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none'));
     // description: words after the grid digit run, up to a trailing proword
     let di = gi + 1;
     while (di < toks.length && /^\d+$/.test(toks[di])) di++;
     const stop = new Set(['over', 'out', 'break']);
     const descToks = [];
     for (let i = di; i < toks.length && !stop.has(toks[i]); i++) descToks.push(toks[i]);
-    return { type: 'cff', method: 'grid', warno, digits, desc: descToks.join(' '), raw: t, toks };
+    return { type: 'cff', method: 'grid', warno, digits, imm,
+             desc: descToks.join(' '), raw: t, toks };
   }
   // shift from known point: "shift known point 1001, right 200, add 400" —
   // named KPs also accepted ("shift BREWERY"), normalized to their id first
@@ -4647,16 +4701,24 @@ function handleCFF(p) {
      observer has already confirmed. Read back the third transmission only. The
      one-shot path is unchanged: everything arrived at once, so all of it is read
      back at once. */
-  FDC.say(p.staged
-    ? `${p.desc ? p.desc.toUpperCase() : 'NO DESCRIPTION'}` +
-      (p.raw.includes('danger close') ? ', DANGER CLOSE' : '') + ', OUT.'
-    : `${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
-      (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
-          { delay: CONFIG.FDC.readbackDelay });
-  FDC.say(activeChapter && activeChapter.asset === 'mortar60'
-    ? 'MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.'
-    : 'MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
-          { delay: 1.4 });
+  /* G14/G26 — an immediate mission gets its own short readback and NO MTO, per
+     DOCTRINE.md §42 ("No MTO is sent for immediate suppression"). The whole point
+     of the mission type is that it is fast: friendlies are being shot at, so the
+     FDC does not stop to recite units, rounds and a target number. */
+  const immText = p.imm === 'smoke' ? 'IMMEDIATE SMOKE' : 'IMMEDIATE SUPPRESSION';
+  FDC.say(p.imm
+    ? `${immText}, ${locStr}, OUT.`
+    : p.staged
+      ? `${p.desc ? p.desc.toUpperCase() : 'NO DESCRIPTION'}` +
+        (p.raw.includes('danger close') ? ', DANGER CLOSE' : '') + ', OUT.'
+      : `${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
+        (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
+          { delay: p.imm ? 0.7 : CONFIG.FDC.readbackDelay });
+  if (!p.imm)
+    FDC.say(activeChapter && activeChapter.asset === 'mortar60'
+      ? 'MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.'
+      : 'MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
+            { delay: 1.4 });
   // deviation policy: sloppy-but-safe call format earns a snide remark and
   // proceeds; a clean call gets the usual readback color.
   if (notes.length >= 2) FDC.say(pick(QUIPS.snide), { delay: 1.1 });
@@ -4914,7 +4976,15 @@ function handleEOM(p) {
   if (p.record) {
     mission.recorded = true;
     const tn = 'AB' + (7100 + (CONFIG.SEED.mission % 800));
+    /* G27 — the target number now means something. It used to be announced and
+       thrown away, so "suppress target AB7101" had nothing to look up and the
+       whole suppress-by-number mission type was unreachable. Stored with the
+       aimpoint as it stands at end of mission, which is after any refinement —
+       which is exactly what recording a target is for. */
+    RECTGT[tn] = { x: mission.aim.x, z: mission.aim.z, t: sim.now };
     FDC.say(`RECORDED AS TARGET ${tn}, OUT.`, { delay: 1.0 });
+    log('', `Target ${tn} is on file at ${gridOf(mission.aim.x, mission.aim.z)}. ` +
+      `You can re-engage it with "SUPPRESS TARGET ${tn}, 5 MINUTES, OVER".`, 'sys');
   }
   FDC.say(`END OF MISSION${p.bda ? ', ' + p.bda.toUpperCase() : ''}, OUT.`, { delay: 1.2 });
   if (mission.failReason !== 'fratricide' && mission.failReason !== 'collateral') {
@@ -5011,6 +5081,7 @@ function onPlayerMessage(raw) {
     case 'donotload': handleDoNotLoad(); break;
     case 'cannotobserve': handleCannotObserve(); break;
     case 'tot': handleTimeOnTarget(p.sec); break;
+    case 'suppresstgt': handleSuppressTarget(p); break;
     case 'repeat':
       if (mission && !mission.done && state === 'ADJUSTING') {
         FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
