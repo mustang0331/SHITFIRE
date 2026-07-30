@@ -15,7 +15,7 @@ match, duplicate-DANGER-CLOSE readback · `G19` CFF audit · **G-B doctrine clus
 `G11` OT direction & MTO readback, `G14` immediate suppression/smoke, `G22`–`G27` the CFF protocol
 rows).
 
-**Next:** `G17` (per-asset callsigns), then the G10/G13/G18 JFIRE research bucket — see §3.
+**Next:** the **G10/G13/G18 JFIRE research bucket** (then G15/G16 build on G13's findings) — see §3.
 
 > ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
 > (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
@@ -303,7 +303,7 @@ DO NOT MIL A MAN warning two panels away. Re-referenced to the 5 m truck.
 | G14 | **Immediate suppression *and* immediate smoke are one-transmission calls.** Supersedes row **12g**. Live transcript evidence: [DIALOGUE_REVISIONS.md §9.3](DIALOGUE_REVISIONS.md). | Opus | Both parse as a single transmission; FDC skips the MTO | **DONE** `fbbc137` |
 | G15 | **Sheaf selection** — needed most for convoys and bunkers. If the observer does not specify, **the FDC chooses from the target description**. | Opus | Sheaf accepted when given, inferred when not, and the inference is explainable in the AAR | READY |
 | G16 | **Fuze selection** — airburst for troops in the open, delay for bunkers; FDC infers if unspecified. Follow the doctrine PDFs. | Opus | Fuze accepted/inferred; choice affects the graded effect, not just the text | READY |
-| G17 | **60mm and artillery need different callsigns.** Currently both talk to HELLHOUND FIRES. | Opus | Distinct callsign per asset; NARRATIVE.md updated so the name is story-consistent | READY |
+| G17 | ~~**60mm and artillery need different callsigns.**~~ **DONE** `96a2545` — the 60mm section is **HACKSAW FIRES**, renamed centrally at delivery inside `FDC.say` (one point every utterance passes through, so the quip pools are covered too, instead of editing ~35 strings). Strict net bounces the WRONG callsign with a specific challenge in both directions. Phonetically far from HELLHOUND on purpose (STT). NARRATIVE.md roster updated; a distinct personality is stage-14 work. Harness 20/20. | Fable | **DONE** `96a2545` |
 | G18 | **60mm and artillery need different effective radii.** A mortar round and a 155 do not do the same thing. Research required. | Opus | Per-asset effect radius sourced and recorded; interacts with G13 — **land G13 first** | RESEARCH FIRST |
 | G19 | **Full CFF protocol audit** — the user reports "inconsistencies" without enumerating them. Read DOCTRINE.md against the parser and the FDC script end to end and produce a findings list before changing anything. | Opus | Written findings list, each item either fixed or logged as its own row | **DONE** — findings below |
 
