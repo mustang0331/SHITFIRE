@@ -510,7 +510,9 @@ function addRoundEffect(impact, isFFE) {
     ? (CONFIG.EFFECTS.posture[S.posture] || 1) : 1;
   // G15 — sheaf shapes the VOLLEY, so it scales FFE rounds only; a single
   // adjusting round has no sheaf to speak of. G16 — the fuze is on EVERY round.
-  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult();
+  // 11b — S.armor divides the contribution: big enough to hit easily can still
+  // be hard to hurt (chitin the size of a church).
+  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult() / (S.armor || 1);
 }
 
 /* ---- G15: sheaf (FM 6-30 §4-6.f / ATP 3-09.30 §4-45) -----------------------
@@ -642,6 +644,7 @@ function assessEffect() {
 function missionAccomplished() {
   if (mission && mission.intent === 'illum') return mission.rounds.length > 0;
   const a = assessEffect();
+  if (Scenario && Scenario.type === 'kaiju') return a.outcome === 'destroyed';   // 11b
   return a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
          (a.outcome === 'suppressed' && mission && mission.intent === 'suppress');
 }
@@ -856,7 +859,9 @@ function assessFFE() {
   mission.hits = mission.ffeRounds.filter(r =>
     dist2(r.x, r.z, S.enemy.x, S.enemy.z) < effBands().rSupp).length;
   const a = assessEffect();
-  if (a.outcome === 'destroyed' || a.outcome === 'neutralized') {
+  // 11b — a kaiju does not do "combat-ineffective": it is walking or it is
+  // not. Only DESTROYED fells it; anything less and the landfall clock runs.
+  if (a.outcome === 'destroyed' || (a.outcome === 'neutralized' && S.type !== 'kaiju')) {
     enemyAlive = false;
     // figure origin is at the feet, so this pivots the body over without sinking
     // it — and, unlike the old `position.y -= 0.55`, it is idempotent if the
@@ -867,6 +872,7 @@ function assessFFE() {
     if (S.type === 'strongpoint' && a.outcome === 'destroyed')
       units.vehicles.forEach(m => { if (m.visible) m.rotation.z = 0.25; });
     if (S.type === 'bunker' && a.outcome === 'destroyed') visSetColor(units.bunker, 0x3A352F);
+    if (S.type === 'kaiju' && a.outcome === 'destroyed') visSetColor(units.bunker, 0x4A2B24);
   }
 }
 

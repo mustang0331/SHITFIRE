@@ -117,7 +117,11 @@ const CAMPAIGN = [
       outro: 'The flock is broken. The potato salad is intact. The general pins nothing on you, because officially none of this happened.',
       coach: ['Birds are TROOPS IN THE OPEN, killer. The field manual does not have a column for wingspan and I am not going to be the one to write it.',
               'Dombrowski is at the grill. If a correction walks one round onto that man or his salad, it is FRATRICIDE, it goes in the report, and I will read the report AT you.'] },
-    { id: 'E.2', title: 'CLAWS OUT', blurb: 'stage 11', impl: false },
+    { id: 'E.2', title: 'CLAWS OUT', blurb: 'a moving target. it is also a crab.', impl: true, type: 'kaiju', seed: 502, par: 420,
+      story: 'At 0400 the radar picket reported a contact wading through the surf line. At 0406 the picket stopped filing reports and started filing retirement paperwork. A crab the size of a church is making for the village, and battalion has ruled — in writing — that it is a surface target and therefore yours. It is moving. Lead it. HELLHOUND has been briefed and has elected not to react.',
+      outro: 'The crab settles into the shallows. The village never knew. The after-action report lists one (1) hard structure, mobile, destroyed, and no further questions were taken.',
+      coach: ['It is a MOVING TARGET, killer. Lead it like the convoy: fire where it is GOING to be, not where it makes you feel things.',
+              'Big does not mean soft. That shell is a hard structure — FUZE DELAY pays, and you will need sustained effect. Volley, correct, REPEAT.'] },
     { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'stage 11', impl: false },
   ]},
   { id: 'V5', tab: 'V', name: 'VOLUME V — ON WINGS', need: Infinity,
@@ -198,6 +202,8 @@ function gradeMission(m) {
   if (m.failReason) return 0;
   if (m.intent === 'illum') {         // 12h — graded on light provided, then competence
     if (!m.rounds.length) return 0;
+  } else if (S.type === 'kaiju') {    // 11b — destroyed or nothing
+    if (assessEffect().outcome !== 'destroyed') return 0;
   } else {
     const a = assessEffect();
     if (a.outcome === 'none') return 0;

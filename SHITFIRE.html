@@ -2901,6 +2901,36 @@ function genScenario(type, seed) {
     S.bbq = site;
     S.friendlies = [{ x: site.x, z: site.z, r: 60 }];
     S.brief = `The general is grilling at grid ${gridOf(site.x, site.z)}. A seagull flock, several hundred strong, is assaulting the pit from the tideline — massing near grid ${gridOf(ex, ez)}. The COOKS are a NO-FIRE line: one round on Private Dombrowski or his potato salad is FRATRICIDE, same rules, no appeals. This close to the pit you WILL say DANGER CLOSE. Destroy the flock.`;
+  } else if (type === 'kaiju') {
+    /* 11b — Epilogue E.2 CLAWS OUT. A B-movie crab the size of a church wades
+       ashore toward the nearest village. Mechanically it is an honest moving
+       point target: convoy-style path (offshore → the village), point-class
+       bands scaled UP (it is enormous — easier to HIT) with an armor divisor
+       (it is chitin — harder to HURT), so stopping it takes sustained,
+       well-led fire on the move. Landfall = mission failed and over, the
+       convoy-escape precedent. Nobody in the fiction finds any of this
+       unusual. Chapter-only. */
+    let vil = WORLD.villages[0] || { x: 0, z: 0 };
+    for (const v of WORLD.villages)
+      if (dist2(v.x, v.z, OP.x, OP.z) < dist2(vil.x, vil.z, OP.x, OP.z)) vil = v;
+    // landfall line: from the village straight out to sea
+    const outAz = Math.atan2(vil.x, vil.z);            // away from island center
+    let sx = vil.x, sz = vil.z, steps = 0;
+    while (H(sx, sz) > -4 && steps++ < 400) { sx += Math.sin(outAz) * 25; sz += Math.cos(outAz) * 25; }
+    sx += Math.sin(outAz) * 300; sz += Math.cos(outAz) * 300;   // start well offshore
+    const len = Math.max(dist2(sx, sz, vil.x, vil.z) - 60, 400);
+    const dxn = (vil.x - sx) / dist2(sx, sz, vil.x, vil.z);
+    const dzn = (vil.z - sz) / dist2(sx, sz, vil.x, vil.z);
+    S.path = { sx, sz, dx: dxn, dz: dzn, len };
+    S.speed = 2.1;                                     // wading; the sea resists
+    S.t0 = sim.now;
+    S.enemy = { x: sx, z: sz };
+    S.village = vil;
+    S.ashore = false;
+    S.tgtClass = 'point';
+    S.effScale = 2;                                    // church-sized: bands double
+    S.armor = 3;                                       // chitin: three volleys' worth
+    S.brief = `A crab, dark red, approximately the size of a church, is wading ashore toward the village of ${vil.name || 'the coast'} from grid ${gridOf(sx, sz)}. It is a MOVING TARGET — lead it. It is also a crab. The village is NO-STRIKE as always. Stop it before landfall; nobody will discuss this afterwards.`;
   } else if (type === 'assault') {
     S.enemy = findSpot(1600, 3000, 4, 60, true) || { x: OP.x + 2000, z: OP.z };
     const oAz = azTo(S.enemy.x, S.enemy.z, OP.x, OP.z);  // objective -> OP side
@@ -3009,6 +3039,28 @@ function updateScenario() {
         }
       }
     }
+  } else if (S.type === 'kaiju') {
+    // 11b — the crab wades until it is dead or ashore
+    const m = units.bunker;
+    if (!enemyAlive) {
+      m.rotation.z = 0.6;                              // it settles; the tide handles the rest
+      m.position.y = Math.max(H(S.enemy.x, S.enemy.z), 0) + 2.2;
+    } else {
+      const d = clamp(S.speed * (sim.now - S.t0), 0, S.path.len);
+      S.enemy.x = S.path.sx + S.path.dx * d;
+      S.enemy.z = S.path.sz + S.path.dz * d;
+      const bob = Math.sin(sim.now * 1.6) * 0.9;       // the gait of a determined crab
+      m.position.set(S.enemy.x, Math.max(H(S.enemy.x, S.enemy.z), 0) + 4.4 + bob, S.enemy.z);
+      m.rotation.y = Math.atan2(S.path.dx, S.path.dz);
+      if (d >= S.path.len && !S.ashore) {
+        S.ashore = true;
+        log('', 'LANDFALL. The crab is in the village. There is no doctrinal term for what happens next, and the mission is over.', 'sys');
+        if (mission && !mission.done) {
+          mission.done = true; mission.failReason = 'escaped'; mission.tEnd = sim.now;
+          schedule(sim.now + 2, showAAR);
+        }
+      }
+    }
   } else if (S.type === 'assault') {
     const adv = Math.min(S.fSpeed * (sim.now - S.ft0), S.fAdvMax);
     const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
@@ -3037,6 +3089,8 @@ function placeUnits() {
   units.flashes.forEach(f => f.s.visible = false);
   units.fSquad.forEach(m => m.visible = false);
   units.bunker.visible = false;
+  units.bunker.scale.set(1, 1, 1);   // 11b — the crab scales it up; must not leak
+  units.bunker.rotation.set(0, 0, 0);
   visSetColor(units.bunker, 0x6E665C);
   units.flames.forEach(s => s.visible = false);
   units.smokePuffs.forEach(p => { p.on = false; p.m.visible = false; });
@@ -3100,6 +3154,13 @@ function placeUnits() {
     m.rotation.set(0, rng() * Math.PI, 0.35);
     m.scale.set(2.2, 1.3, 1.6);
     visSetMat(m, units.vehMatDead);
+  } else if (S.type === 'kaiju') {
+    // 11b — the crab is the bunker mesh, enormous and crimson; position is
+    // driven per-frame by updateScenario as it wades
+    units.bunker.visible = true;
+    units.bunker.scale.set(4.6, 3.1, 5.4);
+    visSetColor(units.bunker, 0x8A3428);
+    units.bunker.position.set(S.enemy.x, 4, S.enemy.z);
   } else if (S.type === 'chow') {
     // 11a — the flock: the ordinary troop figures at gull scale (legibility
     // still applies; a trainer where you cannot see the target is a broken
@@ -5228,7 +5289,9 @@ function addRoundEffect(impact, isFFE) {
     ? (CONFIG.EFFECTS.posture[S.posture] || 1) : 1;
   // G15 — sheaf shapes the VOLLEY, so it scales FFE rounds only; a single
   // adjusting round has no sheaf to speak of. G16 — the fuze is on EVERY round.
-  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult();
+  // 11b — S.armor divides the contribution: big enough to hit easily can still
+  // be hard to hurt (chitin the size of a church).
+  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult() / (S.armor || 1);
 }
 
 /* ---- G15: sheaf (FM 6-30 §4-6.f / ATP 3-09.30 §4-45) -----------------------
@@ -5360,6 +5423,7 @@ function assessEffect() {
 function missionAccomplished() {
   if (mission && mission.intent === 'illum') return mission.rounds.length > 0;
   const a = assessEffect();
+  if (Scenario && Scenario.type === 'kaiju') return a.outcome === 'destroyed';   // 11b
   return a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
          (a.outcome === 'suppressed' && mission && mission.intent === 'suppress');
 }
@@ -5574,7 +5638,9 @@ function assessFFE() {
   mission.hits = mission.ffeRounds.filter(r =>
     dist2(r.x, r.z, S.enemy.x, S.enemy.z) < effBands().rSupp).length;
   const a = assessEffect();
-  if (a.outcome === 'destroyed' || a.outcome === 'neutralized') {
+  // 11b — a kaiju does not do "combat-ineffective": it is walking or it is
+  // not. Only DESTROYED fells it; anything less and the landfall clock runs.
+  if (a.outcome === 'destroyed' || (a.outcome === 'neutralized' && S.type !== 'kaiju')) {
     enemyAlive = false;
     // figure origin is at the feet, so this pivots the body over without sinking
     // it — and, unlike the old `position.y -= 0.55`, it is idempotent if the
@@ -5585,6 +5651,7 @@ function assessFFE() {
     if (S.type === 'strongpoint' && a.outcome === 'destroyed')
       units.vehicles.forEach(m => { if (m.visible) m.rotation.z = 0.25; });
     if (S.type === 'bunker' && a.outcome === 'destroyed') visSetColor(units.bunker, 0x3A352F);
+    if (S.type === 'kaiju' && a.outcome === 'destroyed') visSetColor(units.bunker, 0x4A2B24);
   }
 }
 
@@ -6964,7 +7031,16 @@ function showAAR() {
   let verdict, why = '';
   if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted a friendly element. Automatic failure.'; }
   else if (collat) { verdict = 'FAIL — CIVILIAN CASUALTIES'; why = 'Rounds impacted a civilian village. Collateral damage is an automatic failure, same as fratricide.'; }
-  else if (escaped) { verdict = 'FAIL — CONVOY ESCAPED'; why = 'Fewer than three vehicles destroyed before the column ran off the map.'; }
+  else if (escaped) {
+    verdict = S.type === 'kaiju' ? 'FAIL — LANDFALL' : 'FAIL — CONVOY ESCAPED';
+    why = S.type === 'kaiju'
+      ? 'The crab reached the village. The report will describe it as "weather".'
+      : 'Fewer than three vehicles destroyed before the column ran off the map.';
+  }
+  else if (S.type === 'kaiju' && a.outcome !== 'destroyed') {   // 11b — walking or not
+    verdict = 'FAIL — IT IS STILL WALKING';
+    why = `Assessed effect ${a.pct}% of the ${bands.destroyPct}% that stops it. It does not do "combat-ineffective". It is a crab.`;
+  }
   else if (m.intent === 'illum') {   // 12h — an illumination mission is graded on light, not casualties
     verdict = m.rounds.length ? 'PASS — ILLUMINATION PROVIDED' : 'FAIL — NO ILLUMINATION FIRED';
     why = m.rounds.length ? `${m.rounds.length} illumination round${m.rounds.length === 1 ? '' : 's'} over the area.`
@@ -8015,7 +8091,11 @@ const CAMPAIGN = [
       outro: 'The flock is broken. The potato salad is intact. The general pins nothing on you, because officially none of this happened.',
       coach: ['Birds are TROOPS IN THE OPEN, killer. The field manual does not have a column for wingspan and I am not going to be the one to write it.',
               'Dombrowski is at the grill. If a correction walks one round onto that man or his salad, it is FRATRICIDE, it goes in the report, and I will read the report AT you.'] },
-    { id: 'E.2', title: 'CLAWS OUT', blurb: 'stage 11', impl: false },
+    { id: 'E.2', title: 'CLAWS OUT', blurb: 'a moving target. it is also a crab.', impl: true, type: 'kaiju', seed: 502, par: 420,
+      story: 'At 0400 the radar picket reported a contact wading through the surf line. At 0406 the picket stopped filing reports and started filing retirement paperwork. A crab the size of a church is making for the village, and battalion has ruled — in writing — that it is a surface target and therefore yours. It is moving. Lead it. HELLHOUND has been briefed and has elected not to react.',
+      outro: 'The crab settles into the shallows. The village never knew. The after-action report lists one (1) hard structure, mobile, destroyed, and no further questions were taken.',
+      coach: ['It is a MOVING TARGET, killer. Lead it like the convoy: fire where it is GOING to be, not where it makes you feel things.',
+              'Big does not mean soft. That shell is a hard structure — FUZE DELAY pays, and you will need sustained effect. Volley, correct, REPEAT.'] },
     { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'stage 11', impl: false },
   ]},
   { id: 'V5', tab: 'V', name: 'VOLUME V — ON WINGS', need: Infinity,
@@ -8096,6 +8176,8 @@ function gradeMission(m) {
   if (m.failReason) return 0;
   if (m.intent === 'illum') {         // 12h — graded on light provided, then competence
     if (!m.rounds.length) return 0;
+  } else if (S.type === 'kaiju') {    // 11b — destroyed or nothing
+    if (assessEffect().outcome !== 'destroyed') return 0;
   } else {
     const a = assessEffect();
     if (a.outcome === 'none') return 0;

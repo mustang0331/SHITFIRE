@@ -249,7 +249,16 @@ function showAAR() {
   let verdict, why = '';
   if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted a friendly element. Automatic failure.'; }
   else if (collat) { verdict = 'FAIL — CIVILIAN CASUALTIES'; why = 'Rounds impacted a civilian village. Collateral damage is an automatic failure, same as fratricide.'; }
-  else if (escaped) { verdict = 'FAIL — CONVOY ESCAPED'; why = 'Fewer than three vehicles destroyed before the column ran off the map.'; }
+  else if (escaped) {
+    verdict = S.type === 'kaiju' ? 'FAIL — LANDFALL' : 'FAIL — CONVOY ESCAPED';
+    why = S.type === 'kaiju'
+      ? 'The crab reached the village. The report will describe it as "weather".'
+      : 'Fewer than three vehicles destroyed before the column ran off the map.';
+  }
+  else if (S.type === 'kaiju' && a.outcome !== 'destroyed') {   // 11b — walking or not
+    verdict = 'FAIL — IT IS STILL WALKING';
+    why = `Assessed effect ${a.pct}% of the ${bands.destroyPct}% that stops it. It does not do "combat-ineffective". It is a crab.`;
+  }
   else if (m.intent === 'illum') {   // 12h — an illumination mission is graded on light, not casualties
     verdict = m.rounds.length ? 'PASS — ILLUMINATION PROVIDED' : 'FAIL — NO ILLUMINATION FIRED';
     why = m.rounds.length ? `${m.rounds.length} illumination round${m.rounds.length === 1 ? '' : 's'} over the area.`

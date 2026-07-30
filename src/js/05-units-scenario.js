@@ -254,6 +254,36 @@ function genScenario(type, seed) {
     S.bbq = site;
     S.friendlies = [{ x: site.x, z: site.z, r: 60 }];
     S.brief = `The general is grilling at grid ${gridOf(site.x, site.z)}. A seagull flock, several hundred strong, is assaulting the pit from the tideline — massing near grid ${gridOf(ex, ez)}. The COOKS are a NO-FIRE line: one round on Private Dombrowski or his potato salad is FRATRICIDE, same rules, no appeals. This close to the pit you WILL say DANGER CLOSE. Destroy the flock.`;
+  } else if (type === 'kaiju') {
+    /* 11b — Epilogue E.2 CLAWS OUT. A B-movie crab the size of a church wades
+       ashore toward the nearest village. Mechanically it is an honest moving
+       point target: convoy-style path (offshore → the village), point-class
+       bands scaled UP (it is enormous — easier to HIT) with an armor divisor
+       (it is chitin — harder to HURT), so stopping it takes sustained,
+       well-led fire on the move. Landfall = mission failed and over, the
+       convoy-escape precedent. Nobody in the fiction finds any of this
+       unusual. Chapter-only. */
+    let vil = WORLD.villages[0] || { x: 0, z: 0 };
+    for (const v of WORLD.villages)
+      if (dist2(v.x, v.z, OP.x, OP.z) < dist2(vil.x, vil.z, OP.x, OP.z)) vil = v;
+    // landfall line: from the village straight out to sea
+    const outAz = Math.atan2(vil.x, vil.z);            // away from island center
+    let sx = vil.x, sz = vil.z, steps = 0;
+    while (H(sx, sz) > -4 && steps++ < 400) { sx += Math.sin(outAz) * 25; sz += Math.cos(outAz) * 25; }
+    sx += Math.sin(outAz) * 300; sz += Math.cos(outAz) * 300;   // start well offshore
+    const len = Math.max(dist2(sx, sz, vil.x, vil.z) - 60, 400);
+    const dxn = (vil.x - sx) / dist2(sx, sz, vil.x, vil.z);
+    const dzn = (vil.z - sz) / dist2(sx, sz, vil.x, vil.z);
+    S.path = { sx, sz, dx: dxn, dz: dzn, len };
+    S.speed = 2.1;                                     // wading; the sea resists
+    S.t0 = sim.now;
+    S.enemy = { x: sx, z: sz };
+    S.village = vil;
+    S.ashore = false;
+    S.tgtClass = 'point';
+    S.effScale = 2;                                    // church-sized: bands double
+    S.armor = 3;                                       // chitin: three volleys' worth
+    S.brief = `A crab, dark red, approximately the size of a church, is wading ashore toward the village of ${vil.name || 'the coast'} from grid ${gridOf(sx, sz)}. It is a MOVING TARGET — lead it. It is also a crab. The village is NO-STRIKE as always. Stop it before landfall; nobody will discuss this afterwards.`;
   } else if (type === 'assault') {
     S.enemy = findSpot(1600, 3000, 4, 60, true) || { x: OP.x + 2000, z: OP.z };
     const oAz = azTo(S.enemy.x, S.enemy.z, OP.x, OP.z);  // objective -> OP side
@@ -362,6 +392,28 @@ function updateScenario() {
         }
       }
     }
+  } else if (S.type === 'kaiju') {
+    // 11b — the crab wades until it is dead or ashore
+    const m = units.bunker;
+    if (!enemyAlive) {
+      m.rotation.z = 0.6;                              // it settles; the tide handles the rest
+      m.position.y = Math.max(H(S.enemy.x, S.enemy.z), 0) + 2.2;
+    } else {
+      const d = clamp(S.speed * (sim.now - S.t0), 0, S.path.len);
+      S.enemy.x = S.path.sx + S.path.dx * d;
+      S.enemy.z = S.path.sz + S.path.dz * d;
+      const bob = Math.sin(sim.now * 1.6) * 0.9;       // the gait of a determined crab
+      m.position.set(S.enemy.x, Math.max(H(S.enemy.x, S.enemy.z), 0) + 4.4 + bob, S.enemy.z);
+      m.rotation.y = Math.atan2(S.path.dx, S.path.dz);
+      if (d >= S.path.len && !S.ashore) {
+        S.ashore = true;
+        log('', 'LANDFALL. The crab is in the village. There is no doctrinal term for what happens next, and the mission is over.', 'sys');
+        if (mission && !mission.done) {
+          mission.done = true; mission.failReason = 'escaped'; mission.tEnd = sim.now;
+          schedule(sim.now + 2, showAAR);
+        }
+      }
+    }
   } else if (S.type === 'assault') {
     const adv = Math.min(S.fSpeed * (sim.now - S.ft0), S.fAdvMax);
     const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
@@ -390,6 +442,8 @@ function placeUnits() {
   units.flashes.forEach(f => f.s.visible = false);
   units.fSquad.forEach(m => m.visible = false);
   units.bunker.visible = false;
+  units.bunker.scale.set(1, 1, 1);   // 11b — the crab scales it up; must not leak
+  units.bunker.rotation.set(0, 0, 0);
   visSetColor(units.bunker, 0x6E665C);
   units.flames.forEach(s => s.visible = false);
   units.smokePuffs.forEach(p => { p.on = false; p.m.visible = false; });
@@ -453,6 +507,13 @@ function placeUnits() {
     m.rotation.set(0, rng() * Math.PI, 0.35);
     m.scale.set(2.2, 1.3, 1.6);
     visSetMat(m, units.vehMatDead);
+  } else if (S.type === 'kaiju') {
+    // 11b — the crab is the bunker mesh, enormous and crimson; position is
+    // driven per-frame by updateScenario as it wades
+    units.bunker.visible = true;
+    units.bunker.scale.set(4.6, 3.1, 5.4);
+    visSetColor(units.bunker, 0x8A3428);
+    units.bunker.position.set(S.enemy.x, 4, S.enemy.z);
   } else if (S.type === 'chow') {
     // 11a — the flock: the ordinary troop figures at gull scale (legibility
     // still applies; a trainer where you cannot see the target is a broken
