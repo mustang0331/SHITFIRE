@@ -78,6 +78,22 @@ function parseMessage(raw) {
      inside a call for fire rides in that call's raw text instead and is
      extracted by handleCFF; this branch is only for the bare transmission,
      which previously parsed as gibberish. */
+  /* 12h — shell, sent standalone mid-mission ("SHELL SMOKE, OVER"): switches
+     what the tubes are loading for the rest of the mission. Same bare-
+     transmission discipline as fuze/sheaf below; a shell named inside a call
+     rides in the call's raw text and is extracted by handleCFF. */
+  const mShell = t.match(/\bshell\s+(he|smoke|wp|white phosphorus|illum\w*)\b/);
+  if (mShell && !t.includes('grid') && !/\b(?:left|right|add|drop)\b/.test(t)) {
+    const rest = t.replace(mShell[0], ' ')
+      .replace(/\b(?:over|out|break|hellhound|hacksaw|fires|this|is|mustang|\d+)\b/g, ' ')
+      .split(/\s+/).filter(Boolean);
+    if (rest.length <= 2) {
+      const k = mShell[1];
+      return { type: 'shell',
+               kind: k === 'wp' || k === 'white phosphorus' ? 'smoke'
+                   : k.startsWith('illum') ? 'illum' : k, raw: t, toks };
+    }
+  }
   /* G16 — fuze, sent standalone mid-adjustment ("FUZE VT, OVER" — legal after
      range/deviation and before fire for effect, ATP 3-09.30 §5-55). A fuze
      named inside a call rides in that call's raw text and is extracted by

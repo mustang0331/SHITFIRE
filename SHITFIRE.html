@@ -494,6 +494,9 @@ const CONFIG = {
      lands is still impact = aimpoint + error, never a trajectory. */
   EFFECTS: {
     suppressSec: 90,                        // suppression outlives the last round by this
+    // 12h — a smoke screen laid within `radius` of the enemy suppresses by
+    // obscuration for `sec` (a screened gun cannot serve its target)
+    screen: { radius: 120, sec: 90 },
     posture: { standing: 1.0, prone: 0.4 }, // FM 7-90 App. B: posture alone swings ~2.5x
     /* G18 — per-asset band sets: a 60mm round and a 155 do not do the same
        thing. Per-round contribution (%) at full effect, and the distance
@@ -833,6 +836,10 @@ const descClean = d => (d || '')
   // G15/G16 — sheaf and fuze are method of engagement, not target description
   .replace(/\b(?:converged|open|parallel|linear|circular|special)\s+sheaf\b/g, ' ')
   .replace(/\b(?:shell he\b\s*,?\s*)?fuze\s+(?:vt|victor tango|variable time|time|delay|quick|pd|point detonating)\b/g, ' ')
+  // 12h — shell selection is method of engagement too; "illumination" alone is
+  // a mission type word, not a thing the target is
+  .replace(/\bshell\s+(?:he|smoke|wp|white phosphorus|illum\w*)\b/g, ' ')
+  .replace(/\billum(?:ination)?\b/g, ' ')
   .replace(/\s{2,}/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
 
 /* F6 — the DANGER CLOSE proword, matched with tolerance for what speech
@@ -4233,6 +4240,90 @@ function markWisp(x, y, z) {
   w.t0 = sim.now; w.x = x; w.y = y; w.z = z;
 }
 
+/* ---- 12h: smoke screens + illumination -------------------------------------
+   SCREENS: six slots of three sprites each, oldest recycled — a smoke round
+   builds a standing white wall for EFFECTS.screen.sec, and a screen laid on
+   the enemy suppresses them by obscuration (they cannot shoot what they
+   cannot see), which is what makes an immediate-smoke mission accomplishable.
+   ILLUM: ONE pooled point light + flare sprite — a real light source, so at
+   night the terrain under it genuinely illuminates (the reason this row was
+   blocked on 13c). Everything preallocated; per-round work is slot reuse. */
+const SCREENS = [];
+function initScreens() {
+  for (let i = 0; i < 6; i++) {
+    const sprs = [];
+    for (let j = 0; j < 3; j++) {
+      const m = new THREE.Sprite(visTag(new THREE.SpriteMaterial({
+        color: 0xE9E7DE, transparent: true, opacity: 0, depthWrite: false }),
+        { nvg: 0.6, th: [0.30, 0.30, 0.30] }));
+      m.visible = false;
+      scene.add(m); sprs.push(m);
+    }
+    SCREENS.push({ sprs, t0: -1e9, x: 0, y: 0, z: 0 });
+  }
+}
+function deployScreen(x, y, z) {
+  let s = SCREENS[0];
+  for (const c of SCREENS) if (c.t0 < s.t0) s = c;
+  s.t0 = sim.now; s.x = x; s.y = y; s.z = z;
+  const S = Scenario, E = CONFIG.EFFECTS;
+  // obscuration is suppression: a screened gun cannot serve its target
+  if (S && S.enemy && enemyAlive &&
+      dist2(x, z, S.enemy.x, S.enemy.z) < E.screen.radius) {
+    S.everSuppressed = true;
+    S.suppressedUntil = Math.max(S.suppressedUntil, sim.now + E.screen.sec);
+  }
+}
+function updateScreens() {
+  const E = CONFIG.EFFECTS;
+  for (const s of SCREENS) {
+    const a = (sim.now - s.t0) / E.screen.sec;
+    if (a < 0 || a >= 1) { for (const m of s.sprs) m.visible = false; continue; }
+    const grow = Math.min(1, a * 6);                    // builds over the first sixth
+    const fade = Math.min(1, (1 - a) * 4);              // collapses over the last quarter
+    for (let j = 0; j < s.sprs.length; j++) {
+      const m = s.sprs[j];
+      m.visible = true;
+      m.position.set(s.x + (j - 1) * 13, s.y + 9 + j * 4 + a * 6, s.z + (j - 1) * 5);
+      const sc = (18 + 20 * grow + a * 8) * (0.85 + j * 0.15);
+      m.scale.set(sc, sc * 0.72, 1);
+      m.material.opacity = 0.5 * grow * fade;
+    }
+  }
+}
+const ILLUM = { t0: -1e9, x: 0, z: 0, y: 0, light: null, spr: null };
+function initIllum() {
+  // r160 lights are PHYSICAL units (candela): a flare must push six figures
+  // to pool light on ground 300 m below it — a real M485 is ~a million cd
+  ILLUM.light = new THREE.PointLight(0xFFEDC0, 0, 2600, 2);
+  scene.add(ILLUM.light);
+  ILLUM.spr = new THREE.Sprite(visTag(new THREE.SpriteMaterial({
+    color: 0xFFF6D8, transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending }), { nvg: 1.0, th: [1.0, 1.0, 1.0] }));
+  ILLUM.spr.visible = false;
+  scene.add(ILLUM.spr);
+}
+function igniteIllum(x, z) {
+  ILLUM.t0 = sim.now; ILLUM.x = x; ILLUM.z = z;
+  ILLUM.y = Math.max(H(x, z), 0) + 330;                 // burst height above the point
+}
+function updateIllum(dt) {
+  const t = sim.now - ILLUM.t0;
+  const dead = t < 0 || t > 55 || ILLUM.y < Math.max(H(ILLUM.x, ILLUM.z), 0) + 35;
+  if (dead) {
+    if (ILLUM.light.intensity) { ILLUM.light.intensity = 0; ILLUM.spr.visible = false; }
+    return;
+  }
+  ILLUM.y -= 6.5 * dt;                                  // the flare rides its chute down
+  ILLUM.x += 1.6 * dt;                                  // a hint of drift
+  ILLUM.light.position.set(ILLUM.x, ILLUM.y, ILLUM.z);
+  ILLUM.light.intensity = 240000 * (0.9 + 0.1 * Math.sin(sim.now * 13));
+  ILLUM.spr.visible = true;
+  ILLUM.spr.position.copy(ILLUM.light.position);
+  ILLUM.spr.scale.setScalar(11 + Math.sin(sim.now * 9) * 1.5);
+  ILLUM.spr.material.opacity = 0.95;
+}
+
 /* --- boot ------------------------------------------------------------------ */
 {
   VISION.ctx = VISION.cv.getContext('2d');
@@ -4243,6 +4334,8 @@ function markWisp(x, y, z) {
   visCollectSources();
   initCraters();              // 13h — before applyVision so _m0 is established
   initWisps();
+  initScreens();              // 12h
+  initIllum();
   visionReady = true;
   applyVision();              // 'day' — establishes _m0 on everything already built
 }
@@ -4338,6 +4431,8 @@ function updateBursts(dt) {
     w.m.scale.set(2.5 + a * 5, 8 + a * 14, 1);
     w.m.material.opacity = 0.32 * (1 - a) * (VISION.mode === 'day' ? 1 : 0.5);
   }
+  updateScreens();   // 12h
+  updateIllum(dt);
 }
 
 /* ============================================================ CAMERA CONTROL + TOOLS */
@@ -4661,6 +4756,7 @@ function fireMission(targetLocation, warno, meta) {
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
+    shell: (meta && meta.shell) || 'he',   // 12h — he | smoke | illum
     noDisp: false,          // G3 — set by markDispersion() if any round is fired
                             // with dispersion off; blocks star recording
     checkFire: false,       // G25 — safety hold active; blocks new firing
@@ -5122,6 +5218,18 @@ function handleFuze(p) {
   mission.fuze = { kind: p.kind, source: 'requested', why: `FUZE ${p.kind.toUpperCase()} requested mid-mission` };
   FDC.say(`FUZE ${p.kind.toUpperCase()}, OUT.`, { delay: 0.9 });
 }
+/* 12h — shell selection mid-mission: the next rounds up carry the new nature.
+   Switching to smoke on a destroy mission does not soften the verdict — the
+   graded effect simply stops growing until HE comes back, which is its own
+   honest lesson about what smoke does to a fire mission. */
+function handleShell(p) {
+  if (!mission || mission.done) {
+    FDC.say('No mission on the net. Name the shell in your call for fire, over.', { delay: 0.9 });
+    return;
+  }
+  mission.shell = p.kind;
+  FDC.say(`SHELL ${p.kind === 'illum' ? 'ILLUMINATION' : p.kind.toUpperCase()}, OUT.`, { delay: 0.9 });
+}
 
 function handleSheaf(p) {
   if (!mission || mission.done) {
@@ -5155,8 +5263,10 @@ function assessEffect() {
   return { outcome, pct: Math.round(S.eff) };
 }
 // The mission is accomplished at NEUTRALIZED or better — or at SUPPRESSED when
-// suppression was the stated intent (immediate suppression, suppress-target).
+// suppression was the stated intent (immediate suppression, suppress-target,
+// a smoke screen) — or, for an illumination mission, once light is provided.
 function missionAccomplished() {
+  if (mission && mission.intent === 'illum') return mission.rounds.length > 0;
   const a = assessEffect();
   return a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
          (a.outcome === 'suppressed' && mission && mission.intent === 'suppress');
@@ -5165,15 +5275,30 @@ function missionAccomplished() {
 function resolveImpact(impact, isFFE) {
   if (mission.done) return;
   const y = Math.max(H(impact.x, impact.z), 0.3);
+  const shell = mission.shell || 'he';   // 12h
+  /* 12h — an illumination round never touches the ground: it bursts high,
+     hangs a flare, and everything below (crater, casualties, fratricide,
+     alerts, convoy attrition) simply does not happen. It is light, not fires. */
+  if (shell === 'illum') {
+    igniteIllum(impact.x, impact.z);
+    mission.rounds.push(impact);
+    if (isFFE) mission.ffeRounds.push(impact);
+    TLOG.add('impact', '', 'illumination round', { shell: 'illum' });
+    if (!isFFE) setState('ADJUSTING'); else setState('FIRE FOR EFFECT');
+    return;
+  }
   spawnBurst(impact.x, y, impact.z);
+  if (shell === 'smoke') deployScreen(impact.x, y, impact.z);   // 12h
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
   const S = Scenario;
-  addRoundEffect(impact, isFFE);   // G13 — every round's terminal effect counts, adjust or FFE
+  // 12h — smoke builds a screen, not a casualty count; only HE feeds the model
+  if (shell === 'he') addRoundEffect(impact, isFFE);
   TLOG.add('impact', '', isFFE ? 'FFE round' : `adjust round ${mission.adjustRounds}`,
-    { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)) });
-  // convoy attrition — any round can kill vehicles
-  if (S.type === 'convoy') {
+    { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)),
+      ...(shell !== 'he' ? { shell } : {}) });
+  // convoy attrition — any HE round can kill vehicles (smoke cannot; 12h)
+  if (S.type === 'convoy' && shell === 'he') {
     S.veh.forEach((v, i) => {
       if (!v.dead && dist2(impact.x, impact.z, v.x, v.z) < 40) {
         v.dead = true;
@@ -5451,6 +5576,22 @@ function parseMessage(raw) {
      inside a call for fire rides in that call's raw text instead and is
      extracted by handleCFF; this branch is only for the bare transmission,
      which previously parsed as gibberish. */
+  /* 12h — shell, sent standalone mid-mission ("SHELL SMOKE, OVER"): switches
+     what the tubes are loading for the rest of the mission. Same bare-
+     transmission discipline as fuze/sheaf below; a shell named inside a call
+     rides in the call's raw text and is extracted by handleCFF. */
+  const mShell = t.match(/\bshell\s+(he|smoke|wp|white phosphorus|illum\w*)\b/);
+  if (mShell && !t.includes('grid') && !/\b(?:left|right|add|drop)\b/.test(t)) {
+    const rest = t.replace(mShell[0], ' ')
+      .replace(/\b(?:over|out|break|hellhound|hacksaw|fires|this|is|mustang|\d+)\b/g, ' ')
+      .split(/\s+/).filter(Boolean);
+    if (rest.length <= 2) {
+      const k = mShell[1];
+      return { type: 'shell',
+               kind: k === 'wp' || k === 'white phosphorus' ? 'smoke'
+                   : k.startsWith('illum') ? 'illum' : k, raw: t, toks };
+    }
+  }
   /* G16 — fuze, sent standalone mid-adjustment ("FUZE VT, OVER" — legal after
      range/deviation and before fire for effect, ATP 3-09.30 §5-55). A fuze
      named inside a call rides in that call's raw text and is extracted by
@@ -5949,18 +6090,29 @@ function handleCFF(p) {
       FDC.say('NEGATIVE ON VT, MUSTANG — no airburst over friendlies at danger close. FUZE PD, over.', { delay: 1.2 });
     fuze = { kind: 'pd', source: 'fdc-override', why: 'airburst is not fired DANGER CLOSE — PD substituted' };
   }
+  /* 12h — shell: HE unless the call names another nature (SHELL SMOKE / WP /
+     ILLUMINATION) or is an immediate smoke mission. The intent follows the
+     shell: a screening mission succeeds by obscuration, an illumination
+     mission by light — neither is graded as a failed destroy mission. */
+  const mSh = p.raw.match(/\bshell\s+(he|smoke|wp|white phosphorus|illum\w*)\b/);
+  const shell = p.imm === 'smoke' ? 'smoke'
+    : mSh ? (mSh[1] === 'wp' || mSh[1] === 'white phosphorus' ? 'smoke'
+           : mSh[1].startsWith('illum') ? 'illum' : mSh[1])
+    : /\billum(?:ination)?\b/.test(p.raw) ? 'illum' : 'he';
   let mtoSpec = null;
   if (!p.imm) {
     const m60 = activeChapter && activeChapter.asset === 'mortar60';
-    const FZ = fuze.kind.toUpperCase();
+    const natureTxt = shell === 'he' ? `HE, FUZE ${fuze.kind.toUpperCase()}`
+      : shell === 'smoke' ? 'SMOKE' : 'ILLUMINATION, FUZE TIME';
     mtoSpec = m60
-      ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', 'he'],
+      ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', shell === 'he' ? 'he' : shell],
           tgt: '7002', read: false, nagged: false }
-      : { keys: ['gun', 'battery', 'adjust', 'effect', '155', 'he', 'fuze', fuze.kind],
+      : { keys: ['gun', 'battery', 'adjust', 'effect', '155',
+                 ...(shell === 'he' ? ['he', 'fuze', fuze.kind] : [shell])],
           tgt: '7001', read: false, nagged: false };
     FDC.say(m60
-      ? 'MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.'
-      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE ${FZ}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
+      ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA 7002, OVER.`
+      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
             { delay: 1.4 });
   }
   // deviation policy: sloppy-but-safe call format earns a snide remark and
@@ -5976,16 +6128,18 @@ function handleCFF(p) {
   setState('MISSION SENT');
   log('', `SHEAF: ${sheaf.kind.toUpperCase()} (${sheaf.source}) — ${sheaf.why}.`, 'sys');
   log('', `FUZE: ${fuze.kind.toUpperCase()} (${fuze.source}) — ${fuze.why}.`, 'sys');
+  if (shell !== 'he') log('', `SHELL: ${shell === 'illum' ? 'ILLUMINATION — light, not fires' : 'SMOKE — a screen, not casualties'}.`, 'sys');
   // G24 — "at my command" is an element of transmission 3, so it arrives inside the
   // call's own text rather than as a separate proword. CFFQ concatenates raw across
   // transmissions, so this works whether the call came one-shot or staged.
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr,
                                          method: p.method, mto: mtoSpec,
                                          amc: p.raw.includes('at my command'),
-                                         sheaf, fuze,
-                                         // G13 — an immediate mission's goal is to make
-                                         // them stop shooting, not to annihilate them
-                                         intent: p.imm ? 'suppress' : 'destroy' });
+                                         sheaf, fuze, shell,
+                                         // G13/12h — the goal follows the mission type:
+                                         // immediates and screens want silence, illum wants light
+                                         intent: p.imm || shell === 'smoke' ? 'suppress'
+                                               : shell === 'illum' ? 'illum' : 'destroy' });
 }
 
 /* ---- G25: the safety stops (DOCTRINE.md §67) --------------------------------
@@ -6270,6 +6424,7 @@ function handleEOM(p) {
   if (!mission) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
   // strict net: end of mission carries surveillance (RREMS terms)
   if (activeChapter && activeChapter.strict && !mission.done && !mission.eomChallenged &&
+      mission.intent !== 'illum' &&   // 12h — there is no BDA for light
       !/(neutralized|destroyed|suppressed)/.test(p.bda || '')) {
     mission.eomChallenged = true;
     FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: end of mission carries surveillance. NEUTRALIZED, DESTROYED, or SUPPRESSED. Say again with your assessment, over.', { delay: 1.1 });
@@ -6427,6 +6582,7 @@ function onPlayerMessage(raw) {
     case 'suppresstgt': handleSuppressTarget(p); break;
     case 'sheaf': handleSheaf(p); break;
     case 'fuze': handleFuze(p); break;
+    case 'shell': handleShell(p); break;
     case 'unitstatus': handleUnitStatus(); break;
     case 'posrep': handlePosRep(p); break;
     case 'otfactor':
@@ -6702,7 +6858,8 @@ function showAAR() {
      the mission's intent; on a destroy mission it is a marginal — real effect,
      wrong amount, and it wears off. */
   const a = assessEffect();
-  const accomplished = a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
+  const accomplished = (m.intent === 'illum' && m.rounds.length > 0) ||   // 12h
+                       a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
                        (a.outcome === 'suppressed' && m.intent === 'suppress');
   const bands = isConvoy ? null : effBands();
   const frat = m.failReason === 'fratricide';
@@ -6715,6 +6872,11 @@ function showAAR() {
   if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted a friendly element. Automatic failure.'; }
   else if (collat) { verdict = 'FAIL — CIVILIAN CASUALTIES'; why = 'Rounds impacted a civilian village. Collateral damage is an automatic failure, same as fratricide.'; }
   else if (escaped) { verdict = 'FAIL — CONVOY ESCAPED'; why = 'Fewer than three vehicles destroyed before the column ran off the map.'; }
+  else if (m.intent === 'illum') {   // 12h — an illumination mission is graded on light, not casualties
+    verdict = m.rounds.length ? 'PASS — ILLUMINATION PROVIDED' : 'FAIL — NO ILLUMINATION FIRED';
+    why = m.rounds.length ? `${m.rounds.length} illumination round${m.rounds.length === 1 ? '' : 's'} over the area.`
+                          : 'Mission closed without a round in the air.';
+  }
   else if (a.outcome === 'none') {
     verdict = isConvoy ? 'FAIL — CONVOY STILL EFFECTIVE' : 'FAIL — TARGET STILL EFFECTIVE';
     why = isConvoy
@@ -6780,6 +6942,7 @@ function showAAR() {
     outcome: a.outcome, effPct: a.pct, intent: m.intent,
     ...(m.sheaf ? { sheaf: m.sheaf.kind, sheafSrc: m.sheaf.source } : {}),
     ...(m.fuze ? { fuze: m.fuze.kind, fuzeSrc: m.fuze.source } : {}),
+    ...(m.shell && m.shell !== 'he' ? { shell: m.shell } : {}),
     ...(m.bdaClaim ? { bdaClaim: m.bdaClaim } : {}),
     firstMiss: m.firstMiss === null ? null : Math.round(m.firstMiss),
     aimErr0: m.aimErr0 === null ? null : Math.round(m.aimErr0),
@@ -6828,6 +6991,7 @@ function showAAR() {
     (m.bdaClaim ? `<tr><td>Surveillance sent</td><td>${m.bdaClaim.toUpperCase()}${m.bdaClaim === a.outcome ? ' — matches the assessment' : ` — assessed: ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()}`}</td></tr>` : '') +
     (m.sheaf ? `<tr><td>Sheaf</td><td>${m.sheaf.kind.toUpperCase()} (${m.sheaf.source}) — ${m.sheaf.why}</td></tr>` : '') +
     (m.fuze ? `<tr><td>Fuze</td><td>${m.fuze.kind.toUpperCase()} (${m.fuze.source}) — ${m.fuze.why}</td></tr>` : '') +
+    (m.shell && m.shell !== 'he' ? `<tr><td>Shell</td><td>${m.shell === 'illum' ? 'ILLUMINATION — light, not fires' : 'SMOKE — a screen, not casualties'}</td></tr>` : '') +
     `<tr><td>Time to initiate CFF</td><td>${fmtTime(m.tInit)} (standard ≤ 2:00)</td></tr>` +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
@@ -7830,9 +7994,13 @@ function gradeMission(m) {
      stars). SUPPRESSED passes only a suppress-intent mission; on a destroy
      mission it is worth a single star — real effect, wrong amount. */
   if (m.failReason) return 0;
-  const a = assessEffect();
-  if (a.outcome === 'none') return 0;
-  if (a.outcome === 'suppressed' && m.intent !== 'suppress') return 1;
+  if (m.intent === 'illum') {         // 12h — graded on light provided, then competence
+    if (!m.rounds.length) return 0;
+  } else {
+    const a = assessEffect();
+    if (a.outcome === 'none') return 0;
+    if (a.outcome === 'suppressed' && m.intent !== 'suppress') return 1;
+  }
   let stars = 1;
   if (m.notes.length === 0) stars++;
   if (m.adjustRounds <= 2) stars++;

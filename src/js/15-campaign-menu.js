@@ -189,9 +189,13 @@ function gradeMission(m) {
      stars). SUPPRESSED passes only a suppress-intent mission; on a destroy
      mission it is worth a single star — real effect, wrong amount. */
   if (m.failReason) return 0;
-  const a = assessEffect();
-  if (a.outcome === 'none') return 0;
-  if (a.outcome === 'suppressed' && m.intent !== 'suppress') return 1;
+  if (m.intent === 'illum') {         // 12h — graded on light provided, then competence
+    if (!m.rounds.length) return 0;
+  } else {
+    const a = assessEffect();
+    if (a.outcome === 'none') return 0;
+    if (a.outcome === 'suppressed' && m.intent !== 'suppress') return 1;
+  }
   let stars = 1;
   if (m.notes.length === 0) stars++;
   if (m.adjustRounds <= 2) stars++;

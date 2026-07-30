@@ -82,6 +82,9 @@ const CONFIG = {
      lands is still impact = aimpoint + error, never a trajectory. */
   EFFECTS: {
     suppressSec: 90,                        // suppression outlives the last round by this
+    // 12h — a smoke screen laid within `radius` of the enemy suppresses by
+    // obscuration for `sec` (a screened gun cannot serve its target)
+    screen: { radius: 120, sec: 90 },
     posture: { standing: 1.0, prone: 0.4 }, // FM 7-90 App. B: posture alone swings ~2.5x
     /* G18 — per-asset band sets: a 60mm round and a 155 do not do the same
        thing. Per-round contribution (%) at full effect, and the distance

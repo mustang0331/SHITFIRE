@@ -236,7 +236,8 @@ function showAAR() {
      the mission's intent; on a destroy mission it is a marginal — real effect,
      wrong amount, and it wears off. */
   const a = assessEffect();
-  const accomplished = a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
+  const accomplished = (m.intent === 'illum' && m.rounds.length > 0) ||   // 12h
+                       a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
                        (a.outcome === 'suppressed' && m.intent === 'suppress');
   const bands = isConvoy ? null : effBands();
   const frat = m.failReason === 'fratricide';
@@ -249,6 +250,11 @@ function showAAR() {
   if (frat) { verdict = 'FAIL — FRATRICIDE'; why = 'Rounds impacted a friendly element. Automatic failure.'; }
   else if (collat) { verdict = 'FAIL — CIVILIAN CASUALTIES'; why = 'Rounds impacted a civilian village. Collateral damage is an automatic failure, same as fratricide.'; }
   else if (escaped) { verdict = 'FAIL — CONVOY ESCAPED'; why = 'Fewer than three vehicles destroyed before the column ran off the map.'; }
+  else if (m.intent === 'illum') {   // 12h — an illumination mission is graded on light, not casualties
+    verdict = m.rounds.length ? 'PASS — ILLUMINATION PROVIDED' : 'FAIL — NO ILLUMINATION FIRED';
+    why = m.rounds.length ? `${m.rounds.length} illumination round${m.rounds.length === 1 ? '' : 's'} over the area.`
+                          : 'Mission closed without a round in the air.';
+  }
   else if (a.outcome === 'none') {
     verdict = isConvoy ? 'FAIL — CONVOY STILL EFFECTIVE' : 'FAIL — TARGET STILL EFFECTIVE';
     why = isConvoy
@@ -314,6 +320,7 @@ function showAAR() {
     outcome: a.outcome, effPct: a.pct, intent: m.intent,
     ...(m.sheaf ? { sheaf: m.sheaf.kind, sheafSrc: m.sheaf.source } : {}),
     ...(m.fuze ? { fuze: m.fuze.kind, fuzeSrc: m.fuze.source } : {}),
+    ...(m.shell && m.shell !== 'he' ? { shell: m.shell } : {}),
     ...(m.bdaClaim ? { bdaClaim: m.bdaClaim } : {}),
     firstMiss: m.firstMiss === null ? null : Math.round(m.firstMiss),
     aimErr0: m.aimErr0 === null ? null : Math.round(m.aimErr0),
@@ -362,6 +369,7 @@ function showAAR() {
     (m.bdaClaim ? `<tr><td>Surveillance sent</td><td>${m.bdaClaim.toUpperCase()}${m.bdaClaim === a.outcome ? ' — matches the assessment' : ` — assessed: ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()}`}</td></tr>` : '') +
     (m.sheaf ? `<tr><td>Sheaf</td><td>${m.sheaf.kind.toUpperCase()} (${m.sheaf.source}) — ${m.sheaf.why}</td></tr>` : '') +
     (m.fuze ? `<tr><td>Fuze</td><td>${m.fuze.kind.toUpperCase()} (${m.fuze.source}) — ${m.fuze.why}</td></tr>` : '') +
+    (m.shell && m.shell !== 'he' ? `<tr><td>Shell</td><td>${m.shell === 'illum' ? 'ILLUMINATION — light, not fires' : 'SMOKE — a screen, not casualties'}</td></tr>` : '') +
     `<tr><td>Time to initiate CFF</td><td>${fmtTime(m.tInit)} (standard ≤ 2:00)</td></tr>` +
     `<tr><td>Mission time</td><td>${fmtTime(dur)}</td></tr>` +
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +

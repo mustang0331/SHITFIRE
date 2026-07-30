@@ -135,6 +135,10 @@ const descClean = d => (d || '')
   // G15/G16 — sheaf and fuze are method of engagement, not target description
   .replace(/\b(?:converged|open|parallel|linear|circular|special)\s+sheaf\b/g, ' ')
   .replace(/\b(?:shell he\b\s*,?\s*)?fuze\s+(?:vt|victor tango|variable time|time|delay|quick|pd|point detonating)\b/g, ' ')
+  // 12h — shell selection is method of engagement too; "illumination" alone is
+  // a mission type word, not a thing the target is
+  .replace(/\bshell\s+(?:he|smoke|wp|white phosphorus|illum\w*)\b/g, ' ')
+  .replace(/\billum(?:ination)?\b/g, ' ')
   .replace(/\s{2,}/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
 
 /* F6 — the DANGER CLOSE proword, matched with tolerance for what speech

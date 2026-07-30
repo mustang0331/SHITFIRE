@@ -443,6 +443,90 @@ function markWisp(x, y, z) {
   w.t0 = sim.now; w.x = x; w.y = y; w.z = z;
 }
 
+/* ---- 12h: smoke screens + illumination -------------------------------------
+   SCREENS: six slots of three sprites each, oldest recycled — a smoke round
+   builds a standing white wall for EFFECTS.screen.sec, and a screen laid on
+   the enemy suppresses them by obscuration (they cannot shoot what they
+   cannot see), which is what makes an immediate-smoke mission accomplishable.
+   ILLUM: ONE pooled point light + flare sprite — a real light source, so at
+   night the terrain under it genuinely illuminates (the reason this row was
+   blocked on 13c). Everything preallocated; per-round work is slot reuse. */
+const SCREENS = [];
+function initScreens() {
+  for (let i = 0; i < 6; i++) {
+    const sprs = [];
+    for (let j = 0; j < 3; j++) {
+      const m = new THREE.Sprite(visTag(new THREE.SpriteMaterial({
+        color: 0xE9E7DE, transparent: true, opacity: 0, depthWrite: false }),
+        { nvg: 0.6, th: [0.30, 0.30, 0.30] }));
+      m.visible = false;
+      scene.add(m); sprs.push(m);
+    }
+    SCREENS.push({ sprs, t0: -1e9, x: 0, y: 0, z: 0 });
+  }
+}
+function deployScreen(x, y, z) {
+  let s = SCREENS[0];
+  for (const c of SCREENS) if (c.t0 < s.t0) s = c;
+  s.t0 = sim.now; s.x = x; s.y = y; s.z = z;
+  const S = Scenario, E = CONFIG.EFFECTS;
+  // obscuration is suppression: a screened gun cannot serve its target
+  if (S && S.enemy && enemyAlive &&
+      dist2(x, z, S.enemy.x, S.enemy.z) < E.screen.radius) {
+    S.everSuppressed = true;
+    S.suppressedUntil = Math.max(S.suppressedUntil, sim.now + E.screen.sec);
+  }
+}
+function updateScreens() {
+  const E = CONFIG.EFFECTS;
+  for (const s of SCREENS) {
+    const a = (sim.now - s.t0) / E.screen.sec;
+    if (a < 0 || a >= 1) { for (const m of s.sprs) m.visible = false; continue; }
+    const grow = Math.min(1, a * 6);                    // builds over the first sixth
+    const fade = Math.min(1, (1 - a) * 4);              // collapses over the last quarter
+    for (let j = 0; j < s.sprs.length; j++) {
+      const m = s.sprs[j];
+      m.visible = true;
+      m.position.set(s.x + (j - 1) * 13, s.y + 9 + j * 4 + a * 6, s.z + (j - 1) * 5);
+      const sc = (18 + 20 * grow + a * 8) * (0.85 + j * 0.15);
+      m.scale.set(sc, sc * 0.72, 1);
+      m.material.opacity = 0.5 * grow * fade;
+    }
+  }
+}
+const ILLUM = { t0: -1e9, x: 0, z: 0, y: 0, light: null, spr: null };
+function initIllum() {
+  // r160 lights are PHYSICAL units (candela): a flare must push six figures
+  // to pool light on ground 300 m below it — a real M485 is ~a million cd
+  ILLUM.light = new THREE.PointLight(0xFFEDC0, 0, 2600, 2);
+  scene.add(ILLUM.light);
+  ILLUM.spr = new THREE.Sprite(visTag(new THREE.SpriteMaterial({
+    color: 0xFFF6D8, transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending }), { nvg: 1.0, th: [1.0, 1.0, 1.0] }));
+  ILLUM.spr.visible = false;
+  scene.add(ILLUM.spr);
+}
+function igniteIllum(x, z) {
+  ILLUM.t0 = sim.now; ILLUM.x = x; ILLUM.z = z;
+  ILLUM.y = Math.max(H(x, z), 0) + 330;                 // burst height above the point
+}
+function updateIllum(dt) {
+  const t = sim.now - ILLUM.t0;
+  const dead = t < 0 || t > 55 || ILLUM.y < Math.max(H(ILLUM.x, ILLUM.z), 0) + 35;
+  if (dead) {
+    if (ILLUM.light.intensity) { ILLUM.light.intensity = 0; ILLUM.spr.visible = false; }
+    return;
+  }
+  ILLUM.y -= 6.5 * dt;                                  // the flare rides its chute down
+  ILLUM.x += 1.6 * dt;                                  // a hint of drift
+  ILLUM.light.position.set(ILLUM.x, ILLUM.y, ILLUM.z);
+  ILLUM.light.intensity = 240000 * (0.9 + 0.1 * Math.sin(sim.now * 13));
+  ILLUM.spr.visible = true;
+  ILLUM.spr.position.copy(ILLUM.light.position);
+  ILLUM.spr.scale.setScalar(11 + Math.sin(sim.now * 9) * 1.5);
+  ILLUM.spr.material.opacity = 0.95;
+}
+
 /* --- boot ------------------------------------------------------------------ */
 {
   VISION.ctx = VISION.cv.getContext('2d');
@@ -453,6 +537,8 @@ function markWisp(x, y, z) {
   visCollectSources();
   initCraters();              // 13h — before applyVision so _m0 is established
   initWisps();
+  initScreens();              // 12h
+  initIllum();
   visionReady = true;
   applyVision();              // 'day' — establishes _m0 on everything already built
 }
@@ -548,5 +634,7 @@ function updateBursts(dt) {
     w.m.scale.set(2.5 + a * 5, 8 + a * 14, 1);
     w.m.material.opacity = 0.32 * (1 - a) * (VISION.mode === 'day' ? 1 : 0.5);
   }
+  updateScreens();   // 12h
+  updateIllum(dt);
 }
 

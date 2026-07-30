@@ -258,18 +258,29 @@ function handleCFF(p) {
       FDC.say('NEGATIVE ON VT, MUSTANG — no airburst over friendlies at danger close. FUZE PD, over.', { delay: 1.2 });
     fuze = { kind: 'pd', source: 'fdc-override', why: 'airburst is not fired DANGER CLOSE — PD substituted' };
   }
+  /* 12h — shell: HE unless the call names another nature (SHELL SMOKE / WP /
+     ILLUMINATION) or is an immediate smoke mission. The intent follows the
+     shell: a screening mission succeeds by obscuration, an illumination
+     mission by light — neither is graded as a failed destroy mission. */
+  const mSh = p.raw.match(/\bshell\s+(he|smoke|wp|white phosphorus|illum\w*)\b/);
+  const shell = p.imm === 'smoke' ? 'smoke'
+    : mSh ? (mSh[1] === 'wp' || mSh[1] === 'white phosphorus' ? 'smoke'
+           : mSh[1].startsWith('illum') ? 'illum' : mSh[1])
+    : /\billum(?:ination)?\b/.test(p.raw) ? 'illum' : 'he';
   let mtoSpec = null;
   if (!p.imm) {
     const m60 = activeChapter && activeChapter.asset === 'mortar60';
-    const FZ = fuze.kind.toUpperCase();
+    const natureTxt = shell === 'he' ? `HE, FUZE ${fuze.kind.toUpperCase()}`
+      : shell === 'smoke' ? 'SMOKE' : 'ILLUMINATION, FUZE TIME';
     mtoSpec = m60
-      ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', 'he'],
+      ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', shell === 'he' ? 'he' : shell],
           tgt: '7002', read: false, nagged: false }
-      : { keys: ['gun', 'battery', 'adjust', 'effect', '155', 'he', 'fuze', fuze.kind],
+      : { keys: ['gun', 'battery', 'adjust', 'effect', '155',
+                 ...(shell === 'he' ? ['he', 'fuze', fuze.kind] : [shell])],
           tgt: '7001', read: false, nagged: false };
     FDC.say(m60
-      ? 'MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.'
-      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE ${FZ}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
+      ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA 7002, OVER.`
+      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
             { delay: 1.4 });
   }
   // deviation policy: sloppy-but-safe call format earns a snide remark and
@@ -285,16 +296,18 @@ function handleCFF(p) {
   setState('MISSION SENT');
   log('', `SHEAF: ${sheaf.kind.toUpperCase()} (${sheaf.source}) — ${sheaf.why}.`, 'sys');
   log('', `FUZE: ${fuze.kind.toUpperCase()} (${fuze.source}) — ${fuze.why}.`, 'sys');
+  if (shell !== 'he') log('', `SHELL: ${shell === 'illum' ? 'ILLUMINATION — light, not fires' : 'SMOKE — a screen, not casualties'}.`, 'sys');
   // G24 — "at my command" is an element of transmission 3, so it arrives inside the
   // call's own text rather than as a separate proword. CFFQ concatenates raw across
   // transmissions, so this works whether the call came one-shot or staged.
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr,
                                          method: p.method, mto: mtoSpec,
                                          amc: p.raw.includes('at my command'),
-                                         sheaf, fuze,
-                                         // G13 — an immediate mission's goal is to make
-                                         // them stop shooting, not to annihilate them
-                                         intent: p.imm ? 'suppress' : 'destroy' });
+                                         sheaf, fuze, shell,
+                                         // G13/12h — the goal follows the mission type:
+                                         // immediates and screens want silence, illum wants light
+                                         intent: p.imm || shell === 'smoke' ? 'suppress'
+                                               : shell === 'illum' ? 'illum' : 'destroy' });
 }
 
 /* ---- G25: the safety stops (DOCTRINE.md §67) --------------------------------
@@ -579,6 +592,7 @@ function handleEOM(p) {
   if (!mission) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
   // strict net: end of mission carries surveillance (RREMS terms)
   if (activeChapter && activeChapter.strict && !mission.done && !mission.eomChallenged &&
+      mission.intent !== 'illum' &&   // 12h — there is no BDA for light
       !/(neutralized|destroyed|suppressed)/.test(p.bda || '')) {
     mission.eomChallenged = true;
     FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: end of mission carries surveillance. NEUTRALIZED, DESTROYED, or SUPPRESSED. Say again with your assessment, over.', { delay: 1.1 });
@@ -736,6 +750,7 @@ function onPlayerMessage(raw) {
     case 'suppresstgt': handleSuppressTarget(p); break;
     case 'sheaf': handleSheaf(p); break;
     case 'fuze': handleFuze(p); break;
+    case 'shell': handleShell(p); break;
     case 'unitstatus': handleUnitStatus(); break;
     case 'posrep': handlePosRep(p); break;
     case 'otfactor':

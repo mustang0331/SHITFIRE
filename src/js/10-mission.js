@@ -117,6 +117,7 @@ function fireMission(targetLocation, warno, meta) {
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
+    shell: (meta && meta.shell) || 'he',   // 12h — he | smoke | illum
     noDisp: false,          // G3 — set by markDispersion() if any round is fired
                             // with dispersion off; blocks star recording
     checkFire: false,       // G25 — safety hold active; blocks new firing
@@ -578,6 +579,18 @@ function handleFuze(p) {
   mission.fuze = { kind: p.kind, source: 'requested', why: `FUZE ${p.kind.toUpperCase()} requested mid-mission` };
   FDC.say(`FUZE ${p.kind.toUpperCase()}, OUT.`, { delay: 0.9 });
 }
+/* 12h — shell selection mid-mission: the next rounds up carry the new nature.
+   Switching to smoke on a destroy mission does not soften the verdict — the
+   graded effect simply stops growing until HE comes back, which is its own
+   honest lesson about what smoke does to a fire mission. */
+function handleShell(p) {
+  if (!mission || mission.done) {
+    FDC.say('No mission on the net. Name the shell in your call for fire, over.', { delay: 0.9 });
+    return;
+  }
+  mission.shell = p.kind;
+  FDC.say(`SHELL ${p.kind === 'illum' ? 'ILLUMINATION' : p.kind.toUpperCase()}, OUT.`, { delay: 0.9 });
+}
 
 function handleSheaf(p) {
   if (!mission || mission.done) {
@@ -611,8 +624,10 @@ function assessEffect() {
   return { outcome, pct: Math.round(S.eff) };
 }
 // The mission is accomplished at NEUTRALIZED or better — or at SUPPRESSED when
-// suppression was the stated intent (immediate suppression, suppress-target).
+// suppression was the stated intent (immediate suppression, suppress-target,
+// a smoke screen) — or, for an illumination mission, once light is provided.
 function missionAccomplished() {
+  if (mission && mission.intent === 'illum') return mission.rounds.length > 0;
   const a = assessEffect();
   return a.outcome === 'destroyed' || a.outcome === 'neutralized' ||
          (a.outcome === 'suppressed' && mission && mission.intent === 'suppress');
@@ -621,15 +636,30 @@ function missionAccomplished() {
 function resolveImpact(impact, isFFE) {
   if (mission.done) return;
   const y = Math.max(H(impact.x, impact.z), 0.3);
+  const shell = mission.shell || 'he';   // 12h
+  /* 12h — an illumination round never touches the ground: it bursts high,
+     hangs a flare, and everything below (crater, casualties, fratricide,
+     alerts, convoy attrition) simply does not happen. It is light, not fires. */
+  if (shell === 'illum') {
+    igniteIllum(impact.x, impact.z);
+    mission.rounds.push(impact);
+    if (isFFE) mission.ffeRounds.push(impact);
+    TLOG.add('impact', '', 'illumination round', { shell: 'illum' });
+    if (!isFFE) setState('ADJUSTING'); else setState('FIRE FOR EFFECT');
+    return;
+  }
   spawnBurst(impact.x, y, impact.z);
+  if (shell === 'smoke') deployScreen(impact.x, y, impact.z);   // 12h
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
   const S = Scenario;
-  addRoundEffect(impact, isFFE);   // G13 — every round's terminal effect counts, adjust or FFE
+  // 12h — smoke builds a screen, not a casualty count; only HE feeds the model
+  if (shell === 'he') addRoundEffect(impact, isFFE);
   TLOG.add('impact', '', isFFE ? 'FFE round' : `adjust round ${mission.adjustRounds}`,
-    { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)) });
-  // convoy attrition — any round can kill vehicles
-  if (S.type === 'convoy') {
+    { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)),
+      ...(shell !== 'he' ? { shell } : {}) });
+  // convoy attrition — any HE round can kill vehicles (smoke cannot; 12h)
+  if (S.type === 'convoy' && shell === 'he') {
     S.veh.forEach((v, i) => {
       if (!v.dead && dist2(impact.x, impact.z, v.x, v.z) < 40) {
         v.dead = true;
