@@ -170,6 +170,21 @@
   #milcard b { display: block; color: #ffe9a8; letter-spacing: .1em; margin-bottom: 4px; }
   #milcard .ref { color: #9fb08c; font-style: italic; }
 
+  /* F3 — [H] cheat sheet. A pull-up reference, not a modal: nothing pauses,
+     the mission runs underneath, [H] or [ESC] drops it. Content mirrors
+     CHEATSHEET.md, which mirrors DOCTRINE.md — DOCTRINE wins on conflict. */
+  #cheat { display: none; position: fixed; top: 34px; right: 12px; bottom: 12px;
+    width: min(680px, 72vw); overflow-y: auto; z-index: 8;
+    padding: 12px 16px; background: rgba(10,13,8,.94);
+    border: 1px solid #4d5a3c; color: #cfe0bd; font-size: 12px; line-height: 1.55; }
+  #cheat.on { display: block; }
+  #cheat h3 { color: #ffe9a8; font-size: 12px; letter-spacing: .1em; margin: 10px 0 3px; }
+  #cheat h3:first-child { margin-top: 0; }
+  #cheat table { border-collapse: collapse; width: 100%; margin: 2px 0 4px; }
+  #cheat td { border: 1px solid #39442e; padding: 2px 7px; vertical-align: top; }
+  #cheat b { color: #ffe9a8; }
+  #cheat .dim { color: #9fb08c; font-style: italic; }
+
   /* Chapter briefing */
   #brief { position: fixed; inset: 0; display: none; align-items: center;
     justify-content: center; background: rgba(0,0,0,.6); z-index: 13; }
@@ -260,6 +275,40 @@
   <span class="ref">[R] closes this card</span>
 </div>
 
+<!-- F3 — [H] pull-up cheat sheet (content: CHEATSHEET.md; authority: DOCTRINE.md) -->
+<div id="cheat" class="panel">
+  <h3>CALL FOR FIRE — 3 TRANSMISSIONS (FDC reads back each; misspoke? say CORRECTION)</h3>
+  <table>
+    <tr><td><b>1</b> ID + warning order</td><td>"HELLHOUND FIRES, this is MUSTANG 12, <b>adjust fire</b>, over." (or <b>fire for effect</b>)</td></tr>
+    <tr><td><b>2</b> Target location</td><td>Grid / polar / shift — below</td></tr>
+    <tr><td><b>3</b> Description + engagement + control</td><td>what it is &rarr; method of engagement (opt) &rarr; fire &amp; control (opt, default "when ready")</td></tr>
+  </table>
+  <h3>LOCATION METHODS</h3>
+  <table>
+    <tr><td><b>Grid</b></td><td>"Grid 123 456, over." — 6-digit std (100 m); 60mm wants 8. <b>OT DIRECTION before your first correction — the FDC refuses corrections without it.</b></td></tr>
+    <tr><td><b>Polar</b></td><td><b>POS REP first</b> ("POSITION GRID 245 523") — then "Direction 1650, distance 2100, down 40, over." Dir nearest 10 mils &middot; dist nearest 100 m &middot; up/down only if &ge;35 m</td></tr>
+    <tr><td><b>Shift</b></td><td>"Shift BREWERY, direction 2340, right 110, add 400, up 55, over." Lateral nearest 10 m &middot; range nearest 100 m</td></tr>
+  </table>
+  <div class="dim">Your HUD reads MAG; the net and map are GRID. GRID = MAG + 124 mils (7&deg; E).</div>
+  <h3>CORRECTIONS — deviation &rarr; range &rarr; HOB, in the OT frame</h3>
+  "Left 30, add 200, over." &rarr; final: "Right 10, drop 50, <b>fire for effect</b>, over."<br>
+  Deviation nearest <b>10 m</b> (min 30 m — under that, skip it) &middot; range in <b>100 m</b> steps (<b>50 OK entering FFE</b>) &middot; deviation m = mils &times; OT factor (OT km — yours, don't transmit it).<br>
+  <span class="dim">Bracket: 800/400/200, split until a 100 m bracket splits &rarr; FFE. Danger close: creep &le;100 m from the safe side.</span>
+  <h3>DANGER CLOSE</h3>
+  Round predicted within <b>600 m</b> of friendlies &rarr; say <b>"danger close"</b> in the call, creep your corrections.
+  <h3>END OF MISSION — RREMS</h3>
+  Refine (opt, nearest 10 m) &rarr; record as target (opt) &rarr; "End of mission, target <b>neutralized</b>, estimate 15 casualties, over."<br>
+  <span class="dim">suppressed = only while fires land &middot; neutralized = out of action, &ge;10% &middot; destroyed = &ge;30%</span>
+  <h3>FDC TRAFFIC</h3>
+  <b>MTO</b> ("Message to observer: one gun in adjust, battery in effect&hellip; target AA7001") — <b>read the whole thing back, target number included.</b>
+  Then SHOT &middot; SPLASH (~5 s out) &middot; ROUNDS COMPLETE.
+  <h3>PROWORDS</h3>
+  Over &middot; Out &middot; Say again &middot; Correction &middot; Repeat (= fire again, same data) &middot; At my command / Fire / Cancel at my command &middot; <b>Check firing</b> &middot; Cease loading &middot; Immediate suppression / smoke (one transmission) &middot; Suppress target AB#### &middot; Record as target
+  <h3>PARS (this sim)</h3>
+  CFF within <b>2 min</b> of target ID &middot; initial location within <b>200 m</b> &middot; pass at <b>&le;4</b> adjusting rounds, bonus at &le;2 &middot; fratricide or civilian hit = <b>0&#9733; fail</b> (mission still must be finished).
+  <div class="dim" style="margin-top:8px">[H] or [ESC] closes. Full doctrine: DOCTRINE.md &middot; this card: CHEATSHEET.md.</div>
+</div>
+
 <div id="touchbar">
   <button class="tbtn" id="tb-talk">TALK</button>
   <button class="tbtn" data-act="binos">BINO</button>
@@ -273,7 +322,7 @@
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
   [B] BINOS &middot; [Z]/WHEEL ZOOM 4X&thinsp;/&thinsp;7X&thinsp;/&thinsp;14X &middot; [L] LASE &middot; [R] MIL CARD &middot; [O] OPTICS: DAY/NVG/THERMAL<br>
-  [M] MAP &middot; [P] PRINT MAP &middot; [K] MENU &middot; [V] FDC VOICE &middot; [N] RANDOM MSN<br>
+  [M] MAP &middot; [P] PRINT MAP &middot; [H] CHEAT SHEET &middot; [K] MENU &middot; [V] FDC VOICE &middot; [N] RANDOM MSN<br>
   <span style="opacity:.62">[SHIFT+D] DISPERSION OFF — test aid, mission not graded</span>
 </div>
 
@@ -3810,6 +3859,7 @@ const laseEl = document.getElementById('lase');
 let laseToken = 0;
 let lastLase = null;   // most recent laser return — source of the OT factor
 const milcardEl = document.getElementById('milcard');
+const cheatEl = document.getElementById('cheat');   // F3
 function toggleMilCard(force) {
   const on = force !== undefined ? force : !milcardEl.classList.contains('on');
   milcardEl.classList.toggle('on', on && binos);
@@ -7163,6 +7213,7 @@ document.addEventListener('keydown', e => {
   }
   const k = e.key.toLowerCase();
   if (k === 'escape') {
+    cheatEl.classList.remove('on');   // F3
     aarEl.classList.remove('on');
     mapEl.classList.remove('on');
     menuEl.classList.remove('on');
@@ -7180,6 +7231,7 @@ document.addEventListener('keydown', e => {
   }
   if (k === 'b') setBinos(!binos);
   else if (k === 'z') cycleBinoZoom(e.shiftKey ? -1 : 1);   // G4 — optical power
+  else if (k === 'h') cheatEl.classList.toggle('on');       // F3 — cheat sheet
   else if (k === 'r') toggleMilCard();
   else if (k === 'o') cycleVision();
   else if (k === 'l') doLase();
