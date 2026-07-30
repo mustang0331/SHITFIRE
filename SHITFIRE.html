@@ -4295,6 +4295,12 @@ function resolveImpact(impact, isFFE) {
     schedule(sim.now + 1.5, () => {
       if (!seen) {
         log('', 'SPOTTING: burst not observed — masked by terrain. Adjust off the map and the sound.', 'sys');
+        // G8 — the masked path must carry the direction reminder too: a defilade
+        // chapter is a grid mission fought off the map, and the requirement to
+        // send DIRECTION before correcting does not care whether the burst was seen.
+        if (mission && !mission.otDirSent && mission.method === 'grid' && mission.adjustRounds <= 1)
+          log('', 'Before your first correction: send OT DIRECTION ("DIRECTION 5920, OVER"). ' +
+            'The battery cannot orient LEFT/RIGHT or ADD/DROP without your observer-target line.', 'sys');
         return;
       }
       const lr = sp.mils >= 0 ? 'RIGHT' : 'LEFT';
@@ -4312,6 +4318,14 @@ function resolveImpact(impact, isFFE) {
         log('', `SPOTTING (EASY): burst ${Math.abs(sp.mils).toFixed(0)} mils ${lr}, ${os}. ` +
           `OT factor ${sp.otf} (${Math.round(sp.otRange)} m ÷ 1000). Deviation: ${devTxt}. Range: ${brk}.`, 'sys');
       }
+      /* G8 — teach the requirement at the exact moment it becomes binding: the
+         observer is looking at his first burst and composing his first
+         correction. Grid missions only; the FDC cannot orient a correction
+         without the OT line, and will refuse until DIRECTION is sent. */
+      if (mission && !mission.otDirSent && mission.method === 'grid' && mission.adjustRounds <= 1)
+        log('', 'Before your first correction: send OT DIRECTION ("DIRECTION 5920, OVER" — grid ' +
+          'azimuth to the target, nearest 10 mils). The battery cannot compute LEFT/RIGHT or ' +
+          'ADD/DROP without your observer-target line, and will refuse the correction.', 'sys');
     });
   }
   if (!isFFE) setState('ADJUSTING');
@@ -4986,16 +5000,29 @@ function handleAdjust(p) {
       FDC.say('Copy — but you never read back my MTO, MUSTANG. That readback is how we both know ' +
               'you are shooting the target I think you are shooting. Continuing, out.', { delay: 1.4 });
   }
-  // doctrine: OT direction accompanies or precedes the first correction on a
-  // grid mission — strict net enforces it, forgiving mode coaches it once
-  if (p.any && !mission.otDirSent && mission.method === 'grid' && !mission.dirNagged) {
-    mission.dirNagged = true;
-    if (activeChapter && activeChapter.strict) {
-      FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: I have no OT direction for this mission. Send DIRECTION before your correction so I know which way your left is, over.', { delay: 1.1 });
-      return;
+  /* G8 — no OT direction, no correction. This used to be a coach-once nag in
+     forgiving mode ("sending it anyway"), and that was WRONG, not lenient: the
+     user's correction is that the battery is physically unable to convert
+     "left 50" or "add 200" into a gun order without knowing the observer-target
+     line — left of WHAT? add along WHAT? — so executing the correction anyway
+     was the trainer quietly doing impossible math on the observer's behalf.
+     DOCTRINE §5's grade-don't-gate applies to format, not to physics. The
+     refusal stands in every mode, repeats until DIRECTION arrives, and names
+     the fix. Grid missions only: polar and shift carry their direction in the
+     call itself, which is why they are exempt (G7). */
+  if (p.any && !mission.otDirSent && mission.method === 'grid') {
+    if (!mission.dirNagged) {
+      mission.dirNagged = true;
+      mission.notes.push('Sent a correction before OT DIRECTION on a grid mission — the FDC cannot orient left/right or add/drop without the observer-target line.');
+      FDC.say('MUSTANG 12, HELLHOUND — I cannot execute that. I have no OT DIRECTION for this ' +
+              'mission: without your observer-target line I do not know which way your LEFT is or ' +
+              'along what line to ADD. Send DIRECTION — grid azimuth to the target, nearest 10 mils — ' +
+              'then your correction, over.', { delay: 1.1 });
+    } else {
+      FDC.say('STILL no OT direction, MUSTANG. DIRECTION first, then the correction, over.',
+              { delay: 1.0 });
     }
-    if (coachOn())
-      FDC.say('Copy your correction — but be advised, MUSTANG, you never sent OT DIRECTION. On a grid mission it goes before or with the first correction. Sending it anyway, out.', { delay: 1.5 });
+    return;
   }
   if (state === 'EOM?') {
     FDC.say('MUSTANG 12, rounds are complete. Send end of mission, over.', { delay: 1 });
