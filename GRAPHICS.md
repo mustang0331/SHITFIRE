@@ -372,6 +372,27 @@ uniform object — no per-frame allocation.
 
 ## G6 — Impact persistence
 
+> **Shipped `829caeb` (2026-07-30) as ROADMAP 13h.** Craters landed as planned: an `InstancedMesh`
+> ring buffer of `CONFIG.GFX.craters` (40) slope-conformed dark discs, polygon-offset onto the
+> ground, oldest recycled — a walked bracket now stays visible on the terrain the way it already
+> does on the AAR shot plot, and fresh earth reads warm in thermal. Cleared on island rebuild on
+> **both** paths (the chapter-volume path and the DEM-load path), the same reasoning as G21's
+> recorded-target wipe. Marker wisps shipped as three thin smoke sprites (a small independent pool,
+> rather than the plan's "extend the last 2–3 impacts in place"), oldest recycled, rising/fading over
+> ~75 s (inside the plan's 60–90 s window) so a walked bracket stays legible while a correction is
+> composed; opacity capped so it reads as a marker, not a smoke screen. The water-splash column
+> shipped exactly as specified — the existing water-case recolour in the burst pool now scales its
+> dust hemisphere into a tall narrow white column instead of a beach-style puff. All three pools
+> preallocated at boot, zero per-impact allocation, per this section's closing rule. **A real bug was
+> caught mid-row that the parse gate could not see**: the pool declarations initially landed *below*
+> the module's boot block, so `initCraters()`'s call from the boot sequence hit the `let`-binding's
+> temporal dead zone and silently killed the entire boot — invisible to a syntax/parse check, since
+> the code is syntactically valid; caught only because `tools/shots.js` actually runs the page and the
+> boot no longer completed. Fixed by moving the declarations above the boot block. Verified 12/12
+> screenshot states clean; 15/15 full-mission e2e exercised all three new paths live (14 ground
+> bursts); lint 0 errors; offline zero-network confirmed. The plan text below is kept as the design
+> record.
+
 Two additions to the burst system (search the impact/burst pool in SHITFIRE.html), both with direct doctrinal value:
 
 **Persistent craters.** An `InstancedMesh` ring buffer of `CONFIG.GFX.craters` (40) dark discs, lifted
