@@ -109,7 +109,14 @@ const CAMPAIGN = [
       outro: 'HELLHOUND, after a long pause: "…acceptable, MUSTANG." Frame it.' },
   ]},
   { id: 'EP', tab: 'EPI', name: 'EPILOGUE — SUNBURN', need: 32, tseed: 1337, chapters: [
-    { id: 'E.1', title: 'THE GREAT CHOW RAID', blurb: 'stage 11', impl: false },
+    /* 11a — the Epilogue opens. Humor dial at 11, readback sacred: the FDC
+       runs the mission absolutely deadpan; the jokes live in the briefing,
+       the coach lines and the fiction — never in place of doctrine. */
+    { id: 'E.1', title: 'THE GREAT CHOW RAID', blurb: 'fire mission on a seagull flock. no, really.', impl: true, type: 'chow', seed: 501, par: 300,
+      story: 'The war is won. The paperwork is not. The general is grilling on the beach, and nine hundred seagulls have chosen violence. The flock is assaulting the barbecue pit from the tideline, and the only tubes in range are yours. The cooks are a NO-FIRE line: Private Dombrowski and his potato salad WILL survive this. Fire mission, by the book — the book does not care how stupid the war has become.',
+      outro: 'The flock is broken. The potato salad is intact. The general pins nothing on you, because officially none of this happened.',
+      coach: ['Birds are TROOPS IN THE OPEN, killer. The field manual does not have a column for wingspan and I am not going to be the one to write it.',
+              'Dombrowski is at the grill. If a correction walks one round onto that man or his salad, it is FRATRICIDE, it goes in the report, and I will read the report AT you.'] },
     { id: 'E.2', title: 'CLAWS OUT', blurb: 'stage 11', impl: false },
     { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'stage 11', impl: false },
   ]},

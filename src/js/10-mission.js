@@ -740,7 +740,7 @@ function resolveImpact(impact, isFFE) {
     // Troops in the open react to fire: a near miss alerts them, and after
     // the second one they go to ground and spread out — the effect radius
     // stops being generous. Slow adjustment costs effect, not just stars.
-    if ((S.type === 'troops' || S.type === 'raid') && dTgt < 300 && !S.dispersed) {
+    if ((S.type === 'troops' || S.type === 'raid' || S.type === 'chow') && dTgt < 300 && !S.dispersed) {
       S.alerted++;
       if (S.alerted === 1) {
         log('', 'The infantry heard that one — they are moving and going flat.', 'sys');

@@ -228,6 +228,32 @@ function genScenario(type, seed) {
     S.stop = { d: Math.max(stopD, 320), dur: lerp(sLo, sHi, rng()), tArr: null,
                resumed: false, name: stopName };
     S.brief = `Enemy convoy, four vehicles, moving on the low ground near grid ${gridOf(path.sx, path.sz)}. Lead the column and time your fire for effect — or catch them when they pull in somewhere. If the head of the column runs off the end of the road, they are gone.`;
+  } else if (type === 'chow') {
+    /* 11a — Epilogue E.1. The war is won; the flock is not aware. A seagull
+       flock (personnel-class target — FM 6-30 has no column for wingspan)
+       masses on the tideline near the general's barbecue pit; the COOKS at
+       the pit are a no-fire line with the standard fratricide rules. The
+       absurd is treated as routine: the scenario machinery is the ordinary
+       one, which is the joke working as doctrine. Chapter-only — never in
+       the skirmish rotation. */
+    let site = null;
+    for (let tries = 0; tries < 300 && !site; tries++) {
+      const az = rng() * Math.PI * 2, range = lerp(1200, 2200, rng());
+      const x = OP.x + Math.sin(az) * range, z = OP.z - Math.cos(az) * range;
+      const h = H(x, z);
+      if (h < 2 || h > 9) continue;                    // a beach terrace fit for grilling
+      if (!hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) continue;
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+      site = { x, z };
+    }
+    site = site || { x: OP.x + 1400, z: OP.z };
+    const fAz = rng() * Math.PI * 2, fOff = 150 + rng() * 60;
+    let ex = site.x + Math.sin(fAz) * fOff, ez = site.z - Math.cos(fAz) * fOff;
+    if (H(ex, ez) < 1) { ex = site.x + 160; ez = site.z; }
+    S.enemy = { x: ex, z: ez };
+    S.bbq = site;
+    S.friendlies = [{ x: site.x, z: site.z, r: 60 }];
+    S.brief = `The general is grilling at grid ${gridOf(site.x, site.z)}. A seagull flock, several hundred strong, is assaulting the pit from the tideline — massing near grid ${gridOf(ex, ez)}. The COOKS are a NO-FIRE line: one round on Private Dombrowski or his potato salad is FRATRICIDE, same rules, no appeals. This close to the pit you WILL say DANGER CLOSE. Destroy the flock.`;
   } else if (type === 'assault') {
     S.enemy = findSpot(1600, 3000, 4, 60, true) || { x: OP.x + 2000, z: OP.z };
     const oAz = azTo(S.enemy.x, S.enemy.z, OP.x, OP.z);  // objective -> OP side
@@ -352,8 +378,9 @@ function updateScenario() {
 function placeUnits() {
   const S = Scenario;
   const rng = mulberry32((S.seed * 68168169 + 17) >>> 0);
-  // hide/reset everything mission-specific
-  units.troops.forEach(m => m.visible = false);
+  // hide/reset everything mission-specific (scale too — 11a shrinks the
+  // troop figures into gulls, and a stale scale must not leak forward)
+  units.troops.forEach(m => { m.visible = false; m.scale.set(1, 1, 1); });
   units.vehicles.forEach(m => {
     m.visible = false; visSetMat(m, units.vehMatAlive);
     m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1);
@@ -426,6 +453,23 @@ function placeUnits() {
     m.rotation.set(0, rng() * Math.PI, 0.35);
     m.scale.set(2.2, 1.3, 1.6);
     visSetMat(m, units.vehMatDead);
+  } else if (S.type === 'chow') {
+    // 11a — the flock: the ordinary troop figures at gull scale (legibility
+    // still applies; a trainer where you cannot see the target is a broken
+    // trainer, even when the target has feathers)
+    troopCluster(S.enemy.x, S.enemy.z, 8, 16);
+    units.troops.forEach(m => { if (m.visible) m.scale.set(0.5, 0.42, 0.5); });
+    // the cooks at the pit, and the grill smoking like a position marker
+    units.fSquad.forEach((m, i) => {
+      if (i >= 3) return;
+      const a = i * 2.1, r = 5 + i * 3;
+      const x = S.bbq.x + Math.sin(a) * r, z = S.bbq.z + Math.cos(a) * r;
+      m.visible = true;
+      m.position.set(x, Math.max(H(x, z), 0), z);
+    });
+    units.smokePuffs.forEach(p => {
+      p.on = true; p.bx = S.bbq.x; p.by = Math.max(H(S.bbq.x, S.bbq.z), 0); p.bz = S.bbq.z;
+    });
   } else if (S.type === 'raid') {
     troopCluster(S.enemy.x, S.enemy.z, 8, 18);
     const m = units.vehicles[0];
