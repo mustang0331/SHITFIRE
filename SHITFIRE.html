@@ -467,6 +467,10 @@ const CONFIG = {
   MISSION: {
     fratricideRadius: 80,
     passMaxAdjustRounds: 4, targetRange: [1500, 3200], enemyOffset: [150, 250],
+    /* F2 — danger-close distance per firing asset (BALLISTICS_RESEARCH.md §6:
+       JFIRE's tables put mortars at roughly a third to half of the 155's
+       figure; the flat single-band gate itself is a correct simplification). */
+    dangerClose: { battery: 600, mortar60: 250 },
   },
   /* G13 — graded terminal effects. Replaces the old binary model (N hits inside
      one radius = "neutralized"). Every HE round now contributes a casualty /
@@ -4725,6 +4729,19 @@ function spotBurst(impact) {
 function assetScale() {
   return activeChapter && activeChapter.asset === 'mortar60' ? 0.55 : 1;
 }
+/* F2 — danger close is WEAPON-SPECIFIC, not one number (BALLISTICS_RESEARCH.md
+   §6): JFIRE's real tables put a 60mm mortar's danger-close on the order of a
+   third to half of the 155's. The old flat 600 m meant the mortar chapters
+   demanded the proword at an ARTILLERY distance — backwards from doctrine.
+   One helper, used by BOTH the call gate and the unsafe-correction check, so
+   the two figures can never drift apart. The flat per-asset gate itself stays
+   (the research argues the un-tiered simplification is correct). Inclusive
+   <= per DOCTRINE's "within 600 m" (the F1b comparison fix, folded in here
+   rather than a second pass over the same lines). */
+function dangerCloseRadius() {
+  const key = activeChapter && activeChapter.asset === 'mortar60' ? 'mortar60' : 'battery';
+  return CONFIG.MISSION.dangerClose[key];
+}
 /* G3 — both error functions draw from the stream FIRST and only then decide
    whether to return the result. Bailing out early would leave the draws unspent,
    and `mission.rng` also feeds the FFE round stagger, so an early return would
@@ -6042,12 +6059,13 @@ function handleCFF(p) {
     FDC.say(pick(QUIPS.badGrid), { delay: 1 });
     return;
   }
-  // danger-close gate: friendlies inside 600 m demand the proword
+  // danger-close gate: friendlies inside dangerCloseRadius() demand the
+  // proword — 600 m for the battery, tighter for the sixty (F2)
   let minF = Infinity;
   for (const f of friendlyPositions())
     minF = Math.min(minF, dist2(cx, cz, f.x, f.z));
   const dcSent = saidDangerClose(p.raw);          // F6 — tolerant of "danger clothes"
-  if (minF < 600 && !dcSent) {
+  if (minF <= dangerCloseRadius() && !dcSent) {
     FDC.say(pick(QUIPS.dangerClose), { delay: 1.2 });
     return;
   }

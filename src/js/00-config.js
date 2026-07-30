@@ -55,6 +55,10 @@ const CONFIG = {
   MISSION: {
     fratricideRadius: 80,
     passMaxAdjustRounds: 4, targetRange: [1500, 3200], enemyOffset: [150, 250],
+    /* F2 — danger-close distance per firing asset (BALLISTICS_RESEARCH.md §6:
+       JFIRE's tables put mortars at roughly a third to half of the 155's
+       figure; the flat single-band gate itself is a correct simplification). */
+    dangerClose: { battery: 600, mortar60: 250 },
   },
   /* G13 — graded terminal effects. Replaces the old binary model (N hits inside
      one radius = "neutralized"). Every HE round now contributes a casualty /

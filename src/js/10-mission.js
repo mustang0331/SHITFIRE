@@ -55,6 +55,19 @@ function spotBurst(impact) {
 function assetScale() {
   return activeChapter && activeChapter.asset === 'mortar60' ? 0.55 : 1;
 }
+/* F2 — danger close is WEAPON-SPECIFIC, not one number (BALLISTICS_RESEARCH.md
+   §6): JFIRE's real tables put a 60mm mortar's danger-close on the order of a
+   third to half of the 155's. The old flat 600 m meant the mortar chapters
+   demanded the proword at an ARTILLERY distance — backwards from doctrine.
+   One helper, used by BOTH the call gate and the unsafe-correction check, so
+   the two figures can never drift apart. The flat per-asset gate itself stays
+   (the research argues the un-tiered simplification is correct). Inclusive
+   <= per DOCTRINE's "within 600 m" (the F1b comparison fix, folded in here
+   rather than a second pass over the same lines). */
+function dangerCloseRadius() {
+  const key = activeChapter && activeChapter.asset === 'mortar60' ? 'mortar60' : 'battery';
+  return CONFIG.MISSION.dangerClose[key];
+}
 /* G3 — both error functions draw from the stream FIRST and only then decide
    whether to return the result. Bailing out early would leave the draws unspent,
    and `mission.rng` also feeds the FFE round stagger, so an early return would

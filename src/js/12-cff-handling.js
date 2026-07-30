@@ -179,12 +179,13 @@ function handleCFF(p) {
     FDC.say(pick(QUIPS.badGrid), { delay: 1 });
     return;
   }
-  // danger-close gate: friendlies inside 600 m demand the proword
+  // danger-close gate: friendlies inside dangerCloseRadius() demand the
+  // proword — 600 m for the battery, tighter for the sixty (F2)
   let minF = Infinity;
   for (const f of friendlyPositions())
     minF = Math.min(minF, dist2(cx, cz, f.x, f.z));
   const dcSent = saidDangerClose(p.raw);          // F6 — tolerant of "danger clothes"
-  if (minF < 600 && !dcSent) {
+  if (minF <= dangerCloseRadius() && !dcSent) {
     FDC.say(pick(QUIPS.dangerClose), { delay: 1.2 });
     return;
   }
