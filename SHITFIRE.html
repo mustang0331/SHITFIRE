@@ -4625,6 +4625,15 @@ function parseMessage(raw) {
      mid-mission command to shift into effect, and it reaches this function as
      `adjust` with `any === false`. onPlayerMessage decides which one it is from
      mission state, because that is the only place that knows. */
+  /* G7 — the observer transmitting his OT FACTOR. The factor is the OBSERVER'S
+     own correction arithmetic (OT distance ÷ 1000 — it converts his mil spotting
+     to meters); it is never net traffic, unlike OT DIRECTION, which is. The user
+     flagged the two being conflated. Audited first: no FDC line asks for or
+     reads back a factor, and the mil card, laser readout and spotting coach all
+     teach it as an observer tool — so the only fix needed is here, answering the
+     observer who sends it. Tested after grid/shift/polar so a real call is never
+     claimed; "factor" has no other use on this net. */
+  if (t.includes('factor')) return { type: 'otfactor', raw: t, toks };
   /* G24 — these two must be tested HERE, after grid/shift/polar, not up with the
      other prowords. "at my command" is a legal element of transmission 3, so a
      complete call for fire contains it; matching it early would misread the whole
@@ -5338,6 +5347,14 @@ function onPlayerMessage(raw) {
     case 'tot': handleTimeOnTarget(p.sec); break;
     case 'suppresstgt': handleSuppressTarget(p); break;
     case 'posrep': handlePosRep(p); break;
+    case 'otfactor':
+      // G7 — snide, not a rant: it is a harmless misunderstanding, not a hazard
+      FDC.say('MUSTANG, the OT factor is YOUR arithmetic — it turns your mils into meters. ' +
+              'I do not want it. Send me the RESULT: left or right, add or drop. ' +
+              'What I do need on a grid mission is your OT DIRECTION, over.', { delay: 1.1 });
+      if (mission && !mission.done)
+        mission.notes.push('Transmitted the OT factor. It is observer-side arithmetic; only OT DIRECTION goes to the FDC (grid missions).');
+      break;
     case 'repeat':
       if (mission && !mission.done && state === 'ADJUSTING') {
         FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
