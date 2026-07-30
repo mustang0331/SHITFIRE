@@ -3347,7 +3347,7 @@ const bursts = [];
    there is no post-processing here at all. Instead:
 
      1. MATERIAL VARIANTS. Every material in the scene gets an NVG clone and a
-        THERMAL clone, cached on the source material itself (userData._vis).
+        THERMAL clone, cached on the source material itself (the _vis property).
         Toggling walks the scene once and reassigns .material. That is a
         one-time cost per toggle — a few hundred assignments, no allocation in
         the render loop — and it is the only thing that touches the GPU path.
@@ -3425,10 +3425,19 @@ const _vo = { r: 0, g: 0, b: 0 };         // variant colour scratch
 const _lc = { r: 0, g: 0, b: 0 };         // source colour scratch, sRGB
 function visVariantOf(m0, mode) {
   if (mode === 'day') return m0;
-  const cache = m0.userData._vis || (m0.userData._vis = {});
+  /* The registry lives in DIRECT properties, never in userData. r160's
+     Material.copy deep-copies userData via JSON.stringify, and this registry is
+     circular by construction (_vis -> variant -> _visBase -> source): parking it
+     in userData made the SECOND variant clone of any material throw "Converting
+     circular structure to JSON" - i.e. [O][O] day->NVG->THERMAL hard-crashed
+     applyVision. Found by tools/shots.js the first time anything actually BOOTED
+     the file; the parse gate can never see this class. Direct properties are
+     invisible to clone(), which is also semantically right: a clone should not
+     inherit another material's variant cache. */
+  const cache = m0._vis || (m0._vis = {});
   if (!cache[mode]) {
     const v = m0.clone();
-    v.userData = { _visBase: m0 };        // clone() copies userData by reference; replace it
+    v._visBase = m0;
     // a variant is a flat signature: vertex colours would multiply the terrain
     // palette back in and neither device would be monochrome
     if (v.vertexColors) { v.vertexColors = false; v.needsUpdate = true; }
@@ -3525,7 +3534,7 @@ function applyVision(forceMode) {
     if (!cur || Array.isArray(cur)) return;
     if (o === skyMesh) return;
     let m0 = o.userData._m0;
-    if (!m0) m0 = o.userData._m0 = (cur.userData && cur.userData._visBase) || cur;
+    if (!m0) m0 = o.userData._m0 = cur._visBase || cur;
     if (!m0.color) return;                                  // ShaderMaterial etc.
     o.material = mode === 'day' ? m0 : visTintVariant(m0, mode, bloom, wash);
   });
@@ -7501,7 +7510,10 @@ requestAnimationFrame(animate);
 // Debug / stable interface exposure
 window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   gradeMission, CAMPAIGN, CAMP, TLOG,
-  get Scenario() { return Scenario; }, get mission() { return mission; }, OP, BATTERY };
+  get Scenario() { return Scenario; }, get mission() { return mission; }, OP, BATTERY,
+  // QA hooks for tools/shots.js (additive — the stable interface above is unchanged):
+  // the screenshot rig drives TOD and optics states that no keybind reaches directly.
+  applyTOD, setVision, onPlayerMessage };
 </script>
 </body>
 </html>
