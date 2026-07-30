@@ -3928,12 +3928,58 @@ function fireMission(targetLocation, warno, meta) {
        observer's FIRE, and `released` is the one-shot latch that lets the retried
        call through without immediately re-arming the hold. */
     amc: !!(meta && meta.amc), pendingFire: null, released: false,
+    mto: (meta && meta.mto) || null,   // G11 — MTO readback expectation, or null (immediate missions)
     cannotObserve: false,   // §34 — observer has declared he cannot spot
     tot: null,              // §34 — time on target, accepted and acknowledged
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
   };
   if (warno === 'ffe') fireForEffect();
   else fireAdjustRound();
+}
+
+/* ---- G11: the observer reads the MTO back (DOCTRINE.md §42) -----------------
+   "The observer reads back the entire MTO." User's spec, verbatim: "word for
+   word but if it gets the gist gtg." So the scorer is a GIST scorer, not a
+   string comparison — it counts how many of the MTO's key elements appear in
+   the transmission, with the TARGET NUMBER weighted as the one element that is
+   not negotiable: reading back the wrong target number is precisely the error
+   the readback exists to catch, so a readback with a wrong or missing number is
+   challenged even when everything else matches.
+
+   Threshold reasoning: 3+ keys means this is unmistakably a readback attempt
+   and not a stray sentence — no plausible correction, description or question
+   contains three of ["gun","battery","adjust","effect","155","he","fuze","pd"].
+   Below 3 the transmission is NOT treated as a readback at all and falls
+   through to the normal handlers, so nothing that used to work is captured. */
+function scoreMTO(t, mto) {
+  let hits = 0;
+  for (const k of mto.keys) if (t.includes(k)) hits++;
+  return { hits, tgtOk: t.includes(mto.tgt) };
+}
+function tryMTOReadback(p) {
+  if (!mission || mission.done || !mission.mto || mission.mto.read) return false;
+  const s = scoreMTO(p.raw || '', mission.mto);
+  if (s.hits < 3 && !s.tgtOk) return false;          // not a readback attempt
+  if (!s.tgtOk) {
+    // right recitation, wrong (or no) target number — the one failure that matters
+    FDC.say(`NEGATIVE, MUSTANG — the target number is ALPHA ALPHA ${mission.mto.tgt}. ` +
+            `Read the whole message back, over.`, { delay: 1.0 });
+    mission.notes.push(`MTO readback ${p.raw.match(/\b\d{4}\b/) ? 'carried the wrong target number' : 'omitted the target number'}.`);
+    return true;
+  }
+  if (s.hits < 3) {
+    // target number alone is not a readback of "the entire MTO"
+    FDC.say(`That is the target number, not the message. Read back the whole MTO, over.`,
+            { delay: 1.0 });
+    return true;
+  }
+  mission.mto.read = true;
+  const verbatim = s.hits >= mission.mto.keys.length - 1;
+  FDC.say(verbatim ? 'READBACK CORRECT, OUT.'
+                   : 'CLOSE ENOUGH, MUSTANG. READBACK CORRECT, OUT.', { delay: 0.9 });
+  if (!verbatim && activeChapter && activeChapter.strict)
+    mission.notes.push('MTO readback was gist, not verbatim — strict net wants it word for word.');
+  return true;
 }
 
 /* G27 — recorded targets, by number. Survives across missions within a session
@@ -4775,11 +4821,25 @@ function handleCFF(p) {
       : `${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
         (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
           { delay: p.imm ? 0.7 : CONFIG.FDC.readbackDelay });
-  if (!p.imm)
-    FDC.say(activeChapter && activeChapter.asset === 'mortar60'
+  /* G11 — the MTO expectation. Built LOCALLY and handed to fireMission via meta,
+     never written onto `mission` here: fireMission rebuilds the mission object
+     after this block runs, so anything set on the old one is silently wiped —
+     measured the trap before shipping into it. Text for the say and keys + target
+     number for the gist-scorer come from one place so they cannot disagree.
+     DOCTRINE.md §42: "The observer reads back the entire MTO." */
+  let mtoSpec = null;
+  if (!p.imm) {
+    const m60 = activeChapter && activeChapter.asset === 'mortar60';
+    mtoSpec = m60
+      ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', 'he'],
+          tgt: '7002', read: false, nagged: false }
+      : { keys: ['gun', 'battery', 'adjust', 'effect', '155', 'he', 'fuze', 'pd'],
+          tgt: '7001', read: false, nagged: false };
+    FDC.say(m60
       ? 'MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.'
       : 'MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
             { delay: 1.4 });
+  }
   // deviation policy: sloppy-but-safe call format earns a snide remark and
   // proceeds; a clean call gets the usual readback color.
   if (notes.length >= 2) FDC.say(pick(QUIPS.snide), { delay: 1.1 });
@@ -4795,7 +4855,7 @@ function handleCFF(p) {
   // call's own text rather than as a separate proword. CFFQ concatenates raw across
   // transmissions, so this works whether the call came one-shot or staged.
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr,
-                                         method: p.method,
+                                         method: p.method, mto: mtoSpec,
                                          amc: p.raw.includes('at my command') });
 }
 
@@ -4908,6 +4968,24 @@ function handleAdjust(p) {
      `state !== 'ADJUSTING'` gate below, or the very transmission meant to resume
      the mission would be rejected by the hold it is resuming from. */
   liftCheckFire();
+  /* G11 — the MTO readback was skipped and the observer is already correcting.
+     Same shape as the OT-direction gate below, deliberately: strict blocks ONCE
+     (nagged flag set first, so the retry passes — scripts are guidelines even
+     when the net is strict about saying so), forgiving coaches once and moves on.
+     The round is already on the way either way; DOCTRINE §5 grades, not gates. */
+  if (mission.mto && !mission.mto.read && !mission.mto.nagged) {
+    mission.mto.nagged = true;
+    mission.notes.push('Never read back the message to observer — the readback is your only check that the FDC has the right target number.');
+    if (activeChapter && activeChapter.strict) {
+      FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: you did not read back my message to observer. ' +
+              `Read it back — target number ALPHA ALPHA ${mission.mto.tgt} — then send your correction, over.`,
+              { delay: 1.1 });
+      return;
+    }
+    if (coachOn())
+      FDC.say('Copy — but you never read back my MTO, MUSTANG. That readback is how we both know ' +
+              'you are shooting the target I think you are shooting. Continuing, out.', { delay: 1.4 });
+  }
   // doctrine: OT direction accompanies or precedes the first correction on a
   // grid mission — strict net enforces it, forgiving mode coaches it once
   if (p.any && !mission.otDirSent && mission.method === 'grid' && !mission.dirNagged) {
@@ -5140,6 +5218,18 @@ function onPlayerMessage(raw) {
       // the queue rather than merging into it.
       if (p.type === 'cff' || p.type === 'eom') cffqReset();
     }
+  }
+  /* G11 — a pending MTO readback claims otherwise-unhandled transmissions FIRST.
+     Tested only for types that would otherwise be mocked or misread: `unknown`
+     (the usual shape of a readback — "one gun in adjust, battery in effect, 155,
+     target alpha alpha 7001" parses as nothing else) and `warno` (a verbatim
+     readback contains the word "adjust", which G22's bare-warning-order branch
+     would otherwise capture and misread as opening a NEW call for fire). Every
+     other type keeps its meaning: a correction sent instead of a readback is
+     still a correction — handleAdjust coaches the skipped readback there. */
+  if ((p.type === 'unknown' || p.type === 'warno') && tryMTOReadback(p)) {
+    unknownStreak = 0;
+    return;
   }
   switch (p.type) {
     case 'empty': break;
@@ -5522,6 +5612,7 @@ function showAAR() {
     `<tr><td>Call format grade</td><td>${grade}</td></tr>` +
     (m.noDisp ? `<tr><td>Round dispersion</td><td>DISABLED — test mode, results not representative</td></tr>` : '') +
     (m.usedCheckFire ? `<tr><td>Safety stop</td><td>CHECK FIRING / CEASE LOADING called during this mission</td></tr>` : '') +
+    (m.mto ? `<tr><td>MTO readback</td><td>${m.mto.read ? 'READ BACK' : 'NOT read back — the FDC never got confirmation you copied the target number'}</td></tr>` : '') +
     (tr.length ? `<tr><td>Adjusting round trace</td><td>${tr.join(' → ')} m</td></tr>` : '') +
     (corrEff !== null ? `<tr><td>Correction efficiency</td><td>${Math.round(corrEff * 100)}% miss reduction/round (doctrine ≈50%)</td></tr>` : '') +
     (tr.length >= 2 ? `<tr><td>Bracket established</td><td>${m.sides.long && m.sides.short ? 'YES' : 'NO — all rounds one side'}</td></tr>` : '') +
