@@ -3982,6 +3982,46 @@ function tryMTOReadback(p) {
   return true;
 }
 
+/* ---- G9: POSITION REPORT, and why polar needs it -----------------------------
+   User feedback: "Need to add a pos rep at the beginning if doing a polar
+   mission." Doctrine agrees (DOCTRINE.md §27: "FDC must know observer's
+   position") — a polar call is a direction and a distance FROM THE OBSERVER, so
+   without knowing where the observer is, the FDC has one end of the vector and
+   nothing to hang it on.
+
+   The teaching decision that matters: the FDC resolves the polar mission from
+   the REPORTED position, not from the observer's true position. It cannot do
+   otherwise — it only knows what it was told. So an observer who mis-locates
+   himself by 200 m puts every polar round 200 m off, and the trainer does not
+   soften that: self-location by resection is the skill, and this is where it
+   gets graded by the fall of shot. A 6-digit self-location carries up to ~70 m
+   of grid-square rounding, which is real too (JFO standard: self-locate within
+   100 m).
+
+   Stored on Scenario (rebuilt fresh every mission, so it expires naturally and
+   the "at the beginning" requirement is per-mission, as the user asked). */
+function handlePosRep(p) {
+  let px, pz;
+  if (p.digits.length === 6) {
+    const e3 = parseInt(p.digits.slice(0, 3)), n3 = parseInt(p.digits.slice(3));
+    const w = enToWorld(e3 * 100 + 50, n3 * 100 + 50); px = w.x; pz = w.z;
+  } else if (p.digits.length === 8) {
+    const e4 = parseInt(p.digits.slice(0, 4)), n4 = parseInt(p.digits.slice(4));
+    const w = enToWorld(e4 * 10 + 5, n4 * 10 + 5); px = w.x; pz = w.z;
+  } else {
+    FDC.say('MUSTANG 12, send your position as a 6 or 8 digit grid, over.', { delay: 0.9 });
+    return;
+  }
+  Scenario.posRep = { x: px, z: pz, digits: p.digits };
+  const err = dist2(px, pz, OP.x, OP.z);
+  FDC.say(`POSITION GRID ${p.digits.length === 6
+    ? p.digits.slice(0, 3) + ' ' + p.digits.slice(3) : p.digits}, OUT.`, { delay: 0.9 });
+  /* No hint when the reported position is wrong — the FDC cannot know, and
+     telling the observer would defeat the exercise. TLOG carries the truth so
+     the AAR conversation can happen on paper. */
+  TLOG.add('sys', '', `posrep ${p.digits}`, { selfLocErr: Math.round(err) });
+}
+
 /* G27 — recorded targets, by number. Survives across missions within a session
    (that is what "on file" means) but is not persisted, because a target number is
    only meaningful to the fire unit that assigned it. */
@@ -4444,6 +4484,18 @@ function parseMessage(raw) {
     return { type: 'eom', refine: ref, record: /record as target/.test(t), bda };
   }
   const ffe = t.includes('fire for effect');
+  /* G9 — POSITION REPORT. Must be tested BEFORE grid extraction: "position grid
+     245 523" contains the word "grid" and a digit run, so the grid-CFF branch
+     would otherwise claim it as a fire mission at the observer's own position —
+     which is not a parse error, it is a fire mission at the observer's own
+     position. The pattern requires a position word IMMEDIATELY before "grid" so
+     that a target description like "enemy position on the hill" in a real CFF
+     can never trip it. */
+  const mPos = t.match(/\b(?:pos\s*rep|my\s+position|observer\s+position|position)\s+(?:is\s+)?grid\s+((?:\d+\s*)+)/);
+  if (mPos && !t.includes('adjust fire') && !t.includes('fire for effect')) {
+    const pd = mPos[1].replace(/\s+/g, '');
+    return { type: 'posrep', digits: pd, raw: t, toks };
+  }
   /* G14/G26 — the IMMEDIATE mission types (DOCTRINE.md §22) are sent as ONE
      transmission: ID + warning order + location, and the FDC sends no MTO. Before
      this, "immediate suppression, grid …" parsed as an ordinary HE grid mission and
@@ -4749,13 +4801,24 @@ function handleCFF(p) {
       (p.sAdd ? `, ${p.sAdd > 0 ? 'ADD' : 'DROP'} ${Math.abs(p.sAdd)}` : '') +
       (p.vertM ? `, ${p.vertM > 0 ? 'UP' : 'DOWN'} ${Math.abs(p.vertM)}` : '');
   } else if (p.method === 'polar') {
+    /* G9 — no position report, no polar mission. The FDC has a direction and a
+       distance and nothing to hang them on. */
+    if (!Scenario.posRep) {
+      FDC.say('MUSTANG 12, HELLHOUND — I cannot resolve a POLAR mission. I do not hold your ' +
+              'position. Send a position report first — "POSITION GRID 245 523" — then your ' +
+              'call, over.', { delay: 1.1 });
+      return;
+    }
     if (p.distM < 100 || p.distM > 12000) {
       FDC.say(pick(QUIPS.badGrid), { delay: 1 });
       return;
     }
+    /* Resolved from the REPORTED position, not the true one. The FDC only knows
+       what it was told; an observer who mis-located himself finds out from the
+       fall of shot, which is the entire point of requiring the report. */
     const az = (p.dirMils % 6400) / MILS_PER_RAD;
-    cx = OP.x + Math.sin(az) * p.distM;
-    cz = OP.z - Math.cos(az) * p.distM;
+    cx = Scenario.posRep.x + Math.sin(az) * p.distM;
+    cz = Scenario.posRep.z - Math.cos(az) * p.distM;
     locStr = `DIRECTION ${fmtMils(p.dirMils % 6400)}, DISTANCE ${p.distM}` +
              (p.vertM ? `, ${p.vertM > 0 ? 'UP' : 'DOWN'} ${Math.abs(p.vertM)}` : '');
   } else if (p.digits.length === 6) {
@@ -5274,6 +5337,7 @@ function onPlayerMessage(raw) {
     case 'cannotobserve': handleCannotObserve(); break;
     case 'tot': handleTimeOnTarget(p.sec); break;
     case 'suppresstgt': handleSuppressTarget(p); break;
+    case 'posrep': handlePosRep(p); break;
     case 'repeat':
       if (mission && !mission.done && state === 'ADJUSTING') {
         FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
@@ -6888,7 +6952,10 @@ function newMission(first, type, chapter) {
   if (chapter) {
     log('', `CHAPTER ${chapter.id} — ${chapter.title} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
     if (chapter.method)
-      log('', `Chapter requirement: locate the target by ${chapter.method === 'polar' ? 'POLAR (direction + distance)' : 'SHIFT FROM A KNOWN POINT'} — a grid call caps this chapter at 2★.`, 'sys');
+      log('', `Chapter requirement: locate the target by ${chapter.method === 'polar' ? 'POLAR (direction + distance)' : 'SHIFT FROM A KNOWN POINT'} — a grid call caps this chapter at 2★.` +
+        // G9 — say the prerequisite up front, where the requirement is stated,
+        // so the FDC's refusal is a reminder rather than an ambush
+        (chapter.method === 'polar' ? ' POLAR needs your position first: fix yourself on the sheet and send "POSITION GRID …" before your call — the FDC resolves the mission from the position you REPORT.' : ''), 'sys');
     if (chapter.strict)
       log('', 'STRICT NET: full format enforced — callsigns, warning order, location, description, OVER; corrections rounded (deviation in tens, range in hundreds — fifties only entering fire for effect); surveillance term at end of mission.', 'sys');
     if (chapter.asset === 'mortar60')
