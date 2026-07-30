@@ -6,6 +6,13 @@ Proposed dialogue rewrites, sourced from a play-through transcript (`Dialogue Hi
 
 > **This is the detail spec for SPEC.md stage 14.** [ROADMAP.md](ROADMAP.md) Track D owns order and status: `14a` = quip pools, `14b` = chapter beats + briefs, `14c` = LIBERTY FIRES (parked, needs a NARRATIVE.md home first). Zero conflict surface with stage 13's renderer work, so 14a/14b can be pulled forward between graphics rows — but it still serializes, because only one agent edits `index.html` at a time.
 
+> **Applied, 2026-07-30:** §2a + §3 (the QUIPS pool rewrites) landed at `e56de84` (ROADMAP `14a`). §4
+> (chapter narrative punch-ups) + §6 (the `raid` brief copy pass) landed at `1cc645a` (ROADMAP `14b`).
+> §5 (leave GUNNY alone) was honored — his tutorial lines are untouched. **§8 (LIBERTY FIRES) remains
+> unapplied**, pending the `14c` decision: it's a new character and needs a NARRATIVE.md home first,
+> and the proposed E.1 slot has since been built with HELLHOUND running the net throughout the
+> Epilogue, so the slot question is now a live call for the user rather than a default.
+
 ---
 
 ## 1. What stays untouched, and why

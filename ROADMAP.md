@@ -4,7 +4,7 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-30 · Head: `9067a2e` · **The file is `SHITFIRE.html`, not `index.html`**
+Last updated: 2026-07-30 · Head: `1cc645a` · **The file is `SHITFIRE.html`, not `index.html`**
 
 **Shipped off this board:** `13a` bino quality pin · `F1` range rounding · `13b` ACES tone mapping ·
 `13c` sky + time of day · **Track E complete** (`E1`–`E7`: legibility, SALUTE, night/NVG/thermal,
@@ -22,38 +22,34 @@ per-target armor divisor, DESTROYED-only kill rule) `1ed1dcd` · `11c` E.3 SUNLA
 finale — orbital directed-energy CFF, G17 callsign swap extended to SUNLAMP ACTUAL, DISCHARGE/SOLAR
 EVENT prowords, 10-digit grids) `98d5f16` · `11d` G8 bloom, gated to SUNLAMP chapter + quality tier 0
 only, composer created/disposed lazily on any gate drop `addcbe5` (+ LF-pin follow-up on `vendor/**`
-`9067a2e`) · `11e` campaign-wide star-par balance audit, no chapter data changed. **All three SUNBURN
-chapters are live and Track C / STAGE 11 IS COMPLETE — the campaign (Foreword through Epilogue) is now
-built end to end.**
+`9067a2e`) · `11e` campaign-wide star-par balance audit, no chapter data changed · **Track C / STAGE
+11 COMPLETE** — all three SUNBURN chapters live, the campaign (Foreword through Epilogue) built end
+to end · `14a` DIALOGUE_REVISIONS QUIPS punch-up (pools 6–8+ entries, §2a profanity-boundary scrub,
+career pools expanded) `e56de84` · `14b` chapter narrative punch-ups + raid-brief copy pass `1cc645a`.
+**Track D / STAGE 14 COMPLETE** except the parked `14c`.
 
-**Next:** **`14a` (Stage 14 / Track D — apply the revised QUIPS pools).** `11d` shipped `addcbe5`
-(+ LF-pin follow-up `9067a2e`): `renderFrame()` now runs `EffectComposer`+`RenderPass`+
-`UnrealBloomPass` (bloom at half resolution) **only** when `CONFIG.GFX.bloom` is on, the active
-chapter's asset is `'sunlamp'`, and `QUALITY.tier` is 0 — every other frame keeps the plain
-`renderer.render()` path untouched; the composer is created lazily and disposed the instant any one
-of those three gates drops (chapter change, a quality step-down, a resize). Eight r160 postprocessing/
-shader addon files (~26 KB) are vendored and inlined, and their **relative** import specifiers cannot
-resolve from `data:` URLs, so `tools/build.js` rewrites them to the bare `three/addons/...` names in
-the import map — a deterministic substitution confined to third-party files. The first bloom threshold
-(0.85) sat under the tone-mapped sky and hazed the whole horizon, caught by screenshot and raised to
-0.93 so only the beam, muzzle flashes, and glint actually bloom. The follow-up commit pinned
-`vendor/**` to LF in `.gitattributes`: vendor bytes are base64-inlined artifact bytes, and a CRLF
-checkout would fail the byte-exact gate on a fresh clone. Verified 9/9 SUNLAMP e2e with the composer
-active, 12/12 direct-path shots unchanged, offline zero-network, lint 0. `11e` closed the same session
-as an **audit, no code changed**: a campaign-wide star-par balance pass confirmed every chapter's par
-holds under the graded model (loose neutralization bar, par clock running from first round), including
-all three Epilogue chapters (E.1 par 300, E.2 par 420, E.3 par 300), with difficulty caps and
-volume-unlock thresholds unchanged and reachable.
+**THE BOARD IS CLOSED. There is no `NEXT` row.** Every track is complete: the campaign runs Foreword
+through the Epilogue end to end, graphics `§G0`–`§G8` have all landed, and every doctrine track (E, F,
+G) is closed. `11d`/`11e` closed Track C (Epilogue fully built); `14a`/`14b` closed everything buildable
+in Track D. The only work left on this board is **parked by explicit user decision** — nothing here is
+waiting on more building, only on the user choosing to unpark it:
 
-**With `11d`/`11e` closed, Track C / STAGE 11 IS COMPLETE — the Epilogue is fully built, and the
-campaign (Foreword tutorial through all three SUNBURN chapters) is now built end to end.** Track A
-(stage 13), Track B (stage 12), and Track C (stage 11) are all complete; Track G is complete except
-`G20` (PARKED at the user's direction); Track F holds only the PARKED **F4**. The standing order
-(stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) now reaches **stage 14 (dialogue
-punch-up, Track D)** for the first time — `14a` (apply the revised QUIPS pools from
-DIALOGUE_REVISIONS.md, `corrSnark` 4→8 is the repeat the transcript caught) is marked **NEXT** below;
-`14b` (chapter narrative punch-ups) is READY behind it; `14c` (LIBERTY FIRES guest FDC) stays
-PARKED — new character, needs a NARRATIVE.md home first.
+- **`G20`** — the 10×10 km map may be too small. **Parked at the user's direction 2026-07-29: do not
+  raise, cost, or implement until the user brings it up.**
+- **`F4`** — multi-phase MEAT GRINDER chaining (4.4). Parked pending the single-mission version being
+  balanced first.
+- **`14c`** — LIBERTY FIRES guest FDC. Parked: it introduces a new named character, which needs a
+  NARRATIVE.md home before it belongs in code. §8's proposed slot (E.1 THE GREAT CHOW RAID) has since
+  been *built* (`11a`, `57532a5`) with HELLHOUND running the net throughout the Epilogue — so the slot
+  question is now a live user decision (does LIBERTY FIRES bump HELLHOUND out of E.1, get its own
+  chapter, or get dropped), not a default the docs can pick for them.
+- **Volume V "ON WINGS"** — locked by design, a menu tease at most. **Never build unasked** (CLAUDE.md).
+- **⚠ The standing human-in-Chrome visual QA backlog** in [GRAPHICS.md](GRAPHICS.md) §Open visual QA
+  backlog. Every graphics row shipped verified by harness and headless-Chrome parse, but neither can
+  see a picture — this is the one item that is genuinely still open work, not a parked decision, and it
+  is a look-at-it-in-a-browser pass, not a code row.
+
+**Next: none.** The board does not advance again until the user raises one of the four items above.
 
 > ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
 > (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
@@ -258,12 +254,12 @@ already written and unapplied.
 
 | ID | What | Owner | Status |
 |---|---|---|---|
-| 14a | Apply revised QUIPS pools (`corrSnark` 4→8 is the repeat the transcript caught) | Opus | **NEXT** |
-| 14b | Chapter narrative punch-ups + mission briefs | Opus | READY |
-| 14c | LIBERTY FIRES guest FDC, one chapter | Opus | PARKED — new character, needs a NARRATIVE.md home first |
+| 14a | ~~Apply revised QUIPS pools~~ **DONE** `e56de84` — §3 applied verbatim: every pool expanded to 6–8+ entries (`corrSnark` 4→8 was the transcript-caught repeat; pool DEPTH is the fix, since `pick()` only guards immediate repeats, not distant ones), the whole set scrubbed to the §2a boundary (no taking God's name in vain — all ten flagged lines plus one straggler the doc missed, the AAR "HOLE IN ONE" medal), career pools moved/expanded with wiring untouched. The lint tool caught transitional duplicate keys. Verified: lint 0, 12/12 shots, 15/15 mission e2e, replay over 247 unchanged. | Opus | **DONE** `e56de84` |
+| 14b | ~~Chapter narrative punch-ups + mission briefs~~ **DONE** `1cc645a` — §4's five tabled line edits applied exactly (1.2, 1.3, 2.3, 3.2, 3.5) and nothing else — every "keep" kept, including 4.4's "...acceptable, MUSTANG." payoff and all Gunny lines (§5's contrast rule). §6's raid-brief copy pass applied (one flowing op order, content unchanged). | Opus | **DONE** `1cc645a` |
+| 14c | LIBERTY FIRES guest FDC, one chapter | Opus | **PARKED** — new character, needs a NARRATIVE.md home. §8's proposed slot (E.1 THE GREAT CHOW RAID) has since been built (`11a`) with HELLHOUND running the net throughout — the slot question is now a real user decision, not a default the docs can pick. |
 
-**Zero conflict surface with stage 13** (string pools vs. renderer), so 14a/14b can be pulled forward
-between any two graphics rows on request. It still serializes — rule 1 has no exceptions.
+**Track D is now complete except the parked `14c`.** With `14a`/`14b` shipped, every non-parked row on
+the entire board is DONE — see the top-of-file summary.
 
 ### Track E — Engine port (planning complete; execution not scheduled)
 
@@ -521,3 +517,5 @@ work does not touch rendering.
 | 2026-07-30 | **11c shipped `98d5f16` — E.3 SUNLAMP ACTUAL, the Epilogue's finale, and all three SUNBURN chapters are now live.** A call for fire to an orbital directed-energy cannon, with every doctrinal element held unchanged: six elements, three transmissions, readback, OT-frame corrections, `impact = aimpoint + error` — the beam is presentation riding a point the ordinary machinery already resolved, exactly the Epilogue's founding thesis. Asset `'sunlamp'` joins the G17 delivery-time callsign swap, so SUNLAMP ACTUAL owns all FDC traffic on the chapter including the quip pools; prowords swap SHOT→DISCHARGE and SPLASH→SOLAR EVENT; time of flight is rendered as a WebAudio charging whine ramping for exactly the TOF rather than a silent wait; impact is one pooled additive beam column of noon-colored light (1.4 s). Dispersion tightens to `assetScale` 0.22 — orbital precision is the chapter's own flavor of "tighter follow-up rounds," not a doctrine change. Ten-digit grids are honored to the meter (the chapter's gag: SUNLAMP ACTUAL cheerfully asks for one), with 8- and 6-digit grids still accepted, just with corporate grace instead of a challenge. The MTO is dressed in corporate-orbital jargon (ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, AA7003) but sits on the exact same non-negotiable target-number check and readback scorer G11 built for every other MTO — the joke is the wrapper, not the gate. Chapter E.3 fires on a bunker complex, with HELLHOUND patched into the net for one last chapter and audibly tired of all of it. Verified 9/9 live e2e (the callsign swap holding through real traffic, a 10-digit grid resolving to 0.5 m of aim, the corporate MTO parsing and reading back correctly, DISCHARGE/SOLAR EVENT firing with zero bare SHOT/SPLASH leaking through, a point-class kill, a PASS verdict, the beam itself visible in a screenshot); 12/12 shots; the g13 effects e2e (15/15) and a 247-transmission replay both unchanged; lint 0. **Board advances to `11d`** (G8 bloom, gated to SUNLAMP and quality tier 0 only — the one Track A graphics row deliberately deferred out of stage 13 to land here). |
 | 2026-07-30 | **11d shipped `addcbe5` (+ LF-pin follow-up `9067a2e`) — G8 bloom, and it lands exactly as scoped: SUNLAMP and quality tier 0 only.** `renderFrame()` runs `EffectComposer`+`RenderPass`+`UnrealBloomPass` (bloom at half resolution) only when `CONFIG.GFX.bloom` is on, the active chapter's asset is `'sunlamp'`, and `QUALITY.tier` is 0; every other frame keeps the plain `renderer.render()` path untouched, and the composer is created lazily and disposed the instant any one of the three gates drops — a chapter change, a quality step-down, or a resize. Eight r160 postprocessing/shader addon files (~26 KB) are vendored and inlined, and their **relative** import specifiers cannot resolve from `data:` URLs, so `tools/build.js` rewrites them to the bare `three/addons/...` names in the import map — a deterministic substitution confined to third-party files, nothing hand-authored touched. The first bloom threshold (0.85) sat under the tone-mapped sky and hazed the whole horizon, caught by screenshot and raised to 0.93 so only the beam, muzzle flashes, and glint actually bloom. The follow-up commit pinned `vendor/**` to LF in `.gitattributes`: vendor bytes are base64-inlined artifact bytes, and a CRLF checkout would have failed the byte-exact gate on any fresh clone. Verified 9/9 SUNLAMP e2e with the composer active, 12/12 direct-path shots unchanged, offline zero-network, lint 0. **Board advances to `11e`** (campaign-wide star-par balance pass), the last row in Track C. |
 | 2026-07-30 | **11e closed by audit, no code changed — Track C / STAGE 11 IS COMPLETE, and the campaign is built end to end.** The campaign-wide star-par balance pass: pre-Epilogue chapters were re-audited at 12k and the pars hold under the graded model (looser neutralization bar, par clock running from first round). The three Epilogue chapters check out on the same model: E.1 par 300 (a one-volley neutralize on standing personnel floors ≈60–90 s), E.2 par 420 (2–4 volleys on a moving armored target ≈150–260 s plus corrections), E.3 par 300 (`assetScale` 0.22 dispersion plus 10-digit precision drives it to 1–2 volleys). Difficulty caps and volume-unlock thresholds are unchanged and reachable. No chapter data changed. **With `11d`/`11e` both closed, Track C / STAGE 11 IS NOW COMPLETE — the Epilogue is fully built, and the campaign (Foreword tutorial through Volumes I–IV through all three SUNBURN chapters) is now built end to end.** Track A, Track B, and Track C are all complete; Track G is complete except the user-parked `G20`; Track F holds only the parked `F4`. The standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) reaches **stage 14 (Track D, dialogue punch-up)** for the first time; `14a` (apply the revised QUIPS pools) is marked NEXT. |
+| 2026-07-30 | **14a shipped `e56de84` — the DIALOGUE_REVISIONS QUIPS punch-up applied verbatim.** Every pool expanded to 6–8+ entries (`corrSnark` 4→8 was the transcript-caught repeat — pool depth is the actual fix, since `pick()` only guards against an *immediate* repeat, not a distant one). The whole set was scrubbed to §2a's profanity boundary (no taking God's name in vain: all ten flagged lines plus one straggler the doc itself missed, the AAR "HOLE IN ONE" medal line), and the career-callback pools (`careerFrat`/`careerCollat`/`careerVet`) were moved/expanded with their wiring untouched. The lint tool caught transitional duplicate keys left mid-edit. Verified lint 0, 12/12 shots, 15/15 mission e2e, replay over 247 recorded transmissions unchanged. **Board advances to `14b`.** |
+| 2026-07-30 | **14b shipped `1cc645a` — chapter narrative punch-ups and the raid-brief copy pass, closing Track D / stage 14 down to the parked `14c`.** DIALOGUE_REVISIONS.md §4's five tabled line edits applied exactly as written (1.2, 1.3, 2.3, 3.2, 3.5) and nothing beyond them — every line marked "keep" was kept, including 4.4's "...acceptable, MUSTANG." payoff (the campaign's emotional close) and every GUNNY tutorial line (§5's deliberate profanity contrast against HELLHOUND, left untouched). §6's `raid` brief copy pass applied — one flowing op order in place of the awkward trailing string concatenation, content unchanged. **With `14a`/`14b` both closed, every non-parked row on the entire board is now DONE.** What remains is parked by explicit user decision only: `G20` (map size), `F4` (multi-phase MEAT GRINDER), `14c` (LIBERTY FIRES — §8's proposed E.1 slot has since been built with HELLHOUND running the net, so the slot question is now a live decision for the user rather than a default), and Volume V (locked by design, never build unasked). The standing visual-QA backlog in GRAPHICS.md is the one item left that isn't a parked decision — a human-in-Chrome look, not a code row. **The board has no NEXT row.** |
