@@ -7,8 +7,9 @@ A single-file browser trainer for the FORWARD OBSERVER (not the gun crew).
 Scope per stage lives in **SPEC.md** ("BUILD ORDER"). The campaign storyline (volumes, chapters, characters, humor rules) lives in **NARRATIVE.md**. **DOCTRINE.md** (distilled from JFIRE 2019 + the JFO Student Handout) is the authority for CFF formats, prowords, rounding, readback protocol, and strict-mode rules — check it before writing any parser or FDC traffic.
 
 ## Golden rules (do not violate)
-- **One `SHITFIRE.html`, and it runs with nothing installed.** (renamed from index.html 2026-07-29.) The shipped artifact stays one self-contained file: no build step, no bundler, no **runtime** npm dependency, no backend, no API keys. **Opening it in Chrome must always Just Work on a machine with nothing but a browser** — that is the invariant. Dev-only test tooling is permitted alongside it; see *Dev tooling*.
-- Three.js + addons via **CDN import map** only. No other external deps.
+- **The shipped artifact is one self-contained `SHITFIRE.html` that runs with nothing installed.** No runtime npm dependency, no backend, no API keys. **Opening it in Chrome must always Just Work on a machine with nothing but a browser** — that is the invariant, and it is the *only* thing "one file" was ever protecting.
+- **Source lives in `src/`; `SHITFIRE.html` is a BUILD ARTIFACT** (source split 2026-07-30, user-approved). Edit `src/js/*.js` and the shell in `src/shell/`, then `node tools/build.js` regenerates `SHITFIRE.html` by **deterministic concatenation** in `src/manifest.json` order — a paste, not a bundler; no minify, no transform, no dependency. **Never hand-edit `SHITFIRE.html`** — the next build overwrites it, and the pre-commit hook rejects a commit whose `SHITFIRE.html` is not the current build of `src/`. Module ORDER in the manifest is load-bearing (hoisting, top-level `const`/`let`, parser branch precedence). The build adds nothing to the artifact and needs nothing installed to *run* it — only to *rebuild* it.
+- Three.js + addons via the import map. **Moving to a local `vendor/` copy** so the trainer runs with no network (field/classroom use) — until that lands it is the jsdelivr CDN. No other external deps.
 - Only optional external input: a grayscale terrain heightmap/DEM (see SPEC "TERRAIN").
 - Voice = browser **Web Speech API** (`SpeechRecognition` + `SpeechSynthesis`), client-side, keyless. **Typed input is a mandatory fallback.**
 - FDC is **rule-based JS** (no LLM).
@@ -69,9 +70,9 @@ Tooling is never a gate on the sim's design. If a tool can't cope with the singl
 tool loses, not the file.
 
 ## Don't
-- **Don't ever have two agents editing `SHITFIRE.html` at once.** This has already gone wrong once — GRAPHICS.md was written blind because another agent held the file. One writer, always.
+- **Don't have two writers on the same `src/` module at once, and never hand-edit `SHITFIRE.html`.** The source split means two agents *can* now safely work different modules in parallel — that is the point of it — but two on one module still collides, and editing the built artifact directly is lost on the next build. One writer per module; rebuild, don't hand-patch.
 - Don't build a whole stage at once when it has lettered rows — ship one ROADMAP row, commit, then the next.
-- Don't add a trajectory sim, angle-T math, a bundler, a server, or a **runtime** npm dependency. (Dev-only tooling is allowed — see *Dev tooling*.)
+- Don't add a trajectory sim, angle-T math, a runtime bundler, a server, or a **runtime** npm dependency. (The dev-only concat build and test tooling are allowed — see *Dev tooling*. "No bundler" means the shipped artifact is never webpack/rollup output; `tools/build.js` is a deterministic paste.)
 - Don't let voice be load-bearing — the typed core must fully work on its own.
 - Don't break the stable interfaces above.
 - Don't mark anything done from memory. Grep the code or run it.

@@ -1,0 +1,24 @@
+{
+  "head": "shell/head.html",
+  "js": [
+    "js/00-config.js",
+    "js/01-math-terrain.js",
+    "js/02-scene.js",
+    "js/03-op-battery.js",
+    "js/04-world.js",
+    "js/05-units-scenario.js",
+    "js/06-clock-comms.js",
+    "js/07-voice-spot-audio.js",
+    "js/08-burst-optics.js",
+    "js/09-camera.js",
+    "js/10-mission.js",
+    "js/11-parser.js",
+    "js/12-cff-handling.js",
+    "js/13-aar.js",
+    "js/14-map-library.js",
+    "js/15-campaign-menu.js",
+    "js/16-input.js",
+    "js/17-loop-boot.js"
+  ],
+  "tail": "shell/tail.html"
+}

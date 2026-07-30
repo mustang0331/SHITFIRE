@@ -1,13 +1,35 @@
 #!/bin/sh
-# SHITFIRE pre-commit — runs the gates only when the sim file is staged.
-# Installed via: git config core.hooksPath .githooks
+# SHITFIRE pre-commit. Installed via: git config core.hooksPath .githooks
 # Bypass (emergencies only): git commit --no-verify
-if git diff --cached --name-only | grep -q '^SHITFIRE\.html$'; then
-  echo "[gate] SHITFIRE.html staged - running syntax gate + parser-order guard"
-  powershell -NoProfile -File tools/syntaxgate.ps1 || {
-    echo "[gate] SYNTAX GATE FAILED - commit blocked"; exit 1; }
-  cscript //Nologo //E:JScript tools/parser-order.js >/dev/null || {
-    echo "[gate] PARSER-ORDER GUARD FAILED - commit blocked"; exit 1; }
+
+# Git hooks run in a minimal shell that often lacks the user PATH, so node may
+# not be found by name even when it is installed. Resolve it from PATH or the
+# standard Windows install location.
+if command -v node >/dev/null 2>&1; then NODE=node
+elif [ -x "/c/Program Files/nodejs/node.exe" ]; then NODE="/c/Program Files/nodejs/node.exe"
+else echo "[gate] node not found — install Node or add it to PATH"; exit 1; fi
+
+staged=$(git diff --cached --name-only)
+
+# src/ is the source of truth; SHITFIRE.html is a build artifact. If either the
+# source or the built file is staged, the built file must be exactly what src/
+# produces — otherwise a hand-edit to SHITFIRE.html (or a forgotten rebuild) ships.
+if echo "$staged" | grep -qE '^(src/|SHITFIRE\.html$|tools/build\.js$)'; then
+  echo "[gate] building SHITFIRE.html from src/ and checking it is staged & identical"
+  "$NODE" tools/build.js || { echo "[gate] BUILD FAILED"; exit 1; }
+  if ! git diff --quiet SHITFIRE.html || ! git diff --cached --quiet SHITFIRE.html; then
+    # rebuild changed the file, or a staged SHITFIRE.html differs from the build
+    git diff --stat SHITFIRE.html
+    echo "[gate] SHITFIRE.html is not the current build of src/. Rebuild (node tools/build.js) and stage it."
+    exit 1
+  fi
+fi
+
+# Sim gates: syntax + parser-branch precedence, whenever the built file is staged.
+if echo "$staged" | grep -q '^SHITFIRE\.html$'; then
+  echo "[gate] syntax gate + parser-order guard"
+  powershell -NoProfile -File tools/syntaxgate.ps1 || { echo "[gate] SYNTAX GATE FAILED"; exit 1; }
+  cscript //Nologo //E:JScript tools/parser-order.js >/dev/null || { echo "[gate] PARSER-ORDER GUARD FAILED"; exit 1; }
   echo "[gate] clean"
 fi
 exit 0

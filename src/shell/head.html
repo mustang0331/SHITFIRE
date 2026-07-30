@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SHITFIRE — Forward Observer Trainer</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000;
+    font-family: Consolas, "Lucida Console", Menlo, monospace; }
+  #gl { position: fixed; inset: 0; display: block; }
+
+  .panel { background: rgba(12,16,10,.80); border: 1px solid #39442e; color: #cfe0bd; }
+
+  #topbar { position: fixed; top: 0; left: 0; right: 0; display: flex;
+    justify-content: space-between; padding: 6px 14px; font-size: 13px;
+    letter-spacing: .08em; color: #dfe8c8; pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+  #heading { font-size: 15px; }
+
+  #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px;
+    margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.85);
+    pointer-events: none; }
+
+  /* z-index declared explicitly (G5). It was absent, so #comms sat above the
+     binocular overlay purely because it appears later in the document — which is
+     exactly the accident that buried the mil card. State the order. */
+  /* G6 — draggable by its header, resizable from the bottom-right corner via the
+     native CSS handle (which needs overflow != visible, hence overflow:hidden).
+     Laid out as a flex column so #log absorbs whatever height is left after the
+     header and the input row: that is what makes the native resize actually
+     resize the transcript instead of clipping it. */
+  #comms { position: fixed; left: 12px; top: calc(100vh - 273px);
+    width: min(600px, 62vw); height: 261px;
+    min-width: 300px; min-height: 132px; max-width: 94vw; max-height: 78vh;
+    display: flex; flex-direction: column;
+    resize: both; overflow: hidden;
+    font-size: 12.5px; z-index: 4; }
+  #commshead { flex: 0 0 auto; display: flex; justify-content: space-between;
+    align-items: center; gap: 10px; padding: 3px 8px; cursor: move;
+    background: rgba(57,68,46,.5); border-bottom: 1px solid #39442e;
+    color: #9fb08c; font-size: 10.5px; letter-spacing: .09em;
+    user-select: none; -webkit-user-select: none; touch-action: none; }
+  #commshead .gr { opacity: .6; font-size: 9.5px; }
+  #log { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 10px; line-height: 1.5; }
+  #log div { margin-bottom: 2px; }
+  .obs { color: #ffd98a; }
+  .fdc { color: #9fd0ff; }
+  .sys { color: #8fa387; font-style: italic; }
+  .call { opacity: .75; margin-right: 6px; }
+  #txform { display: flex; align-items: center; border-top: 1px solid #39442e; }
+  #txprompt { padding: 0 0 0 10px; color: #ffd98a; opacity: .7; white-space: nowrap; }
+  #txinput { flex: 1; background: transparent; border: 0; color: #ffd98a;
+    font: inherit; padding: 9px 10px; outline: none; }
+  #txinput::placeholder { color: #7d7455; }
+
+  /* Touch controls */
+  #touchbar { position: fixed; right: 10px; top: 50%; transform: translateY(-50%);
+    display: none; flex-direction: column; gap: 8px; z-index: 5; }
+  body.touch #touchbar { display: flex; }
+  .tbtn { width: 60px; height: 46px; background: rgba(12,16,10,.8);
+    border: 1px solid #39442e; color: #cfe0bd; font: inherit; font-size: 11px;
+    letter-spacing: .08em; }
+  .tbtn:active { background: #39482a; }
+
+  /* Push-to-talk indicator */
+  #ptt { position: fixed; left: 12px; bottom: 232px; width: min(600px, 62vw);
+    display: none; padding: 8px 12px; font-size: 12.5px; color: #ffb3a0;
+    border-color: #6b3a2e; }
+  #ptt.on { display: block; }
+  #ptt .live { color: #ffd98a; }
+
+  #hint { position: fixed; right: 12px; bottom: 12px; font-size: 11.5px;
+    color: #9fb08c; text-align: right; pointer-events: none; line-height: 1.6;
+    text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+
+  /* Observer optics overlay (NVG / thermal): grain, vignette, tube tint, halo.
+     Backing store is CONFIG.OPTICS.cvW x cvH (320x180) and CSS stretches it to
+     fill, so the browser's own smoothing does the softening for free and the
+     whole overlay costs ~58k pixels instead of 2M. Sits above #gl and below
+     #bino so the reticle and the mil card stay at full contrast. */
+  #optics { position: fixed; inset: 0; width: 100%; height: 100%;
+    display: none; pointer-events: none; }
+  #optics.on { display: block; }
+
+  /* Binoculars */
+  #bino { position: fixed; inset: 0; display: none; pointer-events: none; }
+  #bino.on { display: block; }
+  #vignette { position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 50%,
+      transparent 33%, rgba(0,0,0,.28) 45%, #000 61%); }
+  #reticle { position: absolute; inset: 0; }
+  #binoinfo { position: absolute; left: 50%; bottom: 15%; transform: translateX(-50%);
+    color: #e6eecd; font-size: 14px; letter-spacing: .12em; text-align: center; }
+  #lase { margin-top: 6px; color: #ffe9a8; font-size: 13px; min-height: 17px; }
+
+  /* AAR */
+  #aar { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.5); z-index: 10; }
+  #aar.on { display: flex; }
+  #aarbox { width: 620px; max-width: 92vw; max-height: 94vh; overflow-y: auto;
+    padding: 20px 26px; font-size: 13.5px; line-height: 1.6; }
+  #aarplot { display: block; width: 100%; height: auto; margin: 6px 0 4px;
+    border: 1px solid #39442e; background: #10150c; }
+  #aarbox .plotcap { color: #8fa387; font-size: 11px; font-style: italic;
+    margin-bottom: 10px; }
+  #aarbox h2 { margin: 0 0 4px; font-size: 17px; letter-spacing: .14em; color: #dfe8c8; }
+  #aarbox .verdict { font-size: 21px; letter-spacing: .2em; margin: 8px 0 12px; }
+  #aarbox .pass { color: #a8e08a; }
+  #aarbox .fail { color: #e08a7a; }
+  #aarbox table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  #aarbox td { padding: 2.5px 0; }
+  #aarbox td:last-child { text-align: right; color: #ffe9a8; }
+  #aarbox ul { margin: 4px 0 10px; padding-left: 18px; color: #d8b08a; }
+  #aarbox .foot { color: #8fa387; font-style: italic; }
+
+  /* Map */
+  #map { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.45); z-index: 9; }
+  #map.on { display: flex; }
+  #mapbox { padding: 14px 16px; }
+  #maptitle { display: flex; justify-content: space-between; font-size: 14px;
+    letter-spacing: .14em; color: #dfe8c8; margin-bottom: 8px; }
+  #mapcv { display: block; background: #1E5A7A; border: 1px solid #39442e; }
+  #maplegend { margin-top: 8px; font-size: 11.5px; color: #9fb08c; line-height: 1.5; }
+
+  /* Mission menu */
+  #menu { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.5); z-index: 11; }
+  #menu.on { display: flex; }
+  #menubox { width: 680px; max-width: 92vw; padding: 18px 24px; font-size: 13px;
+    max-height: 92vh; overflow-y: auto; }
+  #menubox h2 { margin: 0 0 10px; font-size: 16px; letter-spacing: .15em; color: #dfe8c8; }
+  #menubox .mlabel { font-size: 11px; letter-spacing: .14em; color: #8fa387; margin: 6px 0 4px; }
+  #menubox .mrow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .mbtn { background: #1a2114; border: 1px solid #39442e; color: #cfe0bd;
+    font: inherit; padding: 7px 10px; cursor: pointer; letter-spacing: .06em; }
+  .mbtn:hover { background: #2a3520; }
+  .mbtn.sel { background: #39482a; color: #ffe9a8; border-color: #5a6b42; }
+  #mbest { color: #9fb08c; font-size: 11.5px; line-height: 1.6; margin: 8px 0; }
+  #menubox .foot { color: #8fa387; font-style: italic; font-size: 11.5px; }
+  /* campaign bookshelf */
+  #mvolname { font-size: 12px; letter-spacing: .1em; color: #cfe0bd; margin: 8px 0 5px; }
+  #mchapters { margin-bottom: 6px; }
+  .chrow { display: flex; align-items: baseline; gap: 9px; padding: 6px 9px;
+    border: 1px solid #2c3521; background: #161c11; margin-bottom: 3px; cursor: pointer; }
+  .chrow:hover { background: #232c19; }
+  .chrow.off { opacity: .45; cursor: default; }
+  .chrow.off:hover { background: #161c11; }
+  .chid { color: #8fa387; font-size: 11px; min-width: 28px; }
+  .chtitle { color: #dfe8c8; font-size: 12px; letter-spacing: .05em; }
+  .chblurb { color: #8fa387; font-size: 10.5px; flex: 1; text-align: right; }
+  .chstars { color: #ffe9a8; font-size: 12px; white-space: nowrap; letter-spacing: 1.5px; }
+  .aarstars { color: #ffe9a8; font-size: 22px; letter-spacing: 6px; margin: 6px 0 10px; }
+
+  /* Mil-relation reference card (binos).
+     G5 — was `left: 24px; bottom: 96px`, which put it straight on top of the
+     comms log (left 12, bottom 12, 205 px of log) and the PTT banner (bottom
+     232) — and it lost, because #bino is a stacking context so the card could
+     never paint above #comms whatever z-index it was given. Now it sits on the
+     RIGHT, which is empty except for the touch bar, so the observer can read the
+     card and the net traffic at the same time instead of trading one for the
+     other. The z-index is belt-and-braces: the positions no longer overlap, but
+     stacking that depends on DOM order is how this broke in the first place. */
+  #milcard { display: none; position: fixed; right: 16px; bottom: 16px;
+    max-width: min(340px, 34vw); z-index: 6; pointer-events: none;
+    padding: 10px 13px; background: rgba(12,16,9,.86);
+    border: 1px solid #4d5a3c; color: #cfe0bd; font-size: 11.5px; line-height: 1.6; }
+  #milcard.on { display: block; }
+  #milcard b { display: block; color: #ffe9a8; letter-spacing: .1em; margin-bottom: 4px; }
+  #milcard .ref { color: #9fb08c; font-style: italic; }
+
+  /* F3 — [H] cheat sheet. A pull-up reference, not a modal: nothing pauses,
+     the mission runs underneath, [H] or [ESC] drops it. Content mirrors
+     CHEATSHEET.md, which mirrors DOCTRINE.md — DOCTRINE wins on conflict. */
+  #cheat { display: none; position: fixed; top: 34px; right: 12px; bottom: 12px;
+    width: min(680px, 72vw); overflow-y: auto; z-index: 8;
+    padding: 12px 16px; background: rgba(10,13,8,.94);
+    border: 1px solid #4d5a3c; color: #cfe0bd; font-size: 12px; line-height: 1.55; }
+  #cheat.on { display: block; }
+  #cheat h3 { color: #ffe9a8; font-size: 12px; letter-spacing: .1em; margin: 10px 0 3px; }
+  #cheat h3:first-child { margin-top: 0; }
+  #cheat table { border-collapse: collapse; width: 100%; margin: 2px 0 4px; }
+  #cheat td { border: 1px solid #39442e; padding: 2px 7px; vertical-align: top; }
+  #cheat b { color: #ffe9a8; }
+  #cheat .dim { color: #9fb08c; font-style: italic; }
+
+  /* Chapter briefing */
+  #brief { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.6); z-index: 13; }
+  #brief.on { display: flex; }
+  #briefbox { width: 560px; max-width: 90vw; padding: 20px 26px; }
+  #brieftitle { margin: 0 0 10px; font-size: 15px; letter-spacing: .12em; color: #dfe8c8; }
+  #brieftext { color: #cfe0bd; font-size: 13px; line-height: 1.65;
+    margin-bottom: 14px; font-style: italic; }
+
+  /* Map library */
+  #library { position: fixed; inset: 0; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.55); z-index: 12; }
+  #library.on { display: flex; }
+  #libbox { padding: 12px 16px; max-height: 95vh; display: flex;
+    flex-direction: column; }
+  #libhead { display: flex; justify-content: space-between; gap: 24px;
+    font-size: 13px; letter-spacing: .1em; color: #dfe8c8; margin-bottom: 8px; }
+  #libctl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 10px; }
+  #liblab { color: #cfe0bd; font-size: 12px; display: flex; gap: 5px;
+    align-items: center; margin: 0 6px; }
+  #sheetcv { background: #fff; height: min(72vh, 900px); width: auto;
+    align-self: center; border: 1px solid #39442e; }
+  #printwrap { display: none; }
+  @media print {
+    body > *:not(#printwrap) { display: none !important; }
+    #printwrap { display: block; }
+    #printwrap img { width: 100%; }
+  }
+  @page { size: letter portrait; margin: 0.25in; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="optics"></canvas>
+
+<div id="topbar">
+  <div id="status">STATE OBSERVING</div>
+  <div id="heading">AZ 0000</div>
+  <div id="tool">EYES</div>
+</div>
+<div id="crosshair"></div>
+
+<div id="bino">
+  <canvas id="reticle"></canvas>
+  <div id="vignette"></div>
+  <div id="binoinfo"><span id="binohdg">AZ 0000</span><div id="lase"></div></div>
+</div>
+
+<div id="ptt" class="panel">&#9679; TRANSMITTING — release [SPACE] to send<br><span class="live" id="pttlive"></span></div>
+
+<div id="comms" class="panel">
+  <div id="commshead">RADIO NET &mdash; MUSTANG 12<span class="gr">DRAG TO MOVE &middot; CORNER TO RESIZE &middot; DBL-CLICK TO RESET</span></div>
+  <div id="log"></div>
+  <form id="txform">
+    <span id="txprompt">MUSTANG 12 &gt;</span>
+    <input id="txinput" autocomplete="off" spellcheck="false"
+      placeholder='adjust fire, grid 245 523, infantry in the open, over'>
+  </form>
+</div>
+
+<!-- G5 — the mil card lives OUT here, as a sibling of #comms, not inside #bino.
+     It used to be a child of the binocular overlay, and #bino is position:fixed,
+     which makes it a stacking context — so no z-index on the card could ever lift
+     it above #comms, and #comms wins on DOM order. It is toggled by its own .on
+     class and already forced off whenever binos come down, so it does not need to
+     be inside #bino to behave correctly. -->
+<div id="milcard">
+  <b>MIL RELATION — RANGE BY RETICLE</b>
+  RANGE (m) = SIZE (m) &divide; MILS &times; 1000<br>
+  DEVIATION (m) = MILS &times; OT FACTOR (OT range &divide; 1000)<br>
+  <span class="ref">KNOWN SIZES: hut 3 m high &middot; truck 5 m long &middot;
+  hangar 6 m high &middot; radio mast 26 m &middot; fuel drum 2 m</span><br>
+  <span class="ref">Example: mast subtends 5 mils &rarr; 26 &divide; 5 &times; 1000 = 5200 m</span>
+  <span class="ref">DO NOT MIL A MAN — figures are drawn enlarged at range so you
+  can see them. Mil hard structures. Deviation in mils is unaffected.</span>
+  <span class="ref">Reticle graduations are TRUE MILS at 4X, 7X and 14X alike — the
+  scale is derived from the field of view, so zoom does not change the answer.</span>
+  <span class="ref">G-M ANGLE: your HUD reads <b style="display:inline">MAG</b>. The grid, the map
+  and the fire net read GRID. GRID = MAG + 124 mils (declination 7&deg; E). Send OT
+  DIRECTION in GRID.</span>
+  <span class="ref">[R] closes this card</span>
+</div>
+
+<!-- F3 — [H] pull-up cheat sheet (content: CHEATSHEET.md; authority: DOCTRINE.md) -->
+<div id="cheat" class="panel">
+  <h3>CALL FOR FIRE — 3 TRANSMISSIONS (FDC reads back each; misspoke? say CORRECTION)</h3>
+  <table>
+    <tr><td><b>1</b> ID + warning order</td><td>"HELLHOUND FIRES, this is MUSTANG 12, <b>adjust fire</b>, over." (or <b>fire for effect</b>)</td></tr>
+    <tr><td><b>2</b> Target location</td><td>Grid / polar / shift — below</td></tr>
+    <tr><td><b>3</b> Description + engagement + control</td><td>what it is &rarr; method of engagement (opt) &rarr; fire &amp; control (opt, default "when ready")</td></tr>
+  </table>
+  <h3>LOCATION METHODS</h3>
+  <table>
+    <tr><td><b>Grid</b></td><td>"Grid 123 456, over." — 6-digit std (100 m); 60mm wants 8. <b>OT DIRECTION before your first correction — the FDC refuses corrections without it.</b></td></tr>
+    <tr><td><b>Polar</b></td><td><b>POS REP first</b> ("POSITION GRID 245 523") — then "Direction 1650, distance 2100, down 40, over." Dir nearest 10 mils &middot; dist nearest 100 m &middot; up/down only if &ge;35 m</td></tr>
+    <tr><td><b>Shift</b></td><td>"Shift BREWERY, direction 2340, right 110, add 400, up 55, over." Lateral nearest 10 m &middot; range nearest 100 m</td></tr>
+  </table>
+  <div class="dim">Your HUD reads MAG; the net and map are GRID. GRID = MAG + 124 mils (7&deg; E).</div>
+  <h3>CORRECTIONS — deviation &rarr; range &rarr; HOB, in the OT frame</h3>
+  "Left 30, add 200, over." &rarr; final: "Right 10, drop 50, <b>fire for effect</b>, over."<br>
+  Deviation nearest <b>10 m</b> (min 30 m — under that, skip it) &middot; range in <b>100 m</b> steps (<b>50 OK entering FFE</b>) &middot; deviation m = mils &times; OT factor (OT km — yours, don't transmit it).<br>
+  <span class="dim">Bracket: 800/400/200, split until a 100 m bracket splits &rarr; FFE. Danger close: creep &le;100 m from the safe side.</span>
+  <h3>DANGER CLOSE</h3>
+  Round predicted within <b>600 m</b> of friendlies &rarr; say <b>"danger close"</b> in the call, creep your corrections.
+  <h3>END OF MISSION — RREMS</h3>
+  Refine (opt, nearest 10 m) &rarr; record as target (opt) &rarr; "End of mission, target <b>neutralized</b>, estimate 15 casualties, over."<br>
+  <span class="dim">suppressed = only while fires land &middot; neutralized = out of action, &ge;10% &middot; destroyed = &ge;30%</span>
+  <h3>FDC TRAFFIC</h3>
+  <b>MTO</b> ("Message to observer: one gun in adjust, battery in effect&hellip; target AA7001") — <b>read the whole thing back, target number included.</b>
+  Then SHOT &middot; SPLASH (~5 s out) &middot; ROUNDS COMPLETE.
+  <h3>PROWORDS</h3>
+  Over &middot; Out &middot; Say again &middot; Correction &middot; Repeat (= fire again, same data) &middot; At my command / Fire / Cancel at my command &middot; <b>Check firing</b> &middot; Cease loading &middot; Immediate suppression / smoke (one transmission) &middot; Suppress target AB#### &middot; Record as target
+  <h3>PARS (this sim)</h3>
+  CFF within <b>2 min</b> of target ID &middot; initial location within <b>200 m</b> &middot; pass at <b>&le;4</b> adjusting rounds, bonus at &le;2 &middot; fratricide or civilian hit = <b>0&#9733; fail</b> (mission still must be finished).
+  <div class="dim" style="margin-top:8px">[H] or [ESC] closes. Full doctrine: DOCTRINE.md &middot; this card: CHEATSHEET.md.</div>
+</div>
+
+<div id="touchbar">
+  <button class="tbtn" id="tb-talk">TALK</button>
+  <button class="tbtn" data-act="binos">BINO</button>
+  <button class="tbtn" data-act="lase">LASE</button>
+  <button class="tbtn" data-act="optics">OPTIC</button>
+  <button class="tbtn" data-act="map">MAP</button>
+  <button class="tbtn" data-act="menu">MENU</button>
+  <button class="tbtn" data-act="new">NEW</button>
+</div>
+
+<div id="hint">
+  CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
+  [B] BINOS &middot; [Z]/WHEEL ZOOM 4X&thinsp;/&thinsp;7X&thinsp;/&thinsp;14X &middot; [L] LASE &middot; [R] MIL CARD &middot; [O] OPTICS: DAY/NVG/THERMAL<br>
+  [M] MAP &middot; [P] PRINT MAP &middot; [H] CHEAT SHEET &middot; [K] MENU &middot; [V] FDC VOICE &middot; [N] RANDOM MSN<br>
+  <span style="opacity:.62">[SHIFT+D] DISPERSION OFF — test aid, mission not graded</span>
+</div>
+
+<div id="map"><div id="mapbox" class="panel">
+  <div id="maptitle"><span>TACTICAL MAP</span><span>1 SQUARE = 1 KM</span></div>
+  <!-- 560 wide map body + a 130 px symbol legend band; drawMap() keys every
+       projection off the WIDTH, so the extra height is legend only. -->
+  <canvas id="mapcv" width="560" height="690"></canvas>
+  <div id="maplegend">&#9650; OP &middot; &#9632; FRIENDLY STRONGPOINT &middot; &#9679; FIRING BATTERY (155MM)<br>
+  &#10005; KNOWN POINT (shift missions) &middot; Enemy positions are not plotted — locating them is your job. [M] or [ESC] to close.</div>
+</div></div>
+
+<div id="aar"><div id="aarbox" class="panel"></div></div>
+
+<div id="menu"><div id="menubox" class="panel">
+  <h2>MISSION MENU</h2>
+  <div class="mlabel">CAMPAIGN &middot; <span id="mtotal"></span></div>
+  <div class="mrow" id="mvols"></div>
+  <div id="mvolname"></div>
+  <div id="mchapters"></div>
+  <div class="mlabel">DIFFICULTY</div>
+  <div class="mrow" id="mdiffs"></div>
+  <div class="mlabel">SKIRMISH — RANDOM SEEDED MISSIONS [N]</div>
+  <div class="mrow" id="mtypes"></div>
+  <div class="mlabel">TERRAIN</div>
+  <div class="mrow">
+    <button class="mbtn" id="mdem">LOAD DEM HEIGHTMAP&hellip;</button>
+    <button class="mbtn" id="mdemreset">PROCEDURAL ISLAND</button>
+    <input type="file" id="demfile" accept="image/*" style="display:none">
+  </div>
+  <div class="mlabel">DEVELOPER</div>
+  <div class="mrow">
+    <button class="mbtn" id="mdevunlock">DEV UNLOCK: OFF</button>
+  </div>
+  <div class="mlabel">SESSION TRANSCRIPT — COMMS + PARSE + IMPACTS, FOR DIALOGUE REVIEW</div>
+  <div class="mrow">
+    <button class="mbtn" id="mtlogtxt">EXPORT TEXT</button>
+    <button class="mbtn" id="mtlogjson">EXPORT JSON</button>
+    <button class="mbtn" id="mtlogclear">CLEAR</button>
+    <span id="mtlogn" style="color:#8fa387;font-size:11px;align-self:center"></span>
+  </div>
+  <div id="mbest"></div>
+  <div class="foot">[K] / [ESC] close &middot; [N] skirmish mission</div>
+</div></div>
+
+<div id="brief"><div id="briefbox" class="panel">
+  <h2 id="brieftitle"></h2>
+  <div id="brieftext"></div>
+  <button class="mbtn" id="briefgo">CONTINUE</button>
+</div></div>
+
+<div id="library"><div id="libbox" class="panel">
+  <div id="libhead">
+    <span>MAP LIBRARY — PROCEDURAL ISLAND (TERRAIN SEED 1337)</span>
+    <span>[P] / [ESC] CLOSE</span>
+  </div>
+  <div id="libctl">
+    <button class="mbtn" data-sheet="full">FULL 1:50,000</button>
+    <button class="mbtn" data-sheet="nw">NW 1:25,000</button>
+    <button class="mbtn" data-sheet="ne">NE 1:25,000</button>
+    <button class="mbtn" data-sheet="sw">SW 1:25,000</button>
+    <button class="mbtn" data-sheet="se">SE 1:25,000</button>
+    <label id="liblab"><input type="checkbox" id="libkey"> ANSWER KEY</label>
+    <button class="mbtn" id="libprint">PRINT</button>
+    <button class="mbtn" id="libsave">SAVE PNG</button>
+  </div>
+  <canvas id="sheetcv" width="1275" height="1650"></canvas>
+</div></div>
+<div id="printwrap"><img id="printimg" alt="map sheet"></div>
+
+<script type="module">

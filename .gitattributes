@@ -1,0 +1,11 @@
+# The build is byte-exact: tools/build.js concatenates src/ into SHITFIRE.html and
+# --check diffs the result against git. If git rewrote line endings on checkout,
+# a fresh clone would build CRLF and fail the check against the committed LF file.
+# Pin LF on everything the build touches so the artifact is deterministic on every
+# machine, regardless of core.autocrlf.
+SHITFIRE.html   text eol=lf
+src/**          text eol=lf
+tools/*.js      text eol=lf
+tools/*.ps1     text eol=lf
+*.md            text eol=lf
+.githooks/*     text eol=lf
