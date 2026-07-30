@@ -315,7 +315,7 @@ function showAAR() {
   const parC = (activeChapter && activeChapter.par) || 300;
   const medals = [];
   if (pass) {
-    if (m.adjustRounds <= 1) medals.push('GODDAMN HOLE IN ONE — effect after a single adjusting round');
+    if (m.adjustRounds <= 1) medals.push('HELL OF A HOLE IN ONE — effect after a single adjusting round');
     if (m.aimErr0 !== null && m.aimErr0 <= 50) medals.push('EAGLE EYE — initial location within 50 m');
     if (m.notes.length === 0) medals.push('ACTUALLY READ THE MANUAL — clean call format, no coaching');
     if (dur <= parC * 0.6) medals.push('FAST MOVER — done in well under par');

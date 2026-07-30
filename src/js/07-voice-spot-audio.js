@@ -28,77 +28,124 @@ function speakFDC(msg) {
   speechSynthesis.speak(u);
 }
 
+/* 14a — the DIALOGUE_REVISIONS.md §3 punch-up, applied verbatim: every pool
+   expanded to survive a seven-correction mission without repeating (pick()
+   only guards the IMMEDIATE repeat), and the whole set scrubbed to the §2a
+   content boundary — HELLHOUND's profanity never takes God's name in vain;
+   secular profanity carries the same punch. The readback stays sacred. */
 const QUIPS = {
   greet: [
-    'HELLHOUND FIRES on this net. The guns are hot, the coffee is cold, and I am surrounded by men who could not find their own ass with a compass and a head start. Give me a target, over.',
-    'HELLHOUND FIRES. We have been sitting in this goddamn gun pit since dawn watching the flies fight. Send us some work, over.',
-    'HELLHOUND FIRES up. Somewhere on this miserable rock is a grid square God has given up on. Point me at it, over.',
-    'HELLHOUND FIRES on the net. I have six guns, a full ammo rack, and no patience whatsoever. Impress me, over.',
-    'HELLHOUND FIRES. Speak clearly, speak correctly, and nobody has to get embarrassed today, over.',
+    'HELLHOUND FIRES on this net. The guns are hot, the coffee is battery acid, and I am surrounded by men who could not find their own ass with both hands, a flashlight, and a map with an arrow on it. Give me a target, over.',
+    'HELLHOUND FIRES. We have been sitting in this shit-stained gun pit since dawn watching flies fight over a dead rat. Send us some actual fucking work, over.',
+    'HELLHOUND FIRES up. Somewhere on this miserable rock is a grid square that luck itself gave up on. Point me at it, over.',
+    'HELLHOUND FIRES on the net. I have six guns, a full ammo rack, and exactly zero fucks left after the last observer we buried. Try not to join him, over.',
+    'HELLHOUND FIRES. Speak clearly, speak correctly, and nobody has to bleed from embarrassment today. Over.',
+    'HELLHOUND FIRES, live. Every gun bunny in this battery already has money down on how fast you get us in trouble. I took the short odds. Prove me right, over.',
+    'This net has seen career-enders, mercy kills, and one observer who called fire on his own foxhole by accident. Let us find out which one you are, over.',
+    'HELLHOUND FIRES. The last guy who kept me waiting is a cautionary tale they teach at the schoolhouse now. Do not audition for the sequel. Over.',
   ],
   readbackTail: [
-    'And MUSTANG — do try to hit the correct fucking island this time.',
-    'Rounds are cheap. My patience is a finite and dwindling resource. Standing by.',
-    'If anything friendly is standing on that grid, now is the moment to confess.',
-    'Copy all. This had better be worth the powder, son.',
-    'Outstanding. The tubes were getting cold and the crew had started a book club.',
+    'And MUSTANG — do try to hit the correct fucking island this time. The reef has suffered enough on your account.',
+    'Rounds are cheap. My patience is a finite, dwindling, deeply resentful resource. Standing by.',
+    'If anything friendly is standing on that grid, now is the moment to confess — before the paperwork writes itself without you.',
+    'Copy all. This had better be worth the powder, son, or I am billing your next of kin for the shells.',
+    'Outstanding. The tubes were getting cold and the crew had started a book club. I was two chapters into their grief.',
+    'Solid copy. Somewhere a dead artillery instructor just felt a warm, deeply confused sense of pride.',
+    'Received. Try not to make me explain this grid to a board of inquiry later, I hate the coffee they serve at those.',
+    'Copy the call. For your sake, MUSTANG, I hope that grid is where you think it is and not where your last three usually land.',
   ],
   corrSnark: [
-    'That is one HELL of a walk, MUSTANG. Did the first round land in a different fucking hemisphere?',
-    'Copy. For the record: the gun did not move. Your math moved.',
-    'A bold correction. Somewhere out there a map is being held upside down, and I believe I know by whom.',
-    'Shifting fire. The fish send their regards for your earlier donation.',
+    'That is one HELL of a walk, MUSTANG. Did the first round land in a different fucking hemisphere, or just a different war?',
+    'Copy. For the record: the gun did not move. Your math had a stroke.',
+    'A bold correction. Somewhere out there a map is being held upside down, and I believe I know exactly by whom.',
+    'Shifting fire. The fish send their regards for your earlier donation — they are naming a reef after you.',
+    'Copy the shift. At this rate we will hit the target sometime after the peace treaty is signed.',
+    'Adjusting. I have seen drunk men throw horseshoes with tighter groupings than that.',
+    'Noted. Somewhere a supply sergeant is crying into a crate of shells you are about to waste on empty dirt.',
+    'Shifting. If persistence were the same thing as accuracy, MUSTANG, you would already have a medal and a nickname.',
   ],
   ffeAck: [
     'FIRE FOR EFFECT. Now THIS is the part of the job I love.',
-    'FIRE FOR EFFECT. God help whatever is standing on that grid, because nothing else will.',
+    'FIRE FOR EFFECT. Nothing on that grid is walking away from this, and nothing is coming to save it either.',
     'Copy FIRE FOR EFFECT. Six guns, one grid, zero fucking sympathy.',
     'FIRE FOR EFFECT. Drink it up, MUSTANG. Drriiink it up.',
+    'FIRE FOR EFFECT. Somewhere on that grid a very bad day is about to get very short.',
+    'Copy FFE. The tubes are happy. The tubes are always happiest right before this part.',
   ],
   completeTail: [
     'That grid square has been redecorated down to the bedrock.',
     'Rounds complete. Whatever stood there is now a fine mist and somebody else\'s paperwork.',
     'Rounds complete. I have looked upon that smoke and found it good.',
     'Tubes cooling. Take a long look, son. That is what competence smells like.',
+    'Rounds complete. If there is a burial detail scheduled for that grid, tell them to bring a very small box.',
+    'Tubes cooling. The crew is already taking bets on whether there is enough left to identify.',
   ],
   eomGood: [
-    'Good effect. I will be goddamned — the observer can actually observe.',
+    'Good effect. Well, hell — the observer can actually observe.',
     'Target neutralized. Mark this day, MUSTANG. It will not come again.',
     'A clean kill. I had frankly abandoned all hope of seeing one from you.',
     'End of mission logged. There is a competence in you, boy, and today it finally showed up for work.',
+    'Target destroyed. Somewhere a recruiter is taking credit for this and has never once met you.',
+    'Clean, logged, and closed. I am almost disappointed I do not get to yell at you tonight.',
   ],
   eomBad: [
     'End of mission. The target is alive and well and telling this story at dinner parties. We converted the taxpayers\' money into noise and regret.',
     'Logged. We will call that one "suppressive" and never, ever speak of it again.',
     'End of mission. The enemy remains. My disappointment, however, is total, permanent, and load-bearing.',
     'Copy end of mission. You abandoned that fire mission, MUSTANG. You ABANDONED it.',
+    'End of mission. Congratulations — you have achieved the rare feat of making a war LESS efficient.',
+    'Logged as the failure it was. The target is fine. Your reputation is not.',
   ],
   badGrid: [
-    'MUSTANG 12, that grid is not on anybody\'s goddamn map. Say again your target location, over.',
+    'MUSTANG 12, that grid is not on anybody\'s map, full stop. Say again your target location, over.',
     'Negative copy. That location does not exist on this or any other earth. Say again, over.',
-    'I plotted that grid twice, and both times it insulted me. Say again, over.',
+    'I plotted that grid twice, and both times it insulted me personally. Say again, over.',
     'That is not a grid, MUSTANG, that is a cry for help. Say again, over.',
+    'That grid belongs to a parallel universe where you are competent. Say again, in this one, over.',
+    'I ran that through the plotting board twice and it laughed both times. Say again, over.',
   ],
   water: [
-    'Be advised, that grid is in the goddamn ocean. Engaging the fish as requested.',
+    'Be advised, that grid is in the fucking ocean. Engaging the fish as requested.',
     'That grid is wet, MUSTANG. We are now shelling the Pacific, which never did a thing to us. Firing.',
     'Copy. Naval gunfire it is. Bold fucking choice.',
+    'Congratulations, you have drawn first blood in the war against plankton. Firing.',
   ],
   noMission: [
     'MUSTANG 12, there is no mission on this net. You are adjusting fire that exists only in your heart. Send a call for fire, over.',
     'MUSTANG 12, you are correcting rounds we never fired. I admire the confidence. Send a call for fire first, over.',
     'There is no mission, MUSTANG. There is only you, me, and this dead air you keep filling. Call for fire, over.',
+    'Adjusting a mission that does not exist is a special kind of stupid I have not logged before, and I have logged a lot. Call for fire, over.',
   ],
   inFlight: [
     'Rounds are in the air, MUSTANG. Physics is doing its part. Do yours — wait for splash, over.',
-    'Still flying. Unless you can steer a shell with your mind, wait for the goddamn splash, over.',
+    'Still flying. Unless you can steer a shell with your mind, wait for the splash like everyone else, over.',
     'Patience, MUSTANG. The rounds arrive when they arrive. Much like your competence, over.',
+    'The shell is airborne, MUSTANG, not telepathic. It cannot hear you. Wait for splash, over.',
   ],
   unknown: [
     'Say again, over. Slower, and in English this time.',
     'That transmission had a callsign and then a stroke. Say again, over.',
     'MUSTANG, I have heard clearer traffic from a dying radio at the bottom of a well. Say again, over.',
     'Say again, over. And this time pretend the radio is graded — because it is. By me.',
+    'That transmission needs a priest, not a readback. Say again, over.',
+  ],
+  /* 14a — mission-start callbacks to the career record (NARRATIVE.md humor
+     rule #3: continuity is the punchline). Fired from newMission when the
+     record has something worth remembering. */
+  careerFrat: [
+    'And MUSTANG — before we begin: the friendlies have asked me to remind you which color smoke is theirs. All of them. They held a meeting.',
+    'One administrative note, MUSTANG: your file now has a tab. Files should not have tabs. Send your traffic.',
+    'Before you key up — the infantry took a vote, and the results were unanimous, and printable only if I remove several words. Send it.',
+  ],
+  careerCollat: [
+    'MUSTANG, the village council has formally requested you be issued a map with pictures. Motion carried unanimously. Proceed.',
+    'Before you key up, MUSTANG — the huts are still no-strike. Yes, still. Yes, all of them. Send it.',
+    'One note before we start: the village elder asked if you would be "doing the thing" again today. I told him I could not promise anything. Send it.',
+  ],
+  careerVet: [
+    'MUSTANG 12 on the net. The guns know your voice now, son. They perk up. It is almost touching.',
+    'Ah, MUSTANG. The log says we have done this dance a few times. Lead, this time, over.',
+    'MUSTANG 12. The new guys ask about you like you are a ghost story. I let them believe it. Over.',
   ],
   complete: [
     'MUSTANG 12, mission is complete. Send end of mission with your BDA, over.',
@@ -118,14 +165,17 @@ const QUIPS = {
   dangerClose: [
     'MUSTANG 12, that target is DANGER CLOSE to friendly infantry and you did not say the fucking proword. I do not drop shells next to our own people on a mumble. Say again the full call with DANGER CLOSE, over.',
     'Negative. Friendlies are close enough to that grid to read the lot numbers off the fuzes. You want this mission? Say DANGER CLOSE like you mean it, over.',
+    'MUSTANG, six hundred meters is not a suggestion — it is the distance between "mission complete" and a letter to next of kin. Say DANGER CLOSE, over.',
   ],
   wrongWay: [
     'MUSTANG. The rounds are getting FARTHER from the target. You are adjusting fire like a blind man swatting bees. Look at your burst. Look at your target. THINK. Then talk, over.',
     'Wrong way, son. WRONG WAY. Every correction you send wounds me personally. Left is left. Add is away. It is not fucking calculus, over.',
+    'You are correcting AWAY from the target with the confidence of a man who has never once been right about anything. Fix it, over.',
   ],
   rantLost: [
-    'STOP. Just — stop. MUSTANG, I have drunk deep of your transmissions and found NOTHING. No grid. No direction. No sense. You are a forward observer. So OBSERVE something, and then TELL ME ABOUT IT in the format God and the field manual intended. Warning order. Location. Description. OVER.',
+    'STOP. Just — stop. MUSTANG, I have drunk deep of your transmissions and found NOTHING. No grid. No direction. No sense. You are a forward observer. So OBSERVE something, and then TELL ME ABOUT IT in the format the field manual and forty years of hard-won doctrine intended. Warning order. Location. Description. OVER.',
     'MUSTANG, listen to me very carefully, because I will say this once. I do not know what you are doing on that hill, but it is not calling for fire. Take a breath. Look at your map. Send: warning order, target location, description. In that order. Like a professional. Over.',
+    'I have half a mind to have the guns fire on YOUR position out of pure professional mercy. Instead: breathe. Look at the map. Warning order, location, description. In that order. Do not make me say it a third time, over.',
   ],
   // Doctrinal coaching — HELLHOUND teaches adjustment instead of only
   // mocking it. Easy/Normal only; on Hard you are expected to know.
@@ -148,40 +198,35 @@ const QUIPS = {
   coachLoc: [
     'MUSTANG — that first round is {MISS} meters off target. That is not the gun, son, that is your grid. Standard is two hundred meters. Work your map before you key that mic next time.',
   ],
-  careerFrat: [
-    'And MUSTANG — before we begin: the friendlies have asked me to remind you which color smoke is theirs. All of them. They held a meeting.',
-    'One administrative note, MUSTANG: your file now has a tab. Files should not have tabs. Send your traffic.',
-  ],
-  careerCollat: [
-    'MUSTANG, the village council has formally requested you be issued a map with pictures. Motion carried unanimously. Proceed.',
-    'Before you key up, MUSTANG — the huts are still no-strike. Yes, still. Yes, all of them. Send it.',
-  ],
-  careerVet: [
-    'MUSTANG 12 on the net. The guns know your voice now, son. They perk up. It is almost touching.',
-    'Ah, MUSTANG. The log says we have done this dance a few times. Lead, this time, over.',
-  ],
+  // (career pools live with the mission-start pools above — 14a moved and
+  // expanded them; the wiring in newMission is unchanged)
   snide: [
     'Copy your... whatever that was. The manual describes a format, MUSTANG. It is one page. There are pictures.',
     'I processed that call out of charity. Callsigns, warning order, location, description. In that order. Like your instructor begged you.',
     'That transmission was to a call for fire what a mudslide is to architecture. We will fire it anyway.',
     'Copy. And to think they told me the radio was a professional instrument.',
+    'That was not a call for fire, that was a cry into the void that happened to contain a grid. We will fire it anyway.',
   ],
   snideRound: [
     'The guns round to tens, son — your boutique little numbers are a fantasy and my time is real. Firing.',
     'Copy your artisanal correction. Deviation comes in tens, range in hundreds. We will do the arithmetic you would not. Firing.',
     'The fire direction computer just sighed out loud, MUSTANG. Round your numbers like a professional. Firing anyway.',
+    'I am rounding that myself so the guns do not have to think about it, the way you clearly did not. Firing.',
   ],
   nearCiv: [
     'Be advised — that grid sits close to the village. There are civilians on this rock, MUSTANG. Put one round in the market square and your war is over.',
     'Copy all. Check your map, son — the village is a short walk from your splash pattern. Adjust like you mean it.',
+    'That grid is close enough to the huts that I can smell the cooking fire on the map. Mind your correction.',
   ],
   unsafeCorr: [
     'NEGATIVE. CHECK YOUR CORRECTION, MUSTANG. That shift walks rounds onto {WHO}. Look at your burst, look at your map, and send me a correction that does not end careers. Say again, over.',
     'I am NOT sending that. Plot it, son. Your correction lands on {WHO}. You have one radio and you are currently using it for manslaughter. Say again, over.',
+    'Check it again, MUSTANG. That number puts steel on {WHO}, not the enemy. I will not be the reason it is in a report. Say again, over.',
   ],
   unsafeInsist: [
     'Your funeral, MUSTANG. Shifting fire as ordered. I am writing your name in the log as I do it.',
     'Copy. On your head, son. The board of inquiry meets Tuesdays. Shifting fire.',
+    'Fine. Your call, your name on it, your conscience. Shifting fire — and I hope to hell you can live with it.',
   ],
   // who the cue came from — never HELLHOUND himself; a gun battery does not observe
   spotSrc: [
@@ -208,20 +253,26 @@ const QUIPS = {
     ['CHECK FIRE. CHECK FIRE.',
      'That round went into the VILLAGE, MUSTANG. The civilian village. The one on your map — plotted, labeled, and full of people who were having a perfectly fine morning until you found the radio.',
      'There is no report I can write that survives this. END OF MISSION. Get off my net and go sit somewhere quiet and think about maps.'],
-    ['CHECK FIRE. GOD ALMIGHTY, CHECK FIRE.',
+    ['CHECK FIRE. CHECK FIRE, DAMN IT ALL.',
      'You just serviced a fishing village with one-five-five, you catastrophic instrument. Those were CIVILIANS. The huts were on the sheet. The brief said no-strike.',
      'I have to make phone calls now, MUSTANG. Phone calls with generals on the other end. END OF MISSION.'],
+    ['CHECK FIRE. CHECK FIRE, DAMN YOU.',
+     'That grid had a name on the sheet, MUSTANG, and it was not a target designation. It was a village. It had a well and a schoolhouse and now it has neither.',
+     'I am not writing this one up as "collateral." I am writing it up as what it was. END OF MISSION. Get off my net.'],
   ],
   rantFrat: [
     ['CHECK FIRE. CHECK FIRE. CHECK FIRE.',
      'You just dropped one-five-five on the FRIENDLY position, MUSTANG. Do you understand me? Those are OUR people in that smoke. I am looking at the plot, and the plot says YOU did this.',
      'I told them not to hand you a map. I TOLD them. You are done on this net, son. Get off my radio and go practice on a lake. END OF MISSION.'],
-    ['CHECK FIRE. GOD DAMN IT, CHECK FIRE.',
+    ['CHECK FIRE. DAMN IT, CHECK FIRE.',
      'That was the friendly position, you catastrophic son of a bitch. Men with radios are standing in that smoke right now saying your callsign with FEELING.',
      'I have seen bad observers. I have TRAINED bad observers. But you — you are a whole new church of wrong. END OF MISSION.'],
     ['CHECK FIRE. CHECK FIRE.',
      'MUSTANG, you walked artillery onto our own infantry. There are two kinds of people in this war — those who read grids, and casualties. Today you manufactured the second kind out of the first.',
      'When this is over, you and I will have a conversation about maps, and you will not enjoy it. END OF MISSION. Get off my net.'],
+    ['CHECK FIRE. CHECK FIRE, YOU ABSOLUTE WEAPON.',
+     'That was OUR position, MUSTANG. I am looking at the casualty count on our side of the ledger because of a call YOU made.',
+     'I do not have a joke for this one. I do not have anything for this one. END OF MISSION. Get off my net.'],
   ],
 };
 function pick(arr) {
