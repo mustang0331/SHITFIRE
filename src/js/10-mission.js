@@ -116,6 +116,7 @@ function fireMission(targetLocation, warno, meta) {
     intent: (meta && meta.intent) || 'destroy',
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
+    fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
     noDisp: false,          // G3 — set by markDispersion() if any round is fired
                             // with dispersion off; blocks star recording
     checkFire: false,       // G25 — safety hold active; blocks new firing
@@ -250,7 +251,7 @@ function handleSuppressTarget(p) {
   fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
     { notes: mins ? [] : ['Suppress mission sent without a duration.'],
       desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
-      intent: 'suppress', sheaf: inferSheaf('', p.raw) });
+      intent: 'suppress', sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw) });
 }
 
 /* ---- G24: AT MY COMMAND (DOCTRINE.md §34) -----------------------------------
@@ -468,8 +469,8 @@ function addRoundEffect(impact, isFFE) {
   const post = S.tgtClass === 'personnel'
     ? (CONFIG.EFFECTS.posture[S.posture] || 1) : 1;
   // G15 — sheaf shapes the VOLLEY, so it scales FFE rounds only; a single
-  // adjusting round has no sheaf to speak of
-  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1);
+  // adjusting round has no sheaf to speak of. G16 — the fuze is on EVERY round.
+  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult();
 }
 
 /* ---- G15: sheaf (FM 6-30 §4-6.f / ATP 3-09.30 §4-45) -----------------------
@@ -504,6 +505,54 @@ function sheafMult() {
     ? { open: 1.2, circular: 1.0, linear: 0.9, converged: 0.6 }[k] || 1
     : { converged: 1.1, circular: 1.0, open: 0.9, linear: 0.8 }[k] || 1;
 }
+/* ---- G16: fuze (ATP 3-09.30 §4-43 / FM 6-30 §4-15) --------------------------
+   PD (quick) is the standard method; VT/time airburst defeats troops who have
+   gone flat or dug in; delay penetrates structures and buries itself against
+   men in the open. Requested by name, inferred from the description otherwise,
+   and the choice SCALES THE GRADED EFFECT on every round — statistical terminal
+   effect per CLAUDE.md's ballistics rule, never a trajectory. VT is never
+   fired danger close (airburst frag over friendlies): the FDC overrides to PD
+   and says so. */
+function inferFuze(desc, raw) {
+  const m = (raw || '').toLowerCase()
+    .match(/\bfuze\s+(vt|victor tango|variable time|time|delay|quick|pd|point detonating)\b/);
+  if (m) {
+    const kind = (m[1] === 'victor tango' || m[1] === 'variable time') ? 'vt'
+               : (m[1] === 'point detonating' || m[1] === 'quick') ? 'pd' : m[1];
+    return { kind, source: 'requested', why: `FUZE ${m[1].toUpperCase()} requested in the call` };
+  }
+  const d = (desc || '').toLowerCase();
+  if (/trench|foxhole|dug in|dug-in|entrench/.test(d))
+    return { kind: 'vt', source: 'inferred', why: 'troops under cover — airburst reaches into the holes' };
+  if (Scenario.tgtClass === 'point' || /bunker|structure|building|emplacement|woods|earthwork/.test(d))
+    return { kind: 'delay', source: 'inferred', why: 'hard/overhead-cover target — penetrate, then burst' };
+  return { kind: 'pd', source: 'default', why: 'standard method of engagement — point detonating (quick)' };
+}
+function fuzeMult() {
+  if (!mission || !mission.fuze) return 1;
+  const k = mission.fuze.kind, S = Scenario;
+  if (S.tgtClass === 'point')                     // an airburst does nothing to a roof
+    return { delay: 1.3, pd: 1.0, vt: 0.35, time: 0.35 }[k] || 1;
+  return S.posture === 'prone'                    // airburst defeats going flat
+    ? { vt: 1.5, time: 1.3, pd: 1.0, delay: 0.4 }[k] || 1
+    : { vt: 1.15, time: 1.05, pd: 1.0, delay: 0.45 }[k] || 1;
+}
+function handleFuze(p) {
+  if (!mission || mission.done) {
+    FDC.say('No mission on the net — fuzes go on rounds, not on air, over.', { delay: 0.9 });
+    return;
+  }
+  if ((p.kind === 'vt' || p.kind === 'time') && mission.gridStr.includes('DANGER CLOSE')) {
+    mission.fuze = { kind: 'pd', source: 'fdc-override',
+                     why: 'VT/time refused — airburst is not fired DANGER CLOSE; PD retained' };
+    mission.notes.push('Requested an airburst fuze on a danger-close mission — VT frags over our own people. The FDC overrode to PD.');
+    FDC.say('NEGATIVE ON VT, MUSTANG — I am not putting airburst over friendlies at danger close. FUZE PD stays, over.', { delay: 1.1 });
+    return;
+  }
+  mission.fuze = { kind: p.kind, source: 'requested', why: `FUZE ${p.kind.toUpperCase()} requested mid-mission` };
+  FDC.say(`FUZE ${p.kind.toUpperCase()}, OUT.`, { delay: 0.9 });
+}
+
 function handleSheaf(p) {
   if (!mission || mission.done) {
     FDC.say('No mission on the net to shape a sheaf for, over.', { delay: 0.9 });

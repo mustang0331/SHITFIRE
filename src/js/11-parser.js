@@ -78,6 +78,22 @@ function parseMessage(raw) {
      inside a call for fire rides in that call's raw text instead and is
      extracted by handleCFF; this branch is only for the bare transmission,
      which previously parsed as gibberish. */
+  /* G16 — fuze, sent standalone mid-adjustment ("FUZE VT, OVER" — legal after
+     range/deviation and before fire for effect, ATP 3-09.30 §5-55). A fuze
+     named inside a call rides in that call's raw text and is extracted by
+     handleCFF, same split as sheaf below. */
+  const mFuze = t.match(/\bfuze\s+(vt|victor tango|variable time|time|delay|quick|pd|point detonating)\b/);
+  if (mFuze && !t.includes('grid') && !/\b(?:left|right|add|drop)\b/.test(t)) {
+    const rest = t.replace(mFuze[0], ' ')
+      .replace(/\b(?:over|out|break|hellhound|hacksaw|fires|this|is|mustang|shell|he|fire|for|effect|\d+)\b/g, ' ')
+      .split(/\s+/).filter(Boolean);
+    if (rest.length <= 2) {
+      const k = mFuze[1];
+      const kind = (k === 'victor tango' || k === 'variable time') ? 'vt'
+                 : (k === 'point detonating' || k === 'quick') ? 'pd' : k;
+      return { type: 'fuze', kind, raw: t, toks };
+    }
+  }
   const mSheaf = t.match(/\b(?:(cancel)\s+)?(converged|open|parallel|linear|circular|special)\s+sheaf\b/);
   if (mSheaf && !t.includes('fire') && !t.includes('grid')) {
     // claim only a BARE sheaf transmission — if real description text rides

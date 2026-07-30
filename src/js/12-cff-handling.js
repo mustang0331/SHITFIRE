@@ -244,17 +244,32 @@ function handleCFF(p) {
      measured the trap before shipping into it. Text for the say and keys + target
      number for the gist-scorer come from one place so they cannot disagree.
      DOCTRINE.md §42: "The observer reads back the entire MTO." */
+  /* G15/G16 — method of engagement, decided BEFORE the MTO because the MTO
+     announces the fuze. Sheaf and fuze: taken from the call when named (p.raw
+     survives CFFQ concatenation, so either sent in any of the three
+     transmissions counts), inferred from the description otherwise. A VT/time
+     request on a danger-close call is overridden at the source: airburst frag
+     over friendlies is exactly what the proword exists to prevent. Both
+     choices are logged with their reasons — gradeable, not hidden. */
+  const sheaf = inferSheaf(p.desc, p.raw);
+  let fuze = inferFuze(p.desc, p.raw);
+  if ((fuze.kind === 'vt' || fuze.kind === 'time') && saidDangerClose(p.raw)) {
+    if (fuze.source === 'requested')
+      FDC.say('NEGATIVE ON VT, MUSTANG — no airburst over friendlies at danger close. FUZE PD, over.', { delay: 1.2 });
+    fuze = { kind: 'pd', source: 'fdc-override', why: 'airburst is not fired DANGER CLOSE — PD substituted' };
+  }
   let mtoSpec = null;
   if (!p.imm) {
     const m60 = activeChapter && activeChapter.asset === 'mortar60';
+    const FZ = fuze.kind.toUpperCase();
     mtoSpec = m60
       ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', 'he'],
           tgt: '7002', read: false, nagged: false }
-      : { keys: ['gun', 'battery', 'adjust', 'effect', '155', 'he', 'fuze', 'pd'],
+      : { keys: ['gun', 'battery', 'adjust', 'effect', '155', 'he', 'fuze', fuze.kind],
           tgt: '7001', read: false, nagged: false };
     FDC.say(m60
       ? 'MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.'
-      : 'MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.',
+      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 HE, FUZE ${FZ}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
             { delay: 1.4 });
   }
   // deviation policy: sloppy-but-safe call format earns a snide remark and
@@ -268,19 +283,15 @@ function handleCFF(p) {
   if (minCiv < 250) FDC.say(pick(QUIPS.nearCiv), { delay: 1.2 });
   if (H(cx, cz) < 0) FDC.say(pick(QUIPS.water), { delay: 1 });
   setState('MISSION SENT');
+  log('', `SHEAF: ${sheaf.kind.toUpperCase()} (${sheaf.source}) — ${sheaf.why}.`, 'sys');
+  log('', `FUZE: ${fuze.kind.toUpperCase()} (${fuze.source}) — ${fuze.why}.`, 'sys');
   // G24 — "at my command" is an element of transmission 3, so it arrives inside the
   // call's own text rather than as a separate proword. CFFQ concatenates raw across
   // transmissions, so this works whether the call came one-shot or staged.
-  /* G15 — sheaf: taken from the call when named (p.raw survives CFFQ
-     concatenation, so a sheaf sent in any of the three transmissions counts),
-     inferred from the description otherwise. Logged so the observer learns
-     what the FDC chose and why — the choice is gradeable, not hidden. */
-  const sheaf = inferSheaf(p.desc, p.raw);
-  log('', `SHEAF: ${sheaf.kind.toUpperCase()} (${sheaf.source}) — ${sheaf.why}.`, 'sys');
   fireMission({ x: cx, z: cz }, warno, { notes, desc: p.desc, gridStr: locStr,
                                          method: p.method, mto: mtoSpec,
                                          amc: p.raw.includes('at my command'),
-                                         sheaf,
+                                         sheaf, fuze,
                                          // G13 — an immediate mission's goal is to make
                                          // them stop shooting, not to annihilate them
                                          intent: p.imm ? 'suppress' : 'destroy' });
@@ -471,13 +482,24 @@ function handleAdjust(p) {
      correction meaningful; leave the hook, do not fake the effect before then. */
   if (p.corr.vert) {
     const v = p.corr.vert;
-    FDC.say(`${v > 0 ? 'UP' : 'DOWN'} ${Math.abs(v)} — NEGATIVE, MUSTANG, we are firing FUZE QUICK. ` +
-            `Height of burst does nothing on a point-detonating round. ` +
-            `Deviation and range only, over.`, { delay: 1.1 });
-    mission.notes.push('Sent a height-of-burst correction against fuze quick. HOB applies to ' +
-                       'airburst (VT/time) fuzes; with PD it has no effect.');
-    if (Math.abs(v) % 5)
-      mission.notes.push('Height of burst is sent in multiples of 5 m.');
+    /* G16 — the hook G23 left. Under an airburst fuze (VT/time) a height-of-
+       burst correction is legitimate and is acknowledged; the FDC is assumed
+       to set it correctly (no HOB state is modeled — the fuze multiplier
+       already carries the airburst effect, and faking more would be a lie).
+       Under PD it still does nothing, and the FDC still says so. */
+    if (mission.fuze && (mission.fuze.kind === 'vt' || mission.fuze.kind === 'time')) {
+      FDC.say(`${v > 0 ? 'UP' : 'DOWN'} ${Math.abs(v)}, OUT.`, { delay: 0.9 });
+      if (Math.abs(v) % 5)
+        mission.notes.push('Height of burst is sent in multiples of 5 m.');
+    } else {
+      FDC.say(`${v > 0 ? 'UP' : 'DOWN'} ${Math.abs(v)} — NEGATIVE, MUSTANG, we are firing FUZE QUICK. ` +
+              `Height of burst does nothing on a point-detonating round. ` +
+              `Deviation and range only, over.`, { delay: 1.1 });
+      mission.notes.push('Sent a height-of-burst correction against fuze quick. HOB applies to ' +
+                         'airburst (VT/time) fuzes; with PD it has no effect.');
+      if (Math.abs(v) % 5)
+        mission.notes.push('Height of burst is sent in multiples of 5 m.');
+    }
     // a vertical-only transmission is fully handled; nothing left to apply
     if (!p.corr.right && !p.corr.add && !p.ffe) return;
   }
@@ -713,6 +735,7 @@ function onPlayerMessage(raw) {
     case 'tot': handleTimeOnTarget(p.sec); break;
     case 'suppresstgt': handleSuppressTarget(p); break;
     case 'sheaf': handleSheaf(p); break;
+    case 'fuze': handleFuze(p); break;
     case 'posrep': handlePosRep(p); break;
     case 'otfactor':
       // G7 — snide, not a rant: it is a harmless misunderstanding, not a hazard

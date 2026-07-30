@@ -132,8 +132,9 @@ function fmtMils(m) { return String(Math.round(m) % 6400).padStart(4, '0'); }
 const descClean = d => (d || '')
   .replace(DC_RE, ' ')
   .replace(/\b(?:at my command|when ready|do not load|cannot observe)\b/g, ' ')
-  // G15 — sheaf is method of engagement, not target description
+  // G15/G16 — sheaf and fuze are method of engagement, not target description
   .replace(/\b(?:converged|open|parallel|linear|circular|special)\s+sheaf\b/g, ' ')
+  .replace(/\b(?:shell he\b\s*,?\s*)?fuze\s+(?:vt|victor tango|variable time|time|delay|quick|pd|point detonating)\b/g, ' ')
   .replace(/\s{2,}/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
 
 /* F6 — the DANGER CLOSE proword, matched with tolerance for what speech
