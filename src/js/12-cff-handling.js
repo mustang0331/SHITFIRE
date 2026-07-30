@@ -736,6 +736,7 @@ function onPlayerMessage(raw) {
     case 'suppresstgt': handleSuppressTarget(p); break;
     case 'sheaf': handleSheaf(p); break;
     case 'fuze': handleFuze(p); break;
+    case 'unitstatus': handleUnitStatus(); break;
     case 'posrep': handlePosRep(p); break;
     case 'otfactor':
       // G7 — snide, not a rant: it is a harmless misunderstanding, not a hazard

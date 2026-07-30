@@ -254,6 +254,32 @@ function handleSuppressTarget(p) {
       intent: 'suppress', sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw) });
 }
 
+/* ---- G10: FIRE UNIT STATUS (FM 6-30 §8-12) ----------------------------------
+   No land field-artillery or mortar doctrine names a pre-mission status
+   exchange at all (DOCTRINE.md §Pre-mission and effects data) — the only
+   sourced shape is naval gunfire's FIRE UNIT STATUS, so the trainer borrows
+   it: observer-REQUESTED, one FDC reply, no readback, and not repeated —
+   round count, unit location, tubes, munitions, closed with the on-station
+   report. The in-mission MTO is untouched (the user's explicit constraint).
+   Round counts are flavor state, not an ammo model: nothing decrements them,
+   the same honesty rule as TOT and suppress durations. The callsign is
+   written HELLHOUND and G17's delivery-time swap renames it on a mortar
+   chapter; the CONTENT differs per asset here because the unit itself does. */
+let unitStatusSent = false;
+function handleUnitStatus() {
+  if (unitStatusSent) {
+    FDC.say('MUSTANG 12, my status has not changed since my last, and it will not change until you send me some work, over.', { delay: 1.0 });
+    return;
+  }
+  unitStatusSent = true;
+  const m60 = activeChapter && activeChapter.asset === 'mortar60';
+  const gs = gridOf(BATTERY.x, BATTERY.z);
+  FDC.say(m60
+    ? `MUSTANG 12, HELLHOUND FIRES — FIRE UNIT STATUS: TWO TUBES, 60 MIKE MIKE, GRID ${gs}. HE 96 ROUNDS, WHISKEY PAPA 24, MULTI-OPTION FUZE ON HAND. ON STATION AND READY FOR CALL FOR FIRE, OVER.`
+    : `MUSTANG 12, HELLHOUND FIRES — FIRE UNIT STATUS: SIX GUNS, 155, GRID ${gs}. HE 240 ROUNDS, SMOKE 48, ILLUM 36; FUZE PD, VT AND DELAY ON HAND. ON STATION AND READY FOR CALL FOR FIRE, OVER.`,
+    { delay: 1.2 });
+}
+
 /* ---- G24: AT MY COMMAND (DOCTRINE.md §34) -----------------------------------
    Method of fire and control. The default is "when ready" — the FDC fires as soon
    as it has data. Under AT MY COMMAND it lays the guns, reports READY, and waits

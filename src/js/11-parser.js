@@ -94,6 +94,12 @@ function parseMessage(raw) {
       return { type: 'fuze', kind, raw: t, toks };
     }
   }
+  /* G10 — FIRE UNIT STATUS, requested by the observer before the first
+     mission (NGF shape, FM 6-30 §8-12 — no land doctrine has one). Contains
+     the word "fire", so it must sit before the bare-FIRE branch; tested here
+     with its method-of-engagement kin. Tolerant of the STT variants. */
+  if (/\b(?:fire|firing) unit'?s? status\b/.test(t) || /\brequest (?:your )?status\b/.test(t))
+    return { type: 'unitstatus', raw: t, toks };
   const mSheaf = t.match(/\b(?:(cancel)\s+)?(converged|open|parallel|linear|circular|special)\s+sheaf\b/);
   if (mSheaf && !t.includes('fire') && !t.includes('grid')) {
     // claim only a BARE sheaf transmission — if real description text rides
