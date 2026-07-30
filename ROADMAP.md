@@ -321,7 +321,7 @@ Everything else, grouped:
 
 | ID | Finding | Doctrine |
 |---|---|---|
-| G22 | **No 3-transmission CFF state machine** (above). Transmission 1 alone → `unknown`. | §15, and CLAUDE.md |
+| G22 | ~~**No 3-transmission CFF state machine**. Transmission 1 alone → `unknown`.~~ **DONE** `4570bbd` — `CFFQ` accumulates partial transmissions and hands the merged call to the *same* `handleCFF`, so one code path still validates and fires. Purely additive: a complete one-shot call never enters the new code, which is how every existing chapter and transcript keeps working. Per-transmission readbacks; a half-sent call lapses after 75 s. Harness 25/25, including a five-case regression guard proving one-shot calls bypass the queue entirely. | §15, and CLAUDE.md |
 | G23 | **Height-of-burst corrections are parsed and thrown away.** `corr` has exactly two fields, `right` and `add`. Every `up`/`down` — in a correction, in a polar call's vertical, in a shift's vertical — is discarded. `"up 20, over"` alone → `unknown`. | §54, §27, §28 |
 | G24 | **Fire-control prowords all unrecognised**: `at my command`, `fire`, `cancel at my command`, `do not load`, `cannot observe`, `time on target`. Worse, `"at my command, grid …"` parses as an ordinary grid CFF and the hold is swallowed into the target description. Supersedes/absorbs **12f**. | §34 |
 | G25 | **Safety prowords unrecognised**: `check firing`, `cease loading`. These are the two calls that stop guns. Being mocked for them is the worst possible response in the worst possible moment. | §67 |
@@ -333,17 +333,18 @@ Working as intended, for the record: grid / polar / shift CFFs, standalone OT di
 deviation+range corrections, `fire for effect`, RREMS end-of-mission, `say again`, `repeat`.
 `"correction, grid …"` works, but by luck — the proword is ignored and the grid re-parsed.
 
-**Consequence for the plan.** G22 is a structural change to the parser that G7, G8, G9, G11, G14,
-G24, G26 and G27 all sit inside — a state machine that tracks which transmission the observer is on
-is the thing that makes "read back the MTO" and "POS REP before a polar call" expressible at all.
-**Do G22 first**, then the rest against it. Building them against the current one-shot parser would
-mean rewriting all of them.
+**Consequence for the plan — now resolved.** G22 was the structural prerequisite that G7, G8, G9,
+G11, G14, G24, G26 and G27 all sat inside: a state machine tracking which transmission the observer
+is on is what makes "read back the MTO" and "POS REP before a polar call" expressible at all.
+**G22 shipped `4570bbd`, so all eight are now buildable.** They were correctly *not* built first —
+against the old one-shot parser every one would have needed rewriting.
 
-**One rule to carry into G22:** DOCTRINE.md §5 is explicit that scripts are *guidelines, not gates*,
-and the forgiving default must survive. The state machine has to accept a complete one-shot call
-exactly as it does today — that is what every existing chapter and transcript uses — while *also*
-accepting the doctrinal three-transmission sequence. Strict mode is the only place the three-part
-form becomes mandatory.
+The rule G22 was built under, kept here because the remaining rows must honour it too: DOCTRINE.md
+§5 is explicit that scripts are *guidelines, not gates*. The forgiving one-shot call still works
+byte-identically and never enters the queue; the doctrinal three-transmission sequence is
+*additionally* accepted. Strict mode remains the only place rigid form is enforced. **Any row that
+adds a new transmission type must extend `CFFQ`, not fork it** — the whole value of G22 is that one
+code path validates and fires a mission.
 
 #### G-C — Structural (decide before coding)
 
@@ -352,10 +353,13 @@ form becomes mandatory.
 | G20 | **The 10×10 km map may be too small** — an 800 m correction runs out of world. Affects `CONFIG.MAP.size`, terrain, the DEM pipeline, the printed sheet scale and every grid in every fixed-seed chapter. **PARKED at the user's direction 2026-07-29: do not raise, cost, or implement this until the user brings it up.** Left on the board only so the observation is not lost. | — | **PARKED — do not action** |
 | G21 | **Do target location cues stay accurate when a new DEM is loaded?** User's open question. Verify — do not assume. Covers the E2 spot report, `nearestLandmark`, known points and the printed sheet. | Opus | Answered with evidence against a real loaded DEM (`KOFA_KING_VALLEY_FO_HEIGHTMAP.png` is in the tree); any drift fixed or logged | AUDIT |
 
-**Order:** ~~G1 → G5 → G3 → G2 → G4 → G6~~ ✅ shipped. ~~G19 audit~~ ✅ done — findings below, and
-they changed the plan: **G22 (the 3-transmission CFF state machine) is now NEXT**, because G7, G8,
-G9, G11, G14, G24, G26 and G27 all sit inside it. Then the G10/G13 doctrine research, then the rest
-of G-B. **G20 is PARKED at the user's direction — do not action it until they raise it.** G21 last.
+**Order:** ~~G1 → G5 → G3 → G2 → G4 → G6~~ ✅ shipped · ~~G19 audit~~ ✅ · ~~G22~~ ✅ `4570bbd`.
+
+**Next: G23 and G25**, the two small parser rows that need no research — height-of-burst corrections
+(currently parsed and discarded) and the two safety prowords (`check firing`, `cease loading`,
+currently mocked). Then **G24** (fire control, absorbing 12f) and **G14/G26/G27** (one-transmission
+mission types), all of which extend `CFFQ`. Then the **G10/G13 doctrine research**, then G7/G8/G9/G11,
+then G15–G18. **G20 is PARKED at the user's direction — do not action it until they raise it.** G21 last.
 
 **Two G-A rows added keybinds** that the docs sweep must pick up: `[Z]` / mouse wheel cycles
 binocular power (4X/7X/14X), and `SHIFT+D` toggles dispersion. Both are in the in-app hint line
@@ -414,6 +418,7 @@ work does not touch rendering.
 | 2026-07-29 | **Track E closed** — E3 `ef9d473`, E4 `830d3cc`, E5 `cee195f`, E6 `0d2eaed`, E7 `ddd22f9`. All seven rows shipped; all carry ⚠, since the track is entirely about appearance and none of it has been seen in Chrome. New §5 collects that QA into one 15-minute pass. |
 | 2026-07-29 | **`index.html` → `SHITFIRE.html`**, renamed by the user, recorded as a git rename in `f4e7ad8` (staged from HEAD's exact blob so the diff is a pure path change and `--follow` still reaches all history). CLAUDE.md's first golden rule and the references in README/SPEC/QUICKSTART/GRAPHICS are stale until the docs sweep. |
 | 2026-07-29 | **A working JS syntax gate exists now** (`scratchpad/syntaxgate.ps1`): extracts the inline module, strips the imports, wraps it in `if (false) {}` and loads it as a classic script in headless Chrome, so a syntax error is reported as the early error it is while a clean parse executes nothing. Its first version used `new Function(src)` and was **worthless** — that compiles lazily, so it reported OK on a deliberately broken file. Both directions are now verified against an injected unbalanced paren, which it caught and located to the exact line. Every code row from E7 on should run it. |
+| 2026-07-29 | **G22 shipped** `4570bbd` — the three-transmission CFF exists. `CFFQ` accumulates partial transmissions and hands the merged call to the same `handleCFF` the one-shot path uses, so there is still exactly one code path that validates and fires a mission. Deliberately purely additive: a complete one-shot call never enters the new code, which is what keeps every existing chapter, tutorial and saved transcript working. Unblocks G7, G8, G9, G11, G14, G24, G26, G27. |
 | 2026-07-29 | **G19 CFF protocol audit done, and it reordered the track.** The shipped parser was run against 29 transmissions taken from DOCTRINE.md: **16 classify as `unknown`** and get the FDC's gibberish reply, 3 more mis-classify and are acted on wrongly. Headline: **the 3-transmission CFF does not exist** — there is no multi-transmission state machine, so the doctrinal Transmission 1 gets mocked, contradicting both DOCTRINE.md §15 and CLAUDE.md. Logged as **G22–G28**; G22 is now NEXT because eight other rows sit inside it. |
 | 2026-07-29 | **Track G-A shipped whole** — G1 `1c1bfff`, G5 `6b55985`, G3 `6acc97c`, G2 `067b473`, G4 `03beef8`, G6 `1bfe48b`, plus **F8** `ef0ef31` found along the way. Every row carries an executable harness and a headless-Chrome parse; none has been seen running, so §5 grew. Three unreported training-fidelity bugs surfaced during the work (mil-card sizes disagreeing with the world by up to 308 m of taught range error; both declination mistakes landing inside the OT-direction coach's blind spot; the reticle overrunning the screen at 14X), which is the argument for taking user-feedback rows before spec rows — building next to real complaints finds the things nobody thought to report. |
 | 2026-07-29 | **Track G added** from [user_feedback.md](user_feedback.md) — 21 rows of feedback from the user actually flying the build, triaged into UI (G1–G6), doctrine (G7–G19) and structural (G20–G21). Inserted ahead of the rest of stage 13. Three rows need doctrine research before code (G10, G13, G18) and one is a decision, not a task (G20). Two supersede existing authority: **G12** overrides CLAUDE.md's "automatic mission fail" wording — fratricide *fails* the mission but must not *end* it — and **G14** supersedes the narrower row 12g. |
