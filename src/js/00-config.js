@@ -10,6 +10,10 @@ const CONFIG = {
     ridgeHeight: 95, massifHeight: 165, massifRadius: 950,
     massifX: -520, massifZ: -360, oceanFloor: -30,
     demRes: 512, demMaxElev: 240, demSeaLum: 10,
+    /* 13e — near-field LOD patch over the mission target area: patchSize m
+       square re-sampled at patchDiv sub-cells per base facet (33.3/4 ≈ 8.3 m),
+       so burst deviation is judged against relief the base sheet aliases away. */
+    patchSize: 1200, patchDiv: 4,
   },
   CAMERA: { fov: 60, eyeHeight: 2.2, towerHeight: 300,   // 50 ft OP watchtower
             /* G4 — three optical powers, cycled with [Z] or the mouse wheel while

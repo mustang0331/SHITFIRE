@@ -107,4 +107,11 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   // interface above is unchanged): the screenshot rig drives TOD and optics
   // states no keybind reaches; the replay rig re-classifies recorded traffic
   // through parseMessage without touching mission state.
-  applyTOD, setVision, onPlayerMessage, parseMessage };
+  applyTOD, setVision, onPlayerMessage, parseMessage,
+  // 13e — terrain QA: patch/base geometry facts + a way to time a re-focus
+  setTerrainFocus, terrainInfo: () => ({
+    baseIdx: terrainMesh.geometry.getIndex().count,
+    patchIdx: terrainPatchMesh ? terrainPatchMesh.geometry.getIndex().count : 0,
+    patchGeo: terrainPatchMesh ? terrainPatchMesh.geometry : null,
+    sharedMat: !!terrainPatchMesh && terrainPatchMesh.material === terrainMesh.material,
+    patchCx, patchCz }) };

@@ -447,6 +447,9 @@ function newMission(first, type, chapter) {
   Scenario = genScenario(currentType, CONFIG.SEED.mission);
   scenarioT0 = sim.now;
   placeUnits();
+  // 13e — move the high-res terrain patch onto the new target area, so burst
+  // deviation there is judged against real micro-relief, not 33 m facets
+  setTerrainFocus(Scenario.enemy.x, Scenario.enemy.z);
   if (chapter) {
     log('', `CHAPTER ${chapter.id} — ${chapter.title} (${DIFFICULTY.toUpperCase()}). ${Scenario.brief}`, 'sys');
     if (chapter.method)

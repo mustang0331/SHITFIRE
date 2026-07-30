@@ -163,10 +163,26 @@ let oceanShallows = null;
   scene.add(oceanShallows);
 }
 
-// Terrain mesh (single low-poly sheet; LOD rings come in a later stage)
+/* Terrain mesh — a low-poly base sheet plus, since 13e, ONE high-res patch
+   over the mission target area. 33 m facets cannot show the micro-relief a
+   burst gets judged against (H's finest octave is ~40 m — the base mesh sits
+   at its aliasing edge), so the patch re-samples the SAME H() at facet/PATCH_DIV
+   resolution. The base mesh gets a hole cut on its own grid lines and the
+   patch's boundary vertices are placed ON those lines with heights lerped
+   between the base corners' H — the two meshes share the boundary polyline
+   exactly, so there is no crack, no overlap, and nothing to z-fight.
+   groundHit/hasLOS/impacts still read the analytic H, untouched. */
 let TERRAIN_PALETTE = null;   // null = tropical; 'black' = Volume IV black sand
+let patchCx = null, patchCz = null;   // 13e — current patch center (world), null = no patch
+function setTerrainFocus(x, z) {
+  // called at mission start with the target area; rebuild only on a real move
+  if (patchCx !== null && Math.hypot(x - patchCx, z - patchCz) < 250) return;
+  patchCx = x; patchCz = z;
+  if (terrainReady) buildTerrain();
+}
 function buildTerrain() {
   const seg = CONFIG.TERRAIN.meshSegments, size = CONFIG.MAP.size;
+  const cell = size / seg;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg).rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
@@ -201,10 +217,9 @@ function buildTerrain() {
   }
   const aoK = CONFIG.GFX.aoStrength, mFloor = CONFIG.GFX.hillFloor;
   const tmp = new THREE.Color();
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i);
-    const h = H(x, z);
-    pos.setY(i, h);
+  // one vertex's colour + baked shade, shared by the base sheet and the 13e
+  // patch so the two can never disagree about what the ground looks like
+  const vcol = (x, z, h) => {
     const hx = H(x + 9, z), hz = H(x, z + 9);
     const sl = Math.hypot(hx - h, hz - h) / 9;
     const patch = vnoise(x * 0.012, z * 0.012, 999);
@@ -222,27 +237,122 @@ function buildTerrain() {
       m = Math.max(mFloor, m);
       tmp.r *= m; tmp.g *= m; tmp.b *= m;
     }
-    colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
+    return tmp;
+  };
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const h = H(x, z);
+    pos.setY(i, h);
+    const c0 = vcol(x, z, h);
+    colors[i * 3] = c0.r; colors[i * 3 + 1] = c0.g; colors[i * 3 + 2] = c0.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  /* 13e — the patch rect, snapped OUTWARD to the base grid so the hole edge
+     and the patch edge are the same polyline of base grid lines. */
+  const half = size / 2, T13 = CONFIG.TERRAIN;
+  let i0 = 0, i1 = 0, j0 = 0, j1 = 0;
+  if (patchCx !== null) {
+    const ph = T13.patchSize / 2;
+    i0 = clamp(Math.floor((patchCx + half - ph) / cell), 0, seg);
+    i1 = clamp(Math.ceil((patchCx + half + ph) / cell), 0, seg);
+    j0 = clamp(Math.floor((patchCz + half - ph) / cell), 0, seg);
+    j1 = clamp(Math.ceil((patchCz + half + ph) / cell), 0, seg);
+  }
+  const hasPatch = i1 > i0 && j1 > j0;
+  if (hasPatch) {
+    // cut the hole: PlaneGeometry lays its index out 6 entries per cell in
+    // row-major order, so cell (ix, iy) owns index slots [(iy*seg+ix)*6 .. +6)
+    const oldIdx = geo.getIndex().array;
+    const keep = new Uint32Array(oldIdx.length);
+    let k = 0;
+    for (let iy = 0; iy < seg; iy++)
+      for (let ix = 0; ix < seg; ix++) {
+        if (ix >= i0 && ix < i1 && iy >= j0 && iy < j1) continue;   // inside the hole
+        const s0 = (iy * seg + ix) * 6;
+        for (let s = 0; s < 6; s++) keep[k++] = oldIdx[s0 + s];
+      }
+    geo.setIndex(new THREE.BufferAttribute(keep.subarray(0, k).slice(), 1));
+  }
   geo.computeVertexNormals();
+
+  // 13e — the patch itself: PATCH_DIV sub-cells per base cell, boundary
+  // vertices ON the base grid lines with heights lerped between the base
+  // corners' H — crack-free by construction, no z-fight because the two
+  // surfaces only share the boundary polyline.
+  let pGeo = null;
+  if (hasPatch) {
+    const div = T13.patchDiv;
+    const nx = (i1 - i0) * div, nz = (j1 - j0) * div;
+    const pPos = new Float32Array((nx + 1) * (nz + 1) * 3);
+    const pCol = new Float32Array((nx + 1) * (nz + 1) * 3);
+    // coordinates are computed in the SAME float expression the base mesh uses
+    // (index * cell - half), so a patch-boundary vertex and its base grid line
+    // agree bit-for-bit — a*step accumulation would drift by ulps and open a
+    // hairline gap along the seam
+    for (let b = 0; b <= nz; b++)
+      for (let a = 0; a <= nx; a++) {
+        const x = (i0 + a / div) * cell - half, z = (j0 + b / div) * cell - half;
+        let h;
+        if (a === 0 || a === nx || b === 0 || b === nz) {
+          // boundary: sit exactly on the base mesh's edge segments
+          if (a === 0 || a === nx) {
+            const zA = (j0 + Math.floor(b / div)) * cell - half, t = (b % div) / div;
+            h = t === 0 ? H(x, zA) : H(x, zA) * (1 - t) + H(x, zA + cell) * t;
+          } else {
+            const xA = (i0 + Math.floor(a / div)) * cell - half, t = (a % div) / div;
+            h = t === 0 ? H(xA, z) : H(xA, z) * (1 - t) + H(xA + cell, z) * t;
+          }
+        } else h = H(x, z);
+        const vi = (b * (nx + 1) + a) * 3;
+        pPos[vi] = x; pPos[vi + 1] = h; pPos[vi + 2] = z;
+        const c1 = vcol(x, z, h);
+        pCol[vi] = c1.r; pCol[vi + 1] = c1.g; pCol[vi + 2] = c1.b;
+      }
+    const pIdx = new Uint32Array(nx * nz * 6);
+    let q = 0;
+    for (let b = 0; b < nz; b++)
+      for (let a = 0; a < nx; a++) {
+        const v = b * (nx + 1) + a;
+        pIdx[q++] = v; pIdx[q++] = v + nx + 1; pIdx[q++] = v + 1;
+        pIdx[q++] = v + 1; pIdx[q++] = v + nx + 1; pIdx[q++] = v + nx + 2;
+      }
+    pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+    pGeo.setIndex(new THREE.BufferAttribute(pIdx, 1));
+    pGeo.computeVertexNormals();
+  }
+
   if (terrainMesh) {
     scene.remove(terrainMesh);
     terrainMesh.geometry.dispose();
     terrainMesh.material.dispose();
+  }
+  if (terrainPatchMesh) {
+    scene.remove(terrainPatchMesh);
+    terrainPatchMesh.geometry.dispose();   // material is shared with the base sheet
+    terrainPatchMesh = null;
   }
   // The terrain is the one material in the scene whose colour lives in a vertex
   // attribute, not in material.color — so the generic optics derivation would read
   // white and blow the ground out. Tag it explicitly. (visTag is hoisted; the tag
   // is inert until VISION exists.) A rebuild makes a NEW material, so the optics
   // have to be re-derived or a mid-mission island swap leaves the ground in day
-  // colours under a night device.
-  terrainMesh = new THREE.Mesh(geo, visTag(
+  // colours under a night device. The 13e patch SHARES this material — one
+  // dispose, one optics derivation, and the two sheets can never diverge.
+  const tMat = visTag(
     new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
-    { nvg: 0.55, th: [0.14, 0.14, 0.14] }));   // vegetation is NIR-bright
+    { nvg: 0.55, th: [0.14, 0.14, 0.14] });   // vegetation is NIR-bright
+  terrainMesh = new THREE.Mesh(geo, tMat);
   scene.add(terrainMesh);
+  if (pGeo) {
+    terrainPatchMesh = new THREE.Mesh(pGeo, tMat);
+    scene.add(terrainPatchMesh);
+  }
   if (visionReady) applyVision();
 }
+let terrainPatchMesh = null;   // 13e — high-res patch over the target area
 let terrainMesh = null;
 const _bakeSun = new THREE.Vector3();   // 13d — todDir scratch for the bake
 var terrainReady = false;               // 13d — var: hoisted, boot-safe (see applyTOD)
