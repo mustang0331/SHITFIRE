@@ -39,9 +39,37 @@ function dataUrl(rel) {
   return 'data:text/javascript;base64,' +
     fs.readFileSync(path.join(root, 'vendor', rel)).toString('base64');
 }
+/* 11d — the postprocessing addons import each other with RELATIVE specifiers
+   ('./Pass.js', '../shaders/CopyShader.js'), and a module served from a data:
+   URL has no base to resolve those against — the import map is never even
+   consulted. So the build rewrites the vendor files' relative specifiers to
+   the same BARE 'three/addons/...' names the import map already carries.
+   A deterministic string substitution on THIRD-PARTY files only — the sim
+   source is still a byte-exact paste, and same vendor bytes always produce
+   the same output. */
+const PP_REWRITE = [
+  ["'./Pass.js'", "'three/addons/postprocessing/Pass.js'"],
+  ["'./MaskPass.js'", "'three/addons/postprocessing/MaskPass.js'"],
+  ["'./ShaderPass.js'", "'three/addons/postprocessing/ShaderPass.js'"],
+  ["'../shaders/CopyShader.js'", "'three/addons/shaders/CopyShader.js'"],
+  ["'../shaders/LuminosityHighPassShader.js'", "'three/addons/shaders/LuminosityHighPassShader.js'"],
+];
+function addonUrl(rel) {
+  let src = fs.readFileSync(path.join(root, 'vendor', rel), 'utf8');
+  for (const [from, to] of PP_REWRITE) src = src.split(from).join(to);
+  return 'data:text/javascript;base64,' + Buffer.from(src).toString('base64');
+}
 let head = read(manifest.head).toString('latin1');
 head = head.replace('__VENDOR_THREE_CORE__', dataUrl('three/three.module.js'))
-           .replace('__VENDOR_THREE_SKY__', dataUrl('three/addons/objects/Sky.js'));
+           .replace('__VENDOR_THREE_SKY__', dataUrl('three/addons/objects/Sky.js'))
+           .replace('__VENDOR_PP_COMPOSER__', addonUrl('three/addons/postprocessing/EffectComposer.js'))
+           .replace('__VENDOR_PP_PASS__', addonUrl('three/addons/postprocessing/Pass.js'))
+           .replace('__VENDOR_PP_MASK__', addonUrl('three/addons/postprocessing/MaskPass.js'))
+           .replace('__VENDOR_PP_SHADER__', addonUrl('three/addons/postprocessing/ShaderPass.js'))
+           .replace('__VENDOR_PP_RENDER__', addonUrl('three/addons/postprocessing/RenderPass.js'))
+           .replace('__VENDOR_PP_BLOOM__', addonUrl('three/addons/postprocessing/UnrealBloomPass.js'))
+           .replace('__VENDOR_SH_COPY__', addonUrl('three/addons/shaders/CopyShader.js'))
+           .replace('__VENDOR_SH_LUM__', addonUrl('three/addons/shaders/LuminosityHighPassShader.js'));
 
 const parts = [];
 parts.push(Buffer.from(head, 'latin1'));

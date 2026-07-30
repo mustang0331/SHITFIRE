@@ -135,6 +135,7 @@ addEventListener('wheel', e => {
 }, { passive: false });
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
+  composerDrop();   // 11d — stale render targets die here; rebuilt next frame if wanted
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   if (binos) drawReticle();

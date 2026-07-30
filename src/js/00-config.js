@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';   // 13c — Preetham sky, one draw call
+// 11d — bloom, used ONLY on the SUNLAMP chapter at quality tier 0 (see renderFrame)
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 /* ============================================================ CONFIG */
 const CONFIG = {
@@ -217,7 +221,7 @@ const CONFIG = {
     hillshade: true, aoStrength: 0.35, hillFloor: 0.55, // 13d — see the bake in buildTerrain()
     water: true,        // 13g — shoreline foam + ocean sun glint (fragment-side)
     craters: 40,        // 13h — persistent-crater ring buffer (oldest recycled)
-    bloom: false,       // 11d — SUNLAMP only
+    bloom: true,        // 11d — master switch; the chapter + tier gate lives in renderFrame
   },
 };
 

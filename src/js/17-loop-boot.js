@@ -92,7 +92,7 @@ function animate(tMs) {
     p.m.material.opacity = 0.42 * (1 - ct);
   }
   updateBursts(dt);
-  renderer.render(scene, camera);
+  renderFrame();   // 11d — direct render, or composer+bloom on the SUNLAMP net at tier 0
   // observer optics overlay: 2D canvas only, throttled to CONFIG.OPTICS.hz and
   // drawn entirely from layers prebuilt at boot. No allocation, no composer.
   if (VISION.mode !== 'day' && t - VISION.last > 1 / CONFIG.OPTICS.hz) {

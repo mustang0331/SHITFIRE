@@ -6,11 +6,17 @@ Three.js **r160** (`0.160.0`), vendored so SHITFIRE runs with no network.
 |---|---|
 | `three.module.js` | `https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js` |
 | `addons/objects/Sky.js` | `https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/objects/Sky.js` |
+| `addons/postprocessing/*.js` (6 files, 11d) | `https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/…` |
+| `addons/shaders/CopyShader.js`, `LuminosityHighPassShader.js` | `…/examples/jsm/shaders/…` |
 
 The import map in `SHITFIRE.html` (authored in `src/shell/head.html`) maps `three`
-and `three/addons/` at these local paths. `Sky.js` imports only from the `three`
-core, so those two files are the whole dependency — add a file here and map it if
-a new addon is ever imported.
+and each `three/addons/…` module to an inlined `data:` URL. `Sky.js` imports only
+from the `three` core; the postprocessing addons (11d, SUNLAMP bloom) import each
+other with RELATIVE specifiers, which cannot resolve from a `data:` URL — so
+`tools/build.js` rewrites those relative specifiers to the same bare
+`three/addons/…` names the import map carries (a deterministic substitution on
+these third-party files only; see `PP_REWRITE` in the build). Add a file here,
+map it in `head.html`, and extend `PP_REWRITE` if it has relative imports.
 
 **Do not repoint the import map at a CDN** — offline capability is a golden rule
 (CLAUDE.md). To upgrade three: replace these files with the new version, keep the

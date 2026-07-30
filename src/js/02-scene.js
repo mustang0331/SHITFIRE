@@ -204,6 +204,39 @@ function oceanGlintPatch(sh) {
   #include <opaque_fragment>`);
 }
 
+/* 11d — bloom, exactly as GRAPHICS.md §G8 gates it: CONFIG.GFX.bloom AND the
+   SUNLAMP chapter AND quality tier 0, or the direct renderer.render() path
+   the quality system assumes. A directed-energy weapon is the one thing in
+   this app that genuinely wants bloom; nothing else gets a composer. The
+   composer is created lazily on the first frame that qualifies, sized to the
+   canvas with the bloom pass itself at HALF resolution, and disposed the
+   moment any gate condition drops (chapter change, quality step-down,
+   resize) — never a stale render target, never a composer on an ordinary
+   mission. */
+let _composer = null, _bloomPass = null;
+function composerDrop() {
+  if (!_composer) return;
+  _composer.dispose();
+  _composer = null; _bloomPass = null;
+}
+function renderFrame() {
+  const want = CONFIG.GFX.bloom && activeChapter &&
+               activeChapter.asset === 'sunlamp' && QUALITY.tier === 0;
+  if (!want) { composerDrop(); renderer.render(scene, camera); return; }
+  if (!_composer) {
+    _composer = new EffectComposer(renderer);
+    _composer.addPass(new RenderPass(scene, camera));
+    // threshold sits ABOVE the tone-mapped sky: the daytime sky must not bloom,
+    // only the beam, the flash sprites and the sun glint cross it (first cut at
+    // 0.85 hazed the whole horizon white — caught in the screenshot)
+    _bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.45, 0.4, 0.93);
+    _composer.addPass(_bloomPass);
+    _composer.setSize(innerWidth, innerHeight);
+  }
+  _composer.render();
+}
+
 let oceanShallows = null;
 {
   // water absorbs near-IR (almost black under a tube) and has a high heat
