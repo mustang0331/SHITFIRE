@@ -47,8 +47,10 @@ Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed
 - Open `SHITFIRE.html` directly in **Chrome** (voice + print are Chrome/Edge desktop).
 - Voice needs mic permission on a real tab. Test print/save via the browser print dialog.
 - If ever run as a claude.ai Artifact: use **in-memory state, not `localStorage`** (blocked there).
-- **Syntax gate:** run `scratchpad/syntaxgate.ps1` on every code row. A syntax error in a 200 KB single
-  file is catastrophic and hard to locate; the gate finds the line.
+- **Syntax gate:** run `tools/syntaxgate.ps1` on every code row (`powershell -File tools\syntaxgate.ps1`;
+  exit 0 = clean, 1 = SyntaxError with the SHITFIRE.html line named). A syntax error in a 200 KB single
+  file is catastrophic and hard to locate; the gate finds the line. It only reads the sim file, per the
+  dev-tooling rules below.
 
 ## Dev tooling (permitted — amended 2026-07-30 by user decision)
 Test, lint, and QA tooling **is allowed**. The golden rule was never about keeping the repo austere —
