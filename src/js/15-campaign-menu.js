@@ -427,6 +427,7 @@ function newMission(first, type, chapter) {
         TERRAIN_PALETTE = wantPal;
         buildTerrain(); buildMinimap(); placeOP(); placeBattery(); buildWorldFeatures();
         wipeRecordedTargets();   // G21 — same reasoning as rebuildWorld: new island, stale coordinates
+        craterClear();           // 13h — same reasoning again: scars belong to the old ground
         log('', 'Deploying to a new island — new map sheets are in the library [P].', 'sys');
       }
     }

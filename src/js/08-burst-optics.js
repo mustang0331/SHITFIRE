@@ -381,6 +381,68 @@ function cycleVision() {
   }
 }
 
+/* ---- 13h: impact persistence (GRAPHICS.md §G6) ------------------------------
+   The burst itself evaporates in 14 s, but the OBSERVER'S READ of the shot
+   group must not: persistent craters (an InstancedMesh ring buffer, oldest
+   recycled) keep the round pattern on the ground — a walked bracket stays
+   readable exactly like the plotted AAR — and a thin marker wisp lingers on
+   the last few impacts (~75 s) while the correction is composed. Everything
+   preallocated; nothing allocated per impact. DECLARED ABOVE THE BOOT BLOCK:
+   initCraters/initWisps run from it, and `let` bindings below it would still
+   be in their temporal dead zone (this file boots at module eval). */
+let CRATERS = null, craterCursor = 0;
+const _crM4 = new THREE.Matrix4(), _crQ = new THREE.Quaternion(),
+      _crV = new THREE.Vector3(), _crN = new THREE.Vector3(), _crUp = new THREE.Vector3(0, 1, 0);
+function initCraters() {
+  const n = CONFIG.GFX.craters;
+  if (!n) return;
+  // fresh-turned earth: dark by day, WARM in thermal (churned ground holds heat)
+  const mat = visTag(new THREE.MeshLambertMaterial({
+    color: 0x2A2118, transparent: true, opacity: 0.8, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+    { nvg: 0.22, th: [0.6, 0.6, 0.6] });
+  CRATERS = new THREE.InstancedMesh(
+    new THREE.CircleGeometry(1, 12).rotateX(-Math.PI / 2), mat, n);
+  _crM4.compose(_crV.set(0, -400, 0), _crQ.identity(), _crN.set(0.001, 0.001, 0.001));
+  for (let i = 0; i < n; i++) CRATERS.setMatrixAt(i, _crM4);
+  scene.add(CRATERS);
+}
+function addCrater(x, z) {
+  if (!CRATERS) return;
+  const h = H(x, z);
+  // conform to the slope so the disc lies ON the ground, not through it
+  _crN.set(-(H(x + 6, z) - h) / 6, 1, -(H(x, z + 6) - h) / 6).normalize();
+  _crQ.setFromUnitVectors(_crUp, _crN);
+  const s = 2.6 + Math.random() * 1.7;
+  _crM4.compose(_crV.set(x, h + 0.12, z), _crQ, _crN.set(s, 1, s));
+  CRATERS.setMatrixAt(craterCursor++ % CRATERS.count, _crM4);
+  CRATERS.instanceMatrix.needsUpdate = true;
+}
+function craterClear() {   // island rebuild: old coordinates are a different map
+  if (!CRATERS) return;
+  _crM4.compose(_crV.set(0, -400, 0), _crQ.identity(), _crN.set(0.001, 0.001, 0.001));
+  for (let i = 0; i < CRATERS.count; i++) CRATERS.setMatrixAt(i, _crM4);
+  CRATERS.instanceMatrix.needsUpdate = true;
+  craterCursor = 0;
+  for (const w of WISPS) w.t0 = -1e9;
+}
+const WISPS = [];
+function initWisps() {
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.Sprite(visTag(new THREE.SpriteMaterial({
+      color: 0xB9B4A8, transparent: true, opacity: 0, depthWrite: false }),
+      { nvg: 0.4, th: [0.34, 0.34, 0.34] }));
+    m.visible = false;
+    scene.add(m);
+    WISPS.push({ m, t0: -1e9, x: 0, y: 0, z: 0 });
+  }
+}
+function markWisp(x, y, z) {
+  let w = WISPS[0];
+  for (const c of WISPS) if (c.t0 < w.t0) w = c;   // recycle the oldest
+  w.t0 = sim.now; w.x = x; w.y = y; w.z = z;
+}
+
 /* --- boot ------------------------------------------------------------------ */
 {
   VISION.ctx = VISION.cv.getContext('2d');
@@ -389,6 +451,8 @@ function cycleVision() {
   visBuildGrain();
   visBuildHalo();
   visCollectSources();
+  initCraters();              // 13h — before applyVision so _m0 is established
+  initWisps();
   visionReady = true;
   applyVision();              // 'day' — establishes _m0 on everything already built
 }
@@ -420,6 +484,8 @@ function spawnBurst(x, y, z) {
   b.group.visible = true;
   b.group.position.set(x, y, z);
   const water = H(x, z) < 0;
+  b.water = water;   // 13h — the water case reshapes the column in updateBursts
+  if (!water) { addCrater(x, z); markWisp(x, y, z); }   // 13h — the sea keeps no scars
   visSetColor(b.dust, water ? 0xDCE9E6 : 0xB9A98C);
   for (const p of b.puffs) visSetColor(p, water ? 0xCFDEDD : 0x8A877E);
   b.debris.forEach(d => {
@@ -446,9 +512,12 @@ function updateBursts(dt) {
       b.ring.scale.setScalar(4 + 66 * rt);
       b.ring.material.opacity = 0.7 * (1 - rt);
     }
-    // dust hemisphere
+    // dust hemisphere — 13h: a sea splash is a tall, narrow white column, so a
+    // round off the coast is unmistakably a wet miss and not a puff on the beach
     const dtn = clamp(t / 3, 0, 1);
-    b.dust.scale.setScalar(6 + 36 * dtn);
+    const ds = 6 + 36 * dtn;
+    if (b.water) b.dust.scale.set(ds * 0.38, ds * 1.9, ds * 0.38);
+    else b.dust.scale.setScalar(ds);
     b.dust.material.opacity = 0.85 * (1 - dtn);
     // debris (ballistic, first 1.8 s)
     if (t < 1.8 && b.seen) {
@@ -468,6 +537,16 @@ function updateBursts(dt) {
       p.scale.setScalar(5 + pt * 24);
       p.material.opacity = 0.66 * (1 - pt);
     }
+  }
+  // 13h — marker wisps: thin, slow, ~75 s. A marker, not a smoke screen — the
+  // opacity ceiling keeps the target legible through its own markers.
+  for (const w of WISPS) {
+    const a = (sim.now - w.t0) / 75;
+    if (a < 0 || a >= 1) { w.m.visible = false; continue; }
+    w.m.visible = true;
+    w.m.position.set(w.x, w.y + 8 + a * 26, w.z);
+    w.m.scale.set(2.5 + a * 5, 8 + a * 14, 1);
+    w.m.material.opacity = 0.32 * (1 - a) * (VISION.mode === 'day' ? 1 : 0.5);
   }
 }
 

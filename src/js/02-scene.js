@@ -448,6 +448,8 @@ function rebuildWorld() {
      the audit finding this row existed to catch. Same-island missions keep
      their targets — that is what "on file" means. */
   wipeRecordedTargets();
+  craterClear();   // 13h — impact scars belong to the old ground (runtime call;
+                   // the function is declared in the burst module and hoists)
   newMission(false);
 }
 function wipeRecordedTargets() {
