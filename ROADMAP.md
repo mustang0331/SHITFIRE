@@ -4,7 +4,7 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-30 · Head: `1ed1dcd` · **The file is `SHITFIRE.html`, not `index.html`**
+Last updated: 2026-07-30 · Head: `98d5f16` · **The file is `SHITFIRE.html`, not `index.html`**
 
 **Shipped off this board:** `13a` bino quality pin · `F1` range rounding · `13b` ACES tone mapping ·
 `13c` sky + time of day · **Track E complete** (`E1`–`E7`: legibility, SALUTE, night/NVG/thermal,
@@ -18,27 +18,32 @@ optics presentation — vignette, sway) · **Track B / stage 12 complete** (`12a
 balance pass — closed by `12i` wind `861c610`, `12j` degraded optics audit, `12k` balance audit) ·
 `F2`/`F1b` asset-keyed danger close (battery 600 m / mortar60 250 m, inclusive `<=`) `74727e3` ·
 `11a` E.1 THE GREAT CHOW RAID (Epilogue opens) `57532a5` · `11b` E.2 CLAWS OUT (kaiju scenario type,
-per-target armor divisor, DESTROYED-only kill rule) `1ed1dcd`.
+per-target armor divisor, DESTROYED-only kill rule) `1ed1dcd` · `11c` E.3 SUNLAMP ACTUAL (Epilogue
+finale — orbital directed-energy CFF, G17 callsign swap extended to SUNLAMP ACTUAL, DISCHARGE/SOLAR
+EVENT prowords, 10-digit grids) `98d5f16`. **All three SUNBURN chapters are now live.**
 
-**Next:** **`11c` (Stage 11 / Epilogue — E.3 SUNLAMP ACTUAL).** `11b` shipped `1ed1dcd`: a new
-chapter-only `kaiju` scenario type — a church-sized crimson crab (the bunker mesh scaled, with leak
-guards) wades ashore at 2.1 m/s on a convoy-style path from open water toward the nearest village;
-landfall both fails the mission and ends it (convoy-escape precedent, a type-aware verdict
-"FAIL — LANDFALL"). The effect engine gained `S.armor` — divides every round's contribution, so the
-crab is easy to hit and hard to hurt (effect bands doubled via `effScale` to compensate) — and a
-kaiju-specific rule that only DESTROYED counts as felling it; there is no "combat-ineffective" out,
-across `assessFFE`, `missionAccomplished`, the AAR ("FAIL — IT IS STILL WALKING"), and star grading
-alike. Found mid-build: the first optimal volley "neutralized" the crab into merely stopping, which is
-what forced the DESTROYED-only rule. Optimal fire runs ≈2 volleys while it's still moving, sloppy fire
-≈4, with the landfall clock always running. Humor per the rules: battalion rules it "a surface target
-and therefore yours," HELLHOUND elects not to react, and the AAR files one (1) hard structure, mobile,
-destroyed. Verified 7/7 live e2e (menu launch, wading measured, armor holding volley one, correction +
-REPEAT carrying it to DESTROYED before landfall); 12/12 shots; g13 e2e 15/15 and the effects harness
-48/48 unchanged; lint 0. Track A / stage 13 and Track G are both complete (Track G modulo `G20`,
-PARKED at the user's direction); Track F holds only the PARKED **F4**. With `11b` closed, the standing
-order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) advances to **`11c`**, marked
-NEXT below. Stage 14 (dialogue punch-up, Track D) is READY and has zero conflict surface with stage
-11, so it can still be pulled forward on request.
+**Next:** **`11d` (Stage 11 / Epilogue — G8 bloom, SUNLAMP + tier 0 only).** `11c` shipped `98d5f16`:
+the Epilogue finale, a call for fire to **SUNLAMP ACTUAL**, an orbital directed-energy cannon —
+everything doctrinal held unchanged, six elements, readback, OT corrections, `impact = aimpoint +
+error`; the beam is presentation on a point the ordinary machinery already resolved, exactly as the
+Epilogue thesis promises. Asset `'sunlamp'` joins the G17 delivery-time callsign swap (SUNLAMP ACTUAL
+owns all FDC traffic including the quip pools); prowords swap SHOT→DISCHARGE and SPLASH→SOLAR EVENT;
+time of flight is a WebAudio charging whine ramping for exactly the TOF; one pooled additive beam
+column of noon light (1.4 s); dispersion `assetScale` 0.22 (tight — orbital precision); ten-digit
+grids honored to the meter, with 8/6-digit accepted with corporate grace instead of a challenge; a
+corporate-jargon MTO (ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, AA7003) sits on
+the same non-negotiable target number and readback scorer as every other MTO. Chapter E.3 fires on a
+bunker complex, with HELLHOUND patched into the net and audibly tired. Verified 9/9 live e2e (callsign
+swap holding in real traffic, a 10-digit grid resolving to 0.5 m of aim, the corporate MTO, DISCHARGE/
+SOLAR EVENT with zero bare SHOT/SPLASH leaking through, a point-class kill, PASS, the beam visible in
+a screenshot); 12/12 shots; g13 e2e 15/15 and replay over 247 recorded transmissions both unchanged;
+lint 0. **All three SUNBURN chapters (E.1/E.2/E.3) are now live** — the Epilogue's content is
+complete. Track A / stage 13 and Track G are both complete (Track G modulo `G20`, PARKED at the user's
+direction); Track F holds only the PARKED **F4**. With `11c` closed, the standing order (stage 13 →
+stage 12 remainder → stage 11 → stage 14 + Track F) advances to **`11d`**, marked NEXT below — G8
+bloom, gated to SUNLAMP and quality tier 0 only, the one graphics row that was deliberately deferred
+out of Track A to land here instead. Stage 14 (dialogue punch-up, Track D) is READY and has zero
+conflict surface with stage 11, so it can still be pulled forward on request.
 
 > ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
 > (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
@@ -219,15 +224,16 @@ carried as open work. No further rows remain in this track; board advances per t
 Deferred 2026-07-29 behind stage 13 and the stage 12 remainder. Both have since shipped whole (Track A
 complete, Track B complete, and Track F's two schedulable side fixes F2/F1b closed alongside them
 `74727e3`), so the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) now
-reaches this track for the first time. `11a` shipped `57532a5`; `11b` shipped `1ed1dcd`; `11c` is NEXT,
-`11d`–`11e` stay queued behind it, one row at a time per the workflow rule.
+reaches this track for the first time. `11a` shipped `57532a5`; `11b` shipped `1ed1dcd`; `11c` shipped
+`98d5f16` — **all three SUNBURN chapters are now live**; `11d` is NEXT, `11e` stays queued behind it,
+one row at a time per the workflow rule.
 
 | ID | What | Owner | Status |
 |---|---|---|---|
 | 11a | ~~E.1 THE GREAT CHOW RAID~~ **DONE** `57532a5` — chapter-only `chow` scenario type (never in skirmish rotation): barbecue pit on a beach terrace, COOKS as a no-fire line (standard fratricide rules), gull flock massing 150–210 m off the pit — inherently danger close, full doctrine applies (the Epilogue thesis, NARRATIVE.md). Flock rendered as troop figures at gull scale (scale-reset guard added to `placeUnits`); grill smokes; near misses scatter the flock via the ordinary dispersal machinery. Humor per the rules: dial-11 briefing/outro plus two GUNNY coach lines; FDC stays deadpan; readback sacred throughout. Verified 8/8 live e2e (Epilogue unlocked, E.1 launched through the real menu, scenario shape checked, danger-close FFE flown with zero fratricide, graded PASS on ordinary machinery); 12/12 shots; lint 0. | Opus | **DONE** `57532a5` |
 | 11b | ~~E.2 CLAWS OUT~~ **DONE** `1ed1dcd` — new chapter-only `kaiju` scenario type: a church-sized crimson crab (the bunker mesh scaled, with leak guards) wades ashore at 2.1 m/s on a convoy-style path from open water toward the nearest village; landfall fails **and** ends the mission (convoy-escape precedent, type-aware verdict "FAIL — LANDFALL"). Effect engine gained `S.armor` (divides every round's contribution — easy to hit, hard to hurt; bands doubled via `effScale`) and a kaiju rule that only DESTROYED fells it, no "combat-ineffective" out (`assessFFE`, `missionAccomplished`, AAR "FAIL — IT IS STILL WALKING", star grading all agree) — found when the first optimal volley "neutralized" the crab into merely stopping. Optimal fire ≈2 volleys on the move, sloppy ≈4, landfall clock running throughout. Humor per the rules: battalion rules it "a surface target and therefore yours," HELLHOUND elects not to react, AAR files one (1) hard structure, mobile, destroyed. Verified 7/7 live e2e (menu launch, wading measured, armor holds volley one, correction+REPEAT to DESTROYED before landfall); 12/12 shots; g13 e2e 15/15 and effects harness 48/48 unchanged; lint 0. | Opus | **DONE** `1ed1dcd` |
-| 11c | E.3 SUNLAMP ACTUAL — **still `impact = aimpoint + error`**; only pacing, prowords, beam visual, audio differ | Opus | **NEXT** |
-| 11d | G8 bloom, gated to SUNLAMP + quality tier 0 only | Opus | READY |
+| 11c | ~~E.3 SUNLAMP ACTUAL~~ **DONE** `98d5f16` — the Epilogue finale: a call for fire to SUNLAMP ACTUAL, an orbital directed-energy cannon, **still `impact = aimpoint + error`** — the beam is presentation on a point the ordinary machinery resolved. Asset `'sunlamp'` joins the G17 delivery-time callsign swap (owns all FDC traffic incl. quip pools); prowords SHOT→DISCHARGE, SPLASH→SOLAR EVENT; TOF is a WebAudio charging whine ramping for exactly the time of flight; one pooled additive beam column of noon light (1.4 s); dispersion `assetScale` 0.22; ten-digit grids honored to the meter, 8/6-digit accepted with corporate grace; corporate MTO (ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, AA7003) on the same non-negotiable target number and readback scorer as every other MTO. Chapter E.3 on a bunker complex, HELLHOUND patched in and tired. Verified 9/9 live e2e (callsign swap in real traffic, 10-digit grid to 0.5 m aim, corporate MTO, DISCHARGE/SOLAR EVENT with zero bare SHOT/SPLASH, point-class kill, PASS, beam visible in screenshot); 12/12 shots; g13 e2e 15/15 + replay over 247 unchanged; lint 0. **All three SUNBURN chapters are now live.** | Opus | **DONE** `98d5f16` |
+| 11d | G8 bloom, gated to SUNLAMP + quality tier 0 only | Opus | **NEXT** |
 | 11e | Campaign-wide star par balance pass | Opus | READY |
 
 Chapter stubs already exist in `SHITFIRE.html` with `impl: false` (search `impl: false`).
@@ -500,3 +506,4 @@ work does not touch rendering.
 | 2026-07-30 | **F2 shipped `74727e3`, F1b folded in — Track F's schedulable-anytime side fixes are closed, and the deferral queue ahead of Track C has fully emptied.** BALLISTICS_RESEARCH.md §6 was followed both ways: the flat, un-tiered danger-close gate is a deliberate and correct simplification and stays — the row's original ≤800/≤700/≤600 radio-tension bands are deliberately **not** built — but danger close is weapon-specific, and the 60mm mortar chapters were demanding the proword at an artillery distance. A single `dangerCloseRadius()` helper, sited next to `assetScale()`, keys `CONFIG.MISSION.dangerClose` off the chapter's asset (battery 600 m / mortar60 250 m) so the figure can never fork between call sites again. F1b (the boundary was exclusive `<`; DOCTRINE's "within 600 m" is inclusive) folded into the same edit as `<=`, rather than a second pass over the same line. DOCTRINE.md's danger-close section annotated implemented-as-shipped. Verified: extracted-helper check (600/250 by asset), 15/15 danger-close mission e2e, 12/12 shots, lint 0. **With Track F now holding only the PARKED F4, and Track A/B both complete, the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) reaches stage 11 for the first time. Track C is un-parked; `11a` (E.1 THE GREAT CHOW RAID) is marked NEXT.** |
 | 2026-07-30 | **11a shipped `57532a5` — the Epilogue opens with E.1 THE GREAT CHOW RAID.** New chapter-only scenario type `chow` (never entering the skirmish rotation): a barbecue pit on a beach terrace, COOKS as a no-fire line under the standard fratricide rules, and a seagull flock massing 150–210 m off the pit — inherently danger close, so full doctrine applies exactly as NARRATIVE.md's Epilogue thesis promises ("doctrine remains in full effect, which is the joke"). The flock is rendered as troop figures at gull scale, which needed a scale-reset guard added to `placeUnits` so gull-scale figures can't leak their scale into a later normal-scale spawn; grill smokes for atmosphere; near misses scatter the flock through the existing dispersal machinery rather than any new code path. Humor lands per the rules: a dial-11 briefing and outro plus two GUNNY coach lines, while the FDC itself stays deadpan and the readback stays sacred throughout. Verified 8/8 live e2e (Epilogue unlocked, E.1 launched through the real menu, scenario shape checked, a danger-close FFE flown with zero fratricide, graded PASS on the ordinary grading machinery — no bespoke chow-specific grading was needed); 12/12 shots; lint 0. **Board advances to `11b` (E.2 CLAWS OUT), the first not-DONE row in Track C.** |
 | 2026-07-30 | **11b shipped `1ed1dcd` — E.2 CLAWS OUT, a moving target that is also a crab.** New chapter-only scenario type `kaiju`: a church-sized crimson crab (the bunker mesh scaled up, with leak guards) wades in from open water toward the nearest village at 2.1 m/s on a convoy-style path; landfall both fails the mission and ends it outright, reusing the convoy-escape precedent for a type-aware verdict, "FAIL — LANDFALL". The effect engine gained two new pieces: `S.armor`, which divides every round's contribution to the effect roll (easy to hit, hard to hurt — effect bands doubled via `effScale` so the mission stays fair), and a kaiju-only rule that only DESTROYED counts as felling it, with no "combat-ineffective" pass — `assessFFE`, `missionAccomplished`, the AAR verdict ("FAIL — IT IS STILL WALKING"), and star grading all agree on this. The DESTROYED-only rule exists because the first optimal volley, under the ordinary rules, "neutralized" the crab into just stopping in place — not the intended outcome for a kaiju chapter. Optimal fire clears it in roughly 2 volleys while it's still wading; sloppy fire needs roughly 4, with the landfall clock running the whole time. Humor lands per the rules without breaking the readback: battalion rules the crab "a surface target and therefore yours," HELLHOUND elects not to react to any of it, and the AAR files exactly one (1) hard structure, mobile, destroyed. Verified 7/7 live e2e (menu launch, wading speed measured, armor holding through volley one, a correction plus REPEAT carrying it to DESTROYED before landfall); 12/12 shots; the G13 effects e2e (15/15) and effects harness (48/48) both unchanged; lint 0. **Board advances to `11c` (E.3 SUNLAMP ACTUAL), the first not-DONE row in Track C.** |
+| 2026-07-30 | **11c shipped `98d5f16` — E.3 SUNLAMP ACTUAL, the Epilogue's finale, and all three SUNBURN chapters are now live.** A call for fire to an orbital directed-energy cannon, with every doctrinal element held unchanged: six elements, three transmissions, readback, OT-frame corrections, `impact = aimpoint + error` — the beam is presentation riding a point the ordinary machinery already resolved, exactly the Epilogue's founding thesis. Asset `'sunlamp'` joins the G17 delivery-time callsign swap, so SUNLAMP ACTUAL owns all FDC traffic on the chapter including the quip pools; prowords swap SHOT→DISCHARGE and SPLASH→SOLAR EVENT; time of flight is rendered as a WebAudio charging whine ramping for exactly the TOF rather than a silent wait; impact is one pooled additive beam column of noon-colored light (1.4 s). Dispersion tightens to `assetScale` 0.22 — orbital precision is the chapter's own flavor of "tighter follow-up rounds," not a doctrine change. Ten-digit grids are honored to the meter (the chapter's gag: SUNLAMP ACTUAL cheerfully asks for one), with 8- and 6-digit grids still accepted, just with corporate grace instead of a challenge. The MTO is dressed in corporate-orbital jargon (ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, AA7003) but sits on the exact same non-negotiable target-number check and readback scorer G11 built for every other MTO — the joke is the wrapper, not the gate. Chapter E.3 fires on a bunker complex, with HELLHOUND patched into the net for one last chapter and audibly tired of all of it. Verified 9/9 live e2e (the callsign swap holding through real traffic, a 10-digit grid resolving to 0.5 m of aim, the corporate MTO parsing and reading back correctly, DISCHARGE/SOLAR EVENT firing with zero bare SHOT/SPLASH leaking through, a point-class kill, a PASS verdict, the beam itself visible in a screenshot); 12/12 shots; the g13 effects e2e (15/15) and a 247-transmission replay both unchanged; lint 0. **Board advances to `11d`** (G8 bloom, gated to SUNLAMP and quality tier 0 only — the one Track A graphics row deliberately deferred out of stage 13 to land here). |

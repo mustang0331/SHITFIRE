@@ -105,6 +105,22 @@ exists for it) so the fight can't resolve as merely stopping a still-standing cr
 "a surface target and therefore yours"; HELLHOUND declines to react to any of it. Shipped `1ed1dcd`;
 see ROADMAP.md `11b`.*
 
+*E.3 is built as specified above — the call for fire goes to SUNLAMP ACTUAL, an orbital
+directed-energy cannon, with every doctrinal element intact: six elements, three transmissions,
+readback, OT-frame corrections, `impact = aimpoint + error`. The beam is presentation on a point the
+ordinary machinery already resolved, which is the whole joke of the Epilogue applied to its own
+finale. `'sunlamp'` joins G17's delivery-time callsign swap, so SUNLAMP ACTUAL owns all FDC traffic on
+the chapter, quip pools included; prowords swap SHOT→DISCHARGE and SPLASH→SOLAR EVENT; TOF plays as a
+WebAudio charging whine ramping for exactly the time of flight rather than a silent wait; impact is one
+pooled additive beam column of noon-colored light. Dispersion tightens to `assetScale` 0.22 —
+orbital-precision follow-up rounds. SUNLAMP ACTUAL cheerfully requests a ten-digit grid and gets one
+honored to the meter, with 8- and 6-digit grids still accepted, just with corporate grace instead of a
+challenge — the corporate-orbital MTO wrapper (ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED
+ENERGY, AA7003) sits on the same non-negotiable target-number check and readback scorer as any other
+MTO. Fought on a bunker complex, with HELLHOUND patched into the net one last time and audibly tired.
+Shipped `98d5f16`; see ROADMAP.md `11c`. **All three SUNBURN chapters are now live — the Epilogue's
+content is complete.***
+
 ## VOLUME V — ON WINGS *(FUTURE — locked tease, do not build yet)*
 
 Close air support: 9-line briefs, talk-ons, attack geometry. Appears on the shelf as a locked spine — "VOLUME V: ON WINGS — awaiting aircraft." Built only after the surface-to-surface campaign is complete.
