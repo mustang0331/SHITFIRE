@@ -35,7 +35,9 @@ A CFF is a **request**, not an order. Six elements sent in three transmissions; 
 
 ## Danger close
 
-Artillery/mortar round predicted within **600 m** of friendlies → observer announces **"danger close."** Adjust with **creeping fire**: corrections of **100 m or less**, walking rounds toward the target from the safe side.
+Artillery/mortar round predicted within **600 m** of friendlies → observer announces **"danger close."** Adjust with **creeping fire**: corrections of **100 m or less**, walking rounds toward the target from the safe side. This 600 m figure is an artillery-specific simplification — JFIRE's own risk-estimate tables (see G18 below) put a 60mm mortar's danger-close distance at roughly a third to half of the 155's.
+
+**Implemented `74727e3`.** `dangerCloseRadius()`, sited next to `assetScale()`, keys `CONFIG.MISSION.dangerClose` off the chapter's firing asset instead of a single flat constant — **battery 600 m**, **mortar60 250 m** — so a 60mm chapter can no longer demand the proword at an artillery distance. The comparison is also now **inclusive** (`<=`), matching doctrine's "within 600 m" wording exactly (folds in F1b, previously exclusive `<`). The flat-gate *simplification itself* was deliberately kept — BALLISTICS_RESEARCH.md §6 argues the tiered 800/700/600 radio-tension bands are not warranted — only the single number was wrong for one asset. Verified: extracted-helper check (600/250 by asset), 15/15 danger-close mission e2e, 12/12 shots, lint 0.
 
 ## FDC → observer traffic
 

@@ -4,7 +4,7 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-30 · Head: `861c610` · **The file is `SHITFIRE.html`, not `index.html`**
+Last updated: 2026-07-30 · Head: `74727e3` · **The file is `SHITFIRE.html`, not `index.html`**
 
 **Shipped off this board:** `13a` bino quality pin · `F1` range rounding · `13b` ACES tone mapping ·
 `13c` sky + time of day · **Track E complete** (`E1`–`E7`: legibility, SALUTE, night/NVG/thermal,
@@ -15,19 +15,21 @@ match, duplicate-DANGER-CLOSE readback · `G19` CFF audit · **G-B doctrine clus
 `G11` OT direction & MTO readback, `G14` immediate suppression/smoke, `G22`–`G27` the CFF protocol
 rows) · **Track A / stage 13 visual overhaul complete** (`13a`–`13i`: bino quality pin through
 optics presentation — vignette, sway) · **Track B / stage 12 complete** (`12a`–`12k`: coach through
-balance pass — closed by `12i` wind `861c610`, `12j` degraded optics audit, `12k` balance audit).
+balance pass — closed by `12i` wind `861c610`, `12j` degraded optics audit, `12k` balance audit) ·
+`F2`/`F1b` asset-keyed danger close (battery 600 m / mortar60 250 m, inclusive `<=`) `74727e3`.
 
-**Next:** **Stage 11 (Epilogue)** — Track B / stage 12 is now closed whole: `12i`/`12j`/`12k` flipped
-DONE 2026-07-30 (wind model `861c610`; degraded-optics/dead-laser confirmed already shipped with
-stage 10; balance pass audited clean, no chapter data changed). Track A / stage 13 and Track G are
-both complete (Track G modulo `G20`, PARKED at the user's direction). Per the standing order
-(stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F), the board now advances to **stage 11**
-(`11a`–`11e`, currently PARKED by decision — someone needs to un-park it to actually start). Alongside
-or ahead of it, Track F still has open, schedulable-anytime fix rows: **F2** (tiered danger-close radio
-tension, READY — read BALLISTICS_RESEARCH.md §6 first) and **F1b** (danger-close boundary inclusivity,
-READY, foldable into F2); **F4** (multi-phase MEAT GRINDER chaining) stays PARKED pending single-mission
-balance. Stage 14 (dialogue punch-up, Track D) is READY and has zero conflict surface with stage 13/12,
-so it can be pulled forward on request.
+**Next:** **`11a` (Stage 11 / Epilogue — E.1 THE GREAT CHOW RAID).** Track B / stage 12 is closed whole
+(`12i`/`12j`/`12k` flipped DONE 2026-07-30) and Track F's F2/F1b — the last schedulable-anytime side
+fixes that were open alongside it — landed the same day: **F2** `74727e3` asset-keys danger close
+(battery 600 m / mortar60 250 m) off the chapter's asset instead of building the tiered 800/700/600
+radio-tension bands BALLISTICS_RESEARCH.md §6 argued against, and **F1b** (inclusive `<=`) folded into
+the same edit. Track A / stage 13 and Track G are both complete (Track G modulo `G20`, PARKED at the
+user's direction). With Track F now holding only the PARKED **F4** (multi-phase MEAT GRINDER chaining,
+pending single-mission balance), the deferral queue ahead of Track C — stage 13, then stage 12 remainder
+— has fully emptied, and the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 +
+Track F) reaches **stage 11 (Epilogue)** for the first time. Track C's rows are un-parked accordingly;
+**`11a`** is marked NEXT below. Stage 14 (dialogue punch-up, Track D) is READY and has zero conflict
+surface with stage 11, so it can still be pulled forward on request.
 
 > ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
 > (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
@@ -203,15 +205,21 @@ carried as open work. No further rows remain in this track; board advances per t
 > wind (12i), night/illumination *missions* (12h), and degraded visibility (12j). Do not implement
 > TOD twice.
 
-### Track C — Stage 11: Epilogue (deferred, by decision)
+### Track C — Stage 11: Epilogue (deferral queue emptied 2026-07-30 — un-parked)
+
+Deferred 2026-07-29 behind stage 13 and the stage 12 remainder. Both have since shipped whole (Track A
+complete, Track B complete, and Track F's two schedulable side fixes F2/F1b closed alongside them
+`74727e3`), so the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) now
+reaches this track for the first time. `11a` is NEXT; `11b`–`11e` stay queued behind it, one row at a
+time per the workflow rule.
 
 | ID | What | Owner | Status |
 |---|---|---|---|
-| 11a | E.1 THE GREAT CHOW RAID | Opus | PARKED |
-| 11b | E.2 CLAWS OUT | Opus | PARKED |
-| 11c | E.3 SUNLAMP ACTUAL — **still `impact = aimpoint + error`**; only pacing, prowords, beam visual, audio differ | Opus | PARKED |
-| 11d | G8 bloom, gated to SUNLAMP + quality tier 0 only | Opus | PARKED |
-| 11e | Campaign-wide star par balance pass | Opus | PARKED |
+| 11a | E.1 THE GREAT CHOW RAID | Opus | **NEXT** |
+| 11b | E.2 CLAWS OUT | Opus | READY |
+| 11c | E.3 SUNLAMP ACTUAL — **still `impact = aimpoint + error`**; only pacing, prowords, beam visual, audio differ | Opus | READY |
+| 11d | G8 bloom, gated to SUNLAMP + quality tier 0 only | Opus | READY |
+| 11e | Campaign-wide star par balance pass | Opus | READY |
 
 Chapter stubs already exist in `SHITFIRE.html` with `impl: false` (search `impl: false`).
 Volume V "ON WINGS" stays a locked spine. **Do not build CAS.**
@@ -251,8 +259,8 @@ so continuing on this board is not wasted work if the port later goes ahead.
 | ID | What | Owner | Status |
 |---|---|---|---|
 | F1 | **Doctrine bug: range rounding accepted 50 m outside FFE.** Both rounding checks validated against `% 50` unconditionally; per DOCTRINE.md 50 m is legal only on the correction entering FFE. Gated on `p.ffe`; the STRICT NET reply and the strict-chapter intro line both stated the loose rule as always true and were corrected. | Opus | **DONE** `e7ccfdb` |
-| F1b | Danger-close check `minF < 600` is exclusive; doctrine's "within 600 m" is inclusive → `<=`. Fold into F2 if F2 runs first (F2 replaces the flat threshold). | — | READY |
-| F2 | Tiered danger-close radio tension (≤800/≤700/≤600 bands) + FDC map-awareness gating — unmarked friendlies mean the FDC can't know, so no friction; marked friendlies mean a visible pause. **Read [BALLISTICS_RESEARCH.md](BALLISTICS_RESEARCH.md) §6 first** — it argues the flat 600 m gate is a deliberate and correct simplification, which bears directly on how far this row should go. | — | READY |
+| F1b | ~~Danger-close check `minF < 600` is exclusive; doctrine's "within 600 m" is inclusive → `<=`.~~ **DONE** `74727e3` — folded into F2's edit: the comparison is now `<=`, in the same pass as the asset-keying (no second edit over the same line). | — | **DONE** `74727e3` |
+| F2 | ~~Tiered danger-close radio tension (≤800/≤700/≤600 bands)~~ **DONE** `74727e3`, descoped per research — BALLISTICS_RESEARCH.md §6 argues the flat un-tiered gate is a deliberate, correct simplification, so the tiered 800/700/600 radio-tension bands and FDC map-awareness gating were **not built**. What *was* wrong: danger close is weapon-specific, and the 60mm mortar chapters were demanding the proword at an artillery distance. `dangerCloseRadius()`, next to `assetScale()`, now keys `CONFIG.MISSION.dangerClose` off the chapter's asset — battery 600 m / mortar60 250 m. F1b (inclusive `<=`) folded into the same edit. Verified: extracted-helper check (600/250 by asset), 15/15 danger-close mission e2e, 12/12 shots, lint 0. | Opus | **DONE** `74727e3` |
 | F3 | ~~In-sim cheat-sheet overlay `[H]`~~ **DONE** `e825c0b` — pull-up, nothing pauses, [H]/[ESC]. Content transcribed from CHEATSHEET.md and **updated where today's rows changed the truth** (POS REP first on polar, the OT-direction refusal, MTO readback, G-M angle, new prowords, fail≠end). ⚠ CHEATSHEET.md itself now trails the sim — next docs pass. | Fable | **DONE** `e825c0b` |
 | F4 | Multi-phase MEAT GRINDER chaining (4.4) — revisit after the single-mission version is balanced | Opus | PARKED |
 | F5 | ~~**STT/typo tolerance in adjust corrections.**~~ **DONE** `1e39359` — transcript evidence: voice recognition renders "right" as "WRITE" and "drop" as "DROPPED"/"DRAW"; the `\b(left\|right)\s+(\d+)` and `\b(add\|drop)\s+(\d+)` regexes (the `left|right` / `add|drop` matches in `parseMessage`) matched none of these, so a mangled deviation word was silently dropped from the correction (no error, no notice) while a mangled range word alone parsed as full `unknown`. A stray-number check now catches the half-correction instead of letting it pass silently. See [DIALOGUE_REVISIONS.md §9.4](DIALOGUE_REVISIONS.md). | Opus | Correction with one STT-plausible word variant (e.g. "write"/"dropped") still parses both fields; nothing is silently dropped | **DONE** `1e39359` |
@@ -480,3 +488,4 @@ work does not touch rendering.
 | 2026-07-30 | **13i shipped** `5384cf1` — optics presentation (vignette + hold sway), closing GRAPHICS.md §G7 **and Track A / stage 13 whole** (`13a`–`13i` all DONE). Field stop is CSS on the existing vignette element, zero WebGL cost: interior edge-darkening plus a thin warm/cool chromatic fringe hugging the stop; a first attempt used a wide amber halo that dominated the field, caught visually and tightened to a hairline rim; mil graduations stay at full contrast, unencroached, the row's gate. Hold sway: a two-frequency constant-angle wobble added in `lookDir` while glassing, shared by the view, reticle measurement, and laser ray so all three agree; the raise transient settles ~1 s; a lase steadies the hold to near zero through the raycast (set before the scheduled ray). `CONFIG.CAMERA.swayMil` (0.65) tunes it, 0 disables; yaw/pitch state untouched. Verified 12/12 screenshot states clean; lint 0 errors; offline zero-network confirmed. **Board advances to the stage 12 remainder**, per the standing order (stage 13 → stage 12 remainder → stage 11): first not-DONE row is **12h** (smoke + illumination), whose `BLOCKED by 13c` note is now moot since 13c shipped `999e4c6` on 2026-07-29 and the rest of stage 13 has since closed behind it. 12i/12j's blockers are resolved the same way, flipped to READY. |
 | 2026-07-30 | **12h shipped** `6b7fd3c` — smoke and illumination mission types, closing the last row that was waiting on 13c's TOD. Shell is now a real method-of-engagement element like sheaf/fuze: named in the call (SHELL SMOKE / WP → smoke / ILLUMINATION), switched bare mid-mission ("SHELL SMOKE, OVER"), with immediate smoke riding the same one-transmission path as immediate suppression. The MTO announces the real nature (155 SMOKE / 155 ILLUMINATION FUZE TIME) rather than the shell words verbatim, which are stripped from the description readback. **SMOKE** pools standing screens (~90 s) and scores ZERO casualties — only HE feeds the graded model, since smoke can't kill convoy vehicles — but a screen within `EFFECTS.screen.radius` (120 m) of the enemy suppresses by OBSCURATION, so a screening mission still grades PASS — TARGET SUPPRESSED; intent follows the shell rather than a body count. **ILLUMINATION** never touches the ground: no crater, casualties, fratricide, or alerts, just one pooled PointLight + flare sprite riding down over ~55 s. r160's physical light units needed roughly 240k candela to pool visible light on terrain 300 m below — a first attempt at 2.8 legacy units lit nothing, caught by the night screenshot rather than the parse gate. Graded PASS — ILLUMINATION PROVIDED; the strict net doesn't demand casualty BDA for a mission whose entire point is light. This is what 13c's night TOD existed to support. **Absorbs G14's immediate smoke**, which now drives a real screen/obscuration effect instead of parsing to inert flavor text — supersedes nothing else on the board. Verified 11/11 e2e (parse aliases, a live immediate-smoke mission with obscuration-suppression PASS, a live night illumination mission with a screenshot of the lit terrain pool); 12/12 shots; effects harness 48/48 unchanged; replay over 247 recorded transmissions unchanged. **Board advances to 12i** (wind model — drifts smoke so it reads as a tool, now that 12h gives it a real screen to drift). |
 | 2026-07-30 | **12i shipped `861c610`, 12j and 12k closed by audit — Track B / STAGE 12 IS NOW COMPLETE.** 12i: wind rolls per island off its own seeded stream (deterministic across boots, 1.5–6 m/s), reported at mission start as a MET line; every smoke source obeys the one vector — burst columns lean downwind (replacing the old hardcoded +x lean every column shared), 13h wisps drift, 12h screens sag downwind with upper puffs leading, the illum chute rides it; rounds stay unaffected per the ballistics rule, and the MET line says so. 12j: audited rather than built — the noLaser mechanism and chapter 2.1 "NUMBERS ON A COMPASS" (polar, dead laser) already shipped with stage 10; verified live by driving the real menu in headless Chrome (unlocked Volume II, raised binos, pressed [L]: "LRF FAULT — NO RETURN", mil card auto-opens, no errors) — the gate was already satisfied, the board just hadn't flipped it. 12k: audited the star-par balance against the post-G13/G18 graded model — par clock excludes pre-call observation time, perfect-run floors leave 2–3× headroom against every chapter's par, neutralization is *looser* than the old binary rule, and the 4.2 mortar prone-spiral fits its par as intended; conclusion is no chapter data needed to change. With these three closed, **stage 12 has no open rows left**; board advances to **stage 11 (Epilogue)** per the standing order, with Track F's F2/F1b available as schedulable-anytime side fixes and stage 14 pullable forward on request. |
+| 2026-07-30 | **F2 shipped `74727e3`, F1b folded in — Track F's schedulable-anytime side fixes are closed, and the deferral queue ahead of Track C has fully emptied.** BALLISTICS_RESEARCH.md §6 was followed both ways: the flat, un-tiered danger-close gate is a deliberate and correct simplification and stays — the row's original ≤800/≤700/≤600 radio-tension bands are deliberately **not** built — but danger close is weapon-specific, and the 60mm mortar chapters were demanding the proword at an artillery distance. A single `dangerCloseRadius()` helper, sited next to `assetScale()`, keys `CONFIG.MISSION.dangerClose` off the chapter's asset (battery 600 m / mortar60 250 m) so the figure can never fork between call sites again. F1b (the boundary was exclusive `<`; DOCTRINE's "within 600 m" is inclusive) folded into the same edit as `<=`, rather than a second pass over the same line. DOCTRINE.md's danger-close section annotated implemented-as-shipped. Verified: extracted-helper check (600/250 by asset), 15/15 danger-close mission e2e, 12/12 shots, lint 0. **With Track F now holding only the PARKED F4, and Track A/B both complete, the standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) reaches stage 11 for the first time. Track C is un-parked; `11a` (E.1 THE GREAT CHOW RAID) is marked NEXT.** |
