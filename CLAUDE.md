@@ -18,7 +18,7 @@ Scope per stage lives in **SPEC.md** ("BUILD ORDER"). The campaign storyline (vo
 `H(x,z)` · `fireMission(targetLocation)` · `applyCorrection(otFrameDelta)` · `FDC.say(msg)` · `Scenario` · `gradeMission(metrics) → stars` (stage 9+) · **TLOG** (session transcript — logs comms, parse classification, impacts, and AAR outcomes; exportable text/JSON from the mission menu, persisted) used for dialogue review/correction — treat its entry format as stable so exports stay diffable across stages
 
 ## Domain facts — get these right
-- **Ballistics = direct-impact model.** `impact = aimpoint + error`. NEVER simulate a trajectory, drag, or firing tables.
+- **Ballistics = direct-impact model.** The IMPACT POINT is always `impact = aimpoint + error` — never simulate a trajectory, drag, or firing tables to *place* a round. **Terminal EFFECTS at that point may be modeled statistically** — fuze (airburst/delay/quick), sheaf shape, target posture (standing/prone/dug-in) and per-asset lethal radius may scale casualties/probability of effect, per DOCTRINE.md's researched figures (§Pre-mission and effects data). That is `effect = f(where it landed, how it was fused, what it hit)`, not a flight model. The line that must never be crossed: nothing computes *where a round goes* from muzzle velocity, angle, or drag.
 - **First round** deviates randomly within a range; **follow-up rounds** are significantly tighter.
 - **Corrections are in the observer-target (OT) frame.** Convert to a world delta via OT azimuth and move `aimpoint`. **No angle-T / gun-line rotation** — gun assumed to execute perfectly.
 - Callsigns: observer **MUSTANG 12**, FDC **HELLHOUND FIRES**. FDC tone: dark-humored, sardonic, sharp on wrong calls — but never break the doctrinal readback.
