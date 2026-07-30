@@ -1,0 +1,13 @@
+#!/bin/sh
+# SHITFIRE pre-commit — runs the gates only when the sim file is staged.
+# Installed via: git config core.hooksPath .githooks
+# Bypass (emergencies only): git commit --no-verify
+if git diff --cached --name-only | grep -q '^SHITFIRE\.html$'; then
+  echo "[gate] SHITFIRE.html staged - running syntax gate + parser-order guard"
+  powershell -NoProfile -File tools/syntaxgate.ps1 || {
+    echo "[gate] SYNTAX GATE FAILED - commit blocked"; exit 1; }
+  cscript //Nologo //E:JScript tools/parser-order.js >/dev/null || {
+    echo "[gate] PARSER-ORDER GUARD FAILED - commit blocked"; exit 1; }
+  echo "[gate] clean"
+fi
+exit 0
