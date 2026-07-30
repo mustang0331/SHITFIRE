@@ -4207,10 +4207,15 @@ function parseMessage(raw) {
     const kw = new Set(['hellhound', 'fires', 'this', 'is', 'mustang', 'adjust',
       'fire', 'for', 'effect', 'shift', 'from', 'known', 'point', 'kp', 'a', 'b',
       'ab', 'left', 'right', 'add', 'drop', 'direction', 'over', 'out', 'break',
-      'danger', 'close']);
+      'danger', 'close',
+      'up', 'down']);          // G23 — or the vertical becomes the target description
     const desc = toks.filter(w => !kw.has(w) && !/^\d+$/.test(w)).join(' ');
+    // G23 — the shift vertical ("up 55"), same rule as polar: sent only when the
+    // known-point-to-target height difference is >= 35 m.
+    const sUD = t.match(/\b(up|down)\s+(\d+)/);
     return { type: 'cff', method: 'shift', warno, kpId: mShift[1],
              sRight, sAdd, dirMils: sDir ? parseInt(sDir[1]) : null,
+             vertM: sUD ? (sUD[1] === 'up' ? 1 : -1) * parseInt(sUD[2]) : null,
              desc, raw: t, toks };
   }
   // polar: "direction 4400, distance 2100"
@@ -4223,21 +4228,38 @@ function parseMessage(raw) {
     const stop = new Set(['over', 'out', 'break']);
     const descToks = [];
     for (let i = di; i < toks.length && !stop.has(toks[i]); i++) descToks.push(toks[i]);
+    // G23 — the polar vertical ("down 40"). Doctrine sends it only when the
+    // observer-to-target height difference is >= 35 m; captured so that can be
+    // checked rather than ignored.
+    const pUD = t.match(/\b(up|down)\s+(\d+)/);
     return { type: 'cff', method: 'polar', warno, dirMils: parseInt(mDir[1]),
-             distM: parseInt(mDist[1]), desc: descToks.join(' '), raw: t, toks };
+             distM: parseInt(mDist[1]),
+             vertM: pUD ? (pUD[1] === 'up' ? 1 : -1) * parseInt(pUD[2]) : null,
+             // strip the vertical out of the description — it follows the distance,
+             // so "distance 2100, down 40, troops" would read as "down 40 troops"
+             desc: descToks.join(' ').replace(/\b(up|down)\s+\d+\s*/g, '').trim(),
+             raw: t, toks };
   }
   // standalone OT direction ("direction 5920, over") — doctrine requires it
   // before or with the first correction on a grid mission
   const mDirOnly = t.match(/\bdirection\s+(\d+)\b/);
   if (mDirOnly && !/\b(left|right|add|drop)\b/.test(t))
     return { type: 'direction', dirMils: parseInt(mDirOnly[1]) };
-  const corr = { right: 0, add: 0 };
+  /* G23 — the correction now carries its VERTICAL. `corr` had exactly two fields,
+     right and add, so every `up`/`down` the observer sent was matched by nothing
+     and silently discarded, and `"up 20, over"` on its own fell through to
+     `unknown` and got mocked. Height of burst is a real doctrinal correction
+     (DOCTRINE.md §54) and the third element of the correction sequence
+     deviation → range → height of burst. */
+  const corr = { right: 0, add: 0, vert: 0 };
   let any = false;
   const mLR = t.match(/\b(left|right)\s+(\d+)/);
   if (mLR) { corr.right = (mLR[1] === 'right' ? 1 : -1) * parseInt(mLR[2]); any = true; }
   const mAD = t.match(/\b(add|drop)\s+(\d+)/);
   if (mAD) { corr.add = (mAD[1] === 'add' ? 1 : -1) * parseInt(mAD[2]); any = true; }
-  if (any || ffe) return { type: 'adjust', corr, any, ffe };
+  const mUD = t.match(/\b(up|down)\s+(\d+)/);
+  if (mUD) { corr.vert = (mUD[1] === 'up' ? 1 : -1) * parseInt(mUD[2]); any = true; }
+  if (any || ffe) return { type: 'adjust', corr, any, ffe, raw: t, toks };
   if (/\brepeat\b/.test(t)) return { type: 'repeat' };
   /* G22 — a bare WARNING ORDER is doctrinal Transmission 1 ("HELLHOUND FIRES,
      this is MUSTANG 12, adjust fire, over"). It used to fall through to `unknown`
@@ -4406,7 +4428,8 @@ function handleCFF(p) {
     locStr = `SHIFT KNOWN POINT ${p.kpId}` +
       (p.dirMils !== null ? `, DIRECTION ${fmtMils(p.dirMils % 6400)}` : '') +
       (p.sRight ? `, ${p.sRight > 0 ? 'RIGHT' : 'LEFT'} ${Math.abs(p.sRight)}` : '') +
-      (p.sAdd ? `, ${p.sAdd > 0 ? 'ADD' : 'DROP'} ${Math.abs(p.sAdd)}` : '');
+      (p.sAdd ? `, ${p.sAdd > 0 ? 'ADD' : 'DROP'} ${Math.abs(p.sAdd)}` : '') +
+      (p.vertM ? `, ${p.vertM > 0 ? 'UP' : 'DOWN'} ${Math.abs(p.vertM)}` : '');
   } else if (p.method === 'polar') {
     if (p.distM < 100 || p.distM > 12000) {
       FDC.say(pick(QUIPS.badGrid), { delay: 1 });
@@ -4415,7 +4438,8 @@ function handleCFF(p) {
     const az = (p.dirMils % 6400) / MILS_PER_RAD;
     cx = OP.x + Math.sin(az) * p.distM;
     cz = OP.z - Math.cos(az) * p.distM;
-    locStr = `DIRECTION ${fmtMils(p.dirMils % 6400)}, DISTANCE ${p.distM}`;
+    locStr = `DIRECTION ${fmtMils(p.dirMils % 6400)}, DISTANCE ${p.distM}` +
+             (p.vertM ? `, ${p.vertM > 0 ? 'UP' : 'DOWN'} ${Math.abs(p.vertM)}` : '');
   } else if (p.digits.length === 6) {
     const e3 = parseInt(p.digits.slice(0, 3)), n3 = parseInt(p.digits.slice(3));
     const w = enToWorld(e3 * 100 + 50, n3 * 100 + 50); cx = w.x; cz = w.z;
@@ -4445,6 +4469,31 @@ function handleCFF(p) {
   }
   if (dcSent) locStr += ', DANGER CLOSE';
   const notes = formatNotes(p);
+  /* G23 — the vertical is doctrinally conditional, not optional: DOCTRINE.md §27
+     and §28 send up/down ONLY when the height difference from the reference point
+     to the target is 35 m or more. The heightfield knows that difference exactly,
+     so the trainer can check both directions of the mistake instead of ignoring
+     the element. Reference is the OBSERVER for polar and the KNOWN POINT for a
+     shift, because that is what each method measures from. */
+  if (p.method === 'polar' || p.method === 'shift') {
+    let refH = OP.h;
+    if (p.method === 'shift') {
+      const rkp = (Scenario.kps || []).find(k => k.id === p.kpId);
+      if (rkp) refH = H(rkp.x, rkp.z);
+    }
+    const dH = H(cx, cz) - refH;
+    const needVert = Math.abs(dH) >= 35;
+    const sentVert = p.vertM !== null && p.vertM !== undefined;
+    if (needVert && !sentVert)
+      notes.push(`Height difference to the target is ${Math.round(dH)} m — at 35 m or more the ` +
+                 `vertical shift is part of the call. Send ${dH > 0 ? 'UP' : 'DOWN'} ` +
+                 `${Math.round(Math.abs(dH) / 5) * 5}.`);
+    else if (!needVert && sentVert)
+      notes.push(`You sent a vertical shift, but the height difference is only ${Math.round(dH)} m. ` +
+                 `Below 35 m it is omitted.`);
+    else if (sentVert && Math.abs(p.vertM) % 5)
+      notes.push('Vertical shift is sent to the nearest 5 m.');
+  }
   if (activeChapter && activeChapter.method && p.method !== activeChapter.method)
     notes.push(`This chapter required a ${activeChapter.method.toUpperCase()} target location — you sent ${p.method.toUpperCase()} (chapter capped at 2★).`);
   const warno = p.warno === 'none' ? 'adjust' : p.warno;
@@ -4548,6 +4597,28 @@ function handleAdjust(p) {
     return;
   }
   if (state !== 'ADJUSTING') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
+  /* G23 — height of burst. The observer can now send it and be understood instead
+     of being told to say again in English. It deliberately does NOT move the
+     aimpoint: the model is `impact = aimpoint + error` in the horizontal plane
+     (CLAUDE.md forbids a trajectory sim), and height of burst is a fuze-setting
+     correction, not a location correction. So it is acknowledged honestly rather
+     than faked — and the standard method of engagement here is fuze quick, where
+     HOB genuinely does nothing, which is what the FDC says. Sending one is a
+     format note, not an error.
+     ⚠ When G16 lands (fuze selection) this is where a VT/time fuze would make the
+     correction meaningful; leave the hook, do not fake the effect before then. */
+  if (p.corr.vert) {
+    const v = p.corr.vert;
+    FDC.say(`${v > 0 ? 'UP' : 'DOWN'} ${Math.abs(v)} — NEGATIVE, MUSTANG, we are firing FUZE QUICK. ` +
+            `Height of burst does nothing on a point-detonating round. ` +
+            `Deviation and range only, over.`, { delay: 1.1 });
+    mission.notes.push('Sent a height-of-burst correction against fuze quick. HOB applies to ' +
+                       'airburst (VT/time) fuzes; with PD it has no effect.');
+    if (Math.abs(v) % 5)
+      mission.notes.push('Height of burst is sent in multiples of 5 m.');
+    // a vertical-only transmission is fully handled; nothing left to apply
+    if (!p.corr.right && !p.corr.add && !p.ffe) return;
+  }
   // strict net: corrections come rounded — deviation in tens, range in hundreds.
   // 50 m is legal ONLY on the correction that enters fire for effect (DOCTRINE.md,
   // "Corrections"), so the range modulus is gated on p.ffe rather than always 50.
