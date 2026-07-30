@@ -4300,8 +4300,32 @@ const DIGIT_WORDS = { zero: '0', oh: '0', o: '0', one: '1', two: '2', three: '3'
   four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', niner: '9' };
 const TENS_WORDS = { ten: '10', twenty: '20', thirty: '30', forty: '40', fifty: '50',
   sixty: '60', seventy: '70', eighty: '80', ninety: '90' };
+/* F5 — speech-recognition repairs for the CORRECTION prowords, from transcript
+   evidence. The browser recogniser renders "right" as WRITE and "drop" as DROPPED
+   or DRAW, and the correction regexes match none of those. The failure mode was
+   the bad one: `"WRITE 50 ADD 50"` matched only the range half, so the FDC read
+   back "ADD 50, OUT" and the deviation was **silently discarded** — no error, no
+   notice, the observer believing he had sent a correction he had not. A mangled
+   range word alone parsed as full `unknown`, which cost a player over a minute of
+   retries in one recorded session before he landed on the exact word "drop".
+
+   Repaired in normalize() so there is one place it happens and every consumer —
+   corrections, shifts, refinements at end of mission — inherits it.
+
+   Chosen conservatively. Every entry is a word with no other meaning on a fire
+   net, so a repair cannot destroy a legitimate transmission. NOT included: "at"
+   (it is the proword "at my command"), "ad" (too short to be safe), and "fire"
+   variants (already handled structurally by G24's ordering). */
+const STT_FIX = {
+  write: 'right', wright: 'right', rite: 'right', writ: 'right',
+  dropped: 'drop', draw: 'drop', drawn: 'drop', drops: 'drop', dropp: 'drop',
+  lft: 'left', laft: 'left',
+  ads: 'add', adds: 'add', added: 'add',
+  danjer: 'danger',
+};
 function normalize(s) {
   let toks = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  toks = toks.map(w => STT_FIX[w] || w);
   toks = toks.map(w => DIGIT_WORDS[w] !== undefined ? DIGIT_WORDS[w] : (TENS_WORDS[w] || w));
   // "four hundred" -> 400, "two thousand" -> 2000
   const out = [];
@@ -4469,7 +4493,16 @@ function parseMessage(raw) {
   if (mAD) { corr.add = (mAD[1] === 'add' ? 1 : -1) * parseInt(mAD[2]); any = true; }
   const mUD = t.match(/\b(up|down)\s+(\d+)/);
   if (mUD) { corr.vert = (mUD[1] === 'up' ? 1 : -1) * parseInt(mUD[2]); any = true; }
-  if (any || ffe) return { type: 'adjust', corr, any, ffe, raw: t, toks };
+  /* F5, second half — the STT_FIX table repairs the variants seen so far, but it
+     cannot cover every mis-transcription, and the old failure mode was SILENT: a
+     number whose proword did not match was simply dropped and the FDC read back a
+     correction the observer had not sent. Count the numbers in the transmission
+     against the ones actually consumed, so an unclaimed number can be reported
+     instead of vanishing. Being told "I heard a number I could not attach to
+     anything" is recoverable; a silently halved correction is not. */
+  const numCount = (t.match(/\b\d+\b/g) || []).length;
+  const stray = numCount - (mLR ? 1 : 0) - (mAD ? 1 : 0) - (mUD ? 1 : 0);
+  if (any || ffe) return { type: 'adjust', corr, any, ffe, stray, raw: t, toks };
   if (/\brepeat\b/.test(t)) return { type: 'repeat' };
   /* G22 — a bare WARNING ORDER is doctrinal Transmission 1 ("HELLHOUND FIRES,
      this is MUSTANG 12, adjust fire, over"). It used to fall through to `unknown`
@@ -4888,6 +4921,18 @@ function handleAdjust(p) {
   }
   if (state === 'EOM?') {
     FDC.say('MUSTANG 12, rounds are complete. Send end of mission, over.', { delay: 1 });
+    return;
+  }
+  /* F5 — an unclaimed number in the transmission. Say so and refuse, rather than
+     acting on half a correction. The observer usually cannot tell that the net
+     heard something different from what he said, so this is the only place the
+     mismatch can surface. */
+  if (p.stray > 0) {
+    FDC.say(`MUSTANG 12, I have ${p.stray === 1 ? 'a number' : p.stray + ' numbers'} in that ` +
+            `correction I cannot attach to anything. Say again with the proword — ` +
+            `LEFT or RIGHT, then ADD or DROP, over.`, { delay: 1.0 });
+    mission.notes.push('A correction contained a number with no proword attached. ' +
+      'Deviation first ("LEFT/RIGHT nnn"), then range ("ADD/DROP nnn").');
     return;
   }
   if (state !== 'ADJUSTING') { FDC.say(pick(QUIPS.inFlight), { delay: 1 }); return; }
