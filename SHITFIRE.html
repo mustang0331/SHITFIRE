@@ -684,6 +684,34 @@ function azTo(ax, az, bx, bz) {           // radians, 0 = grid north
 }
 function radToMils(r) { return ((r * MILS_PER_RAD) % 6400 + 6400) % 6400; }
 function fmtMils(m) { return String(Math.round(m) % 6400).padStart(4, '0'); }
+/* F7 — strip the method-of-engagement prowords out of the TARGET DESCRIPTION.
+   The readback was producing "...GRID 245 523, DANGER CLOSE, DANGER CLOSE TROOPS
+   IN THE OPEN, OUT." The cause was not a double append: `locStr` gains ", DANGER
+   CLOSE" once, correctly, but the description is taken as everything between the
+   grid and OVER — so an observer who says "grid 245 523, danger close, troops in
+   the open" has the proword captured in his description as well, and both get read
+   back. Description means what the target IS, not how to engage it. Duplication
+   in the doctrinal readback is the one place cosmetic sloppiness is not cosmetic. */
+const descClean = d => (d || '')
+  .replace(DC_RE, ' ')
+  .replace(/\b(?:at my command|when ready|do not load|cannot observe)\b/g, ' ')
+  .replace(/\s{2,}/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
+
+/* F6 — the DANGER CLOSE proword, matched with tolerance for what speech
+   recognition actually produces. The gate was `raw.includes('danger close')`, an
+   exact substring test, and two separate play transcripts show the browser's
+   recogniser rendering the phrase as "DANGER CLOTHES". The player was then told
+   he had not said the proword — punished for a doctrine violation he did not
+   commit, by a transcription error he could not see.
+
+   This is deliberately a NARROW fuzzy match, not a general one. It requires the
+   word "danger" and then something close to "close"; it will not fire on unrelated
+   text, and "danger" alone is not enough. The cost of a false positive here is
+   real — it would let a genuinely undeclared danger-close call through the safety
+   gate — so the list is explicit rather than a similarity metric. */
+const DC_RE = /\bdanger\s*(?:close|closed|clothes|cloths|clove|cloze|glose)\b/;
+const saidDangerClose = raw => DC_RE.test(raw);
+
 /* G2 — grid <-> magnetic. Everything internal to the sim (azTo, corrections, the
    grid, the sheets, the net) is GRID. These two functions exist ONLY at the
    boundary where a number is shown to the observer as an instrument reading, or
@@ -4368,7 +4396,7 @@ function parseMessage(raw) {
     const descToks = [];
     for (let i = di; i < toks.length && !stop.has(toks[i]); i++) descToks.push(toks[i]);
     return { type: 'cff', method: 'grid', warno, digits, imm,
-             desc: descToks.join(' '), raw: t, toks };
+             desc: descClean(descToks.join(' ')), raw: t, toks };   // F7
   }
   // shift from known point: "shift known point 1001, right 200, add 400" —
   // named KPs also accepted ("shift BREWERY"), normalized to their id first
@@ -4419,7 +4447,7 @@ function parseMessage(raw) {
              vertM: pUD ? (pUD[1] === 'up' ? 1 : -1) * parseInt(pUD[2]) : null,
              // strip the vertical out of the description — it follows the distance,
              // so "distance 2100, down 40, troops" would read as "down 40 troops"
-             desc: descToks.join(' ').replace(/\b(up|down)\s+\d+\s*/g, '').trim(),
+             desc: descClean(descToks.join(' ').replace(/\b(up|down)\s+\d+\s*/g, '')),  // F7
              raw: t, toks };
   }
   // standalone OT direction ("direction 5920, over") — doctrine requires it
@@ -4659,7 +4687,7 @@ function handleCFF(p) {
   let minF = Infinity;
   for (const f of friendlyPositions())
     minF = Math.min(minF, dist2(cx, cz, f.x, f.z));
-  const dcSent = p.raw.includes('danger close');
+  const dcSent = saidDangerClose(p.raw);          // F6 — tolerant of "danger clothes"
   if (minF < 600 && !dcSent) {
     FDC.say(pick(QUIPS.dangerClose), { delay: 1.2 });
     return;
@@ -4710,7 +4738,7 @@ function handleCFF(p) {
     ? `${immText}, ${locStr}, OUT.`
     : p.staged
       ? `${p.desc ? p.desc.toUpperCase() : 'NO DESCRIPTION'}` +
-        (p.raw.includes('danger close') ? ', DANGER CLOSE' : '') + ', OUT.'
+        (saidDangerClose(p.raw) ? ', DANGER CLOSE' : '') + ', OUT.'
       : `${CONFIG.FDC.obs}, ${CONFIG.FDC.fdc}, ${warnoText}, ${locStr}` +
         (p.desc ? `, ${p.desc.toUpperCase()}` : '') + ', OUT.',
           { delay: p.imm ? 0.7 : CONFIG.FDC.readbackDelay });
@@ -5055,8 +5083,10 @@ function onPlayerMessage(raw) {
       // ONLY while a call is open and waiting for one — outside that it stays
       // `unknown`, so the forgiving-but-mocking default is untouched.
       if (CFFQ.stage === 2 && (p.type === 'unknown' || p.type === 'warno')) {
-        const d = (p.raw || '').replace(/\b(over|out|break)\b/g, '')
-                               .replace(/\s{2,}/g, ' ').replace(/^[\s,]+|[\s,]+$/g, '');
+        // F7 — same cleaning as the one-shot paths: transmission 3 legitimately
+        // carries DANGER CLOSE and fire-control prowords alongside the description,
+        // and they must not end up read back twice.
+        const d = descClean((p.raw || '').replace(/\b(over|out|break)\b/g, ''));
         // it parsed as `unknown` but it was a valid transmission, so it must not
         // leave a strike on the gibberish counter that feeds the FDC's rantLost
         if (d) { unknownStreak = 0; cffqComplete(d, p); return; }
