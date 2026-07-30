@@ -7,7 +7,7 @@ A single-file browser trainer for the FORWARD OBSERVER (not the gun crew).
 Scope per stage lives in **SPEC.md** ("BUILD ORDER"). The campaign storyline (volumes, chapters, characters, humor rules) lives in **NARRATIVE.md**. **DOCTRINE.md** (distilled from JFIRE 2019 + the JFO Student Handout) is the authority for CFF formats, prowords, rounding, readback protocol, and strict-mode rules — check it before writing any parser or FDC traffic.
 
 ## Golden rules (do not violate)
-- **One `SHITFIRE.html`.** (renamed from index.html 2026-07-29; still one self-contained file, no build step, no bundler, no npm, no backend, no API keys.)
+- **One `SHITFIRE.html`, and it runs with nothing installed.** (renamed from index.html 2026-07-29.) The shipped artifact stays one self-contained file: no build step, no bundler, no **runtime** npm dependency, no backend, no API keys. **Opening it in Chrome must always Just Work on a machine with nothing but a browser** — that is the invariant. Dev-only test tooling is permitted alongside it; see *Dev tooling*.
 - Three.js + addons via **CDN import map** only. No other external deps.
 - Only optional external input: a grayscale terrain heightmap/DEM (see SPEC "TERRAIN").
 - Voice = browser **Web Speech API** (`SpeechRecognition` + `SpeechSynthesis`), client-side, keyless. **Typed input is a mandatory fallback.**
@@ -47,11 +47,29 @@ Stages 9 (campaign skeleton) and 10 (narrative layer) are complete and committed
 - Open `SHITFIRE.html` directly in **Chrome** (voice + print are Chrome/Edge desktop).
 - Voice needs mic permission on a real tab. Test print/save via the browser print dialog.
 - If ever run as a claude.ai Artifact: use **in-memory state, not `localStorage`** (blocked there).
+- **Syntax gate:** run `scratchpad/syntaxgate.ps1` on every code row. A syntax error in a 200 KB single
+  file is catastrophic and hard to locate; the gate finds the line.
+
+## Dev tooling (permitted — amended 2026-07-30 by user decision)
+Test, lint, and QA tooling **is allowed**. The golden rule was never about keeping the repo austere —
+it is about the *shipped artifact* needing no install. Three conditions, all non-negotiable:
+
+1. **Tooling lives in `tools/`** with its own `package.json`; `node_modules/` is gitignored. Nothing
+   the tooling needs may leak into the repo root or into `SHITFIRE.html`.
+2. **Tools only ever READ `SHITFIRE.html`.** No tool may rewrite, preprocess, generate, or reformat
+   the sim file. **This bans auto-formatters outright** — reflowing a 200 KB single file destroys
+   review and `git blame` for zero functional gain.
+3. **The invariant holds:** `SHITFIRE.html` opens in Chrome and runs with nothing installed. If a
+   change ever makes tooling *required* to run the sim, the change is wrong no matter how useful the
+   tool is.
+
+Tooling is never a gate on the sim's design. If a tool can't cope with the single-file structure, the
+tool loses, not the file.
 
 ## Don't
 - **Don't ever have two agents editing `SHITFIRE.html` at once.** This has already gone wrong once — GRAPHICS.md was written blind because another agent held the file. One writer, always.
 - Don't build a whole stage at once when it has lettered rows — ship one ROADMAP row, commit, then the next.
-- Don't add a trajectory sim, angle-T math, a bundler, a server, or npm deps.
+- Don't add a trajectory sim, angle-T math, a bundler, a server, or a **runtime** npm dependency. (Dev-only tooling is allowed — see *Dev tooling*.)
 - Don't let voice be load-bearing — the typed core must fully work on its own.
 - Don't break the stable interfaces above.
 - Don't mark anything done from memory. Grep the code or run it.
