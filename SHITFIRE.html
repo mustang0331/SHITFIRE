@@ -4235,17 +4235,43 @@ function resolveImpact(impact, isFFE) {
   }
   if (mission.firstMiss === null)
     mission.firstMiss = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
-  // Fratricide vs any friendly element — automatic mission fail + full rant.
-  for (const f of friendlyPositions()) {
-    if (dist2(impact.x, impact.z, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius)) {
-      mission.done = true; mission.failReason = 'fratricide'; mission.tEnd = sim.now;
-      const rant = pick(QUIPS.rantFrat);
+  /* G12 — fratricide and collateral damage FAIL the mission; they do not END it.
+     User's correction, and it changes the lesson being taught: the old code cut
+     to the AAR sixteen seconds after a friendly hit, which quietly relieved the
+     observer of the worst part of the real consequence — the target is STILL
+     SHOOTING at the people you just hit, and the fire mission still has to be
+     finished by the same observer with the same shaking hands. Now the failure
+     is recorded permanently (0★, the verdict never softens), the rant fires
+     once in full, and the mission runs on to a real conclusion: effect on
+     target, then RREMS. gradeMission, the AAR verdict and the EOM traffic all
+     key on failReason, not on how the mission ended, so they need no change.
+
+     The first cause stands: a fratricide followed by a collateral hit stays
+     FAIL — FRATRICIDE. Repeat hits get one grim line, not the full rant again —
+     the rant is a consequence, not a soundboard. No early return: the round
+     still counts against the enemy if it also landed near them (physics does
+     not care whose side the shrapnel finds), and execution must reach the
+     state handling at the bottom or the net would jam in SHOT. */
+  const failHit = (reason, pool, repeatLine) => {
+    if (!mission.failReason) mission.failReason = reason;
+    if (!mission.failRanted) {
+      mission.failRanted = true;
+      const rant = pick(pool);
       FDC.say(rant[0], { delay: 1.0 });
       FDC.say(rant[1], { delay: 2.2 });
       FDC.say(rant[2], { delay: 2.8 });
-      setState('CHECK FIRE');
-      schedule(sim.now + 16, showAAR);
-      return;
+      log('', 'This mission is now a FAILURE — permanently, no stars, and the AAR will say why. ' +
+        'But the target is still in the fight and the mission is still yours: adjust, get effect, ' +
+        'and close it out with END OF MISSION.', 'sys');
+    } else {
+      FDC.say(repeatLine, { delay: 1.4 });
+    }
+  };
+  for (const f of friendlyPositions()) {
+    if (dist2(impact.x, impact.z, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius)) {
+      failHit('fratricide', QUIPS.rantFrat,
+        'MORE rounds on the friendlies, MUSTANG. Every one of these is a name I have to write down. FIX YOUR CORRECTION.');
+      break;
     }
   }
   // Collateral damage vs civilians/villages — identical automatic fail.
@@ -4253,16 +4279,9 @@ function resolveImpact(impact, isFFE) {
   const civHit =
     WORLD.civs.some(c => dist2(impact.x, impact.z, c.x, c.z) < WC.civCollateralR) ||
     WORLD.villages.some(v => v.huts.some(hh => dist2(impact.x, impact.z, hh.x, hh.z) < WC.hutCollateralR));
-  if (civHit) {
-    mission.done = true; mission.failReason = 'collateral'; mission.tEnd = sim.now;
-    const rant = pick(QUIPS.rantCiv);
-    FDC.say(rant[0], { delay: 1.0 });
-    FDC.say(rant[1], { delay: 2.2 });
-    FDC.say(rant[2], { delay: 2.8 });
-    setState('CHECK FIRE');
-    schedule(sim.now + 16, showAAR);
-    return;
-  }
+  if (civHit)
+    failHit('collateral', QUIPS.rantCiv,
+      'That one hit the village TOO. Walk it OUT of there — now, MUSTANG.');
   // walking rounds the WRONG direction twice earns a tirade
   if (!isFFE) {
     const dTgt = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
