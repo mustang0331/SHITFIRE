@@ -141,6 +141,7 @@ const CONFIG = {
      phonetically far from HELLHOUND so speech recognition cannot confuse the
      two, and clear of every existing name (MUSTANG, GUNNY, SUNLAMP). */
   FDC: { obs: 'MUSTANG 12', fdc: 'HELLHOUND FIRES', fdc60: 'HACKSAW FIRES',
+         fdcSun: 'SUNLAMP ACTUAL',   // 11c — Epilogue E.3: the orbital fire direction "center"
          readbackDelay: 1.3, shotDelay: 4.0 },
   VOICE: { lang: 'en-US', ttsLang: 'en-IN', rate: 1.05, pitch: 0.8, volume: 1.0,
            ttsEnabled: true,

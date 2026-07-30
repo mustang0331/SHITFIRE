@@ -533,6 +533,34 @@ function updateIllum(dt) {
   ILLUM.spr.material.opacity = 0.95;
 }
 
+/* ---- 11c: the SUNLAMP beam --------------------------------------------------
+   One pooled column of noon-colored light, stood on the impact point for a
+   heartbeat. Purely presentational: the round's placement and effect already
+   happened in the ordinary direct-impact machinery by the time this glows. */
+const BEAM = { t0: -1e9, mesh: null };
+function initBeam() {
+  const geo = new THREE.CylinderGeometry(5.5, 8, 4200, 10, 1, true);
+  geo.translate(0, 2100, 0);
+  BEAM.mesh = new THREE.Mesh(geo, visTag(new THREE.MeshBasicMaterial({
+    color: 0xFFF4D6, transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
+    { nvg: 1.0, th: [1.0, 1.0, 1.0] }));
+  BEAM.mesh.visible = false;
+  scene.add(BEAM.mesh);
+}
+function fireBeam(x, z) {
+  BEAM.t0 = sim.now;
+  BEAM.mesh.position.set(x, Math.max(H(x, z), 0), z);
+}
+function updateBeam() {
+  const a = (sim.now - BEAM.t0) / 1.4;
+  if (a < 0 || a >= 1) { BEAM.mesh.visible = false; return; }
+  BEAM.mesh.visible = true;
+  const w = a < 0.12 ? a / 0.12 : 1 - (a - 0.12) / 0.88;   // snap on, burn off
+  BEAM.mesh.material.opacity = 0.75 * w;
+  BEAM.mesh.scale.set(1 + a * 0.6, 1, 1 + a * 0.6);
+}
+
 /* --- boot ------------------------------------------------------------------ */
 {
   VISION.ctx = VISION.cv.getContext('2d');
@@ -545,6 +573,7 @@ function updateIllum(dt) {
   initWisps();
   initScreens();              // 12h
   initIllum();
+  initBeam();                 // 11c
   visionReady = true;
   applyVision();              // 'day' — establishes _m0 on everything already built
 }
@@ -648,5 +677,6 @@ function updateBursts(dt) {
   }
   updateScreens();   // 12h
   updateIllum(dt);
+  updateBeam();      // 11c
 }
 

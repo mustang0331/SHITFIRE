@@ -553,6 +553,7 @@ const CONFIG = {
      phonetically far from HELLHOUND so speech recognition cannot confuse the
      two, and clear of every existing name (MUSTANG, GUNNY, SUNLAMP). */
   FDC: { obs: 'MUSTANG 12', fdc: 'HELLHOUND FIRES', fdc60: 'HACKSAW FIRES',
+         fdcSun: 'SUNLAMP ACTUAL',   // 11c — Epilogue E.3: the orbital fire direction "center"
          readbackDelay: 1.3, shotDelay: 4.0 },
   VOICE: { lang: 'en-US', ttsLang: 'en-IN', rate: 1.05, pitch: 0.8, volume: 1.0,
            ttsEnabled: true,
@@ -877,9 +878,13 @@ const binoFovNow = () => CONFIG.CAMERA.fov / binoPower();
    for the vocative ("MUSTANG 12, HACKSAW — ..."), lowercase for parsing the
    observer's own transmissions. Everything asks these; nothing asks CONFIG
    directly, so a chapter's asset is the single switch. */
-const fdcCall = () => activeChapter && activeChapter.asset === 'mortar60'
-  ? CONFIG.FDC.fdc60 : CONFIG.FDC.fdc;
-const fdcShort = () => fdcCall().replace(/\s+FIRES$/, '');
+const fdcCall = () => {
+  const a = activeChapter && activeChapter.asset;
+  return a === 'mortar60' ? CONFIG.FDC.fdc60
+       : a === 'sunlamp' ? CONFIG.FDC.fdcSun   // 11c — the satellite has the net
+       : CONFIG.FDC.fdc;
+};
+const fdcShort = () => fdcCall().replace(/\s+(?:FIRES|ACTUAL)$/, '');
 
 const declMils = () => CONFIG.NAV.declEastDeg / 360 * 6400;
 const gridToMag = m => ((m - declMils()) % 6400 + 6400) % 6400;
@@ -3432,6 +3437,11 @@ const FDC = {
       if (activeChapter && activeChapter.asset === 'mortar60')
         msg = msg.replace(/\bHELLHOUND(\s+FIRES)?\b/g,
                           (m0, f) => f ? CONFIG.FDC.fdc60 : fdcShort());
+      // 11c — same single-point swap for the satellite; the quip pools speak
+      // as SUNLAMP without editing forty strings
+      else if (activeChapter && activeChapter.asset === 'sunlamp')
+        msg = msg.replace(/\bHELLHOUND(\s+FIRES)?\b/g,
+                          (m0, f) => f ? CONFIG.FDC.fdcSun : fdcShort());
       this.lastMsg = msg;
       squelch();
       log(fdcCall(), msg, 'fdc');
@@ -3862,6 +3872,28 @@ function ensureAudio() {
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   } catch (e) { audioCtx = null; }
 }
+/* 11c — SUNLAMP's time of flight is not a shell in the air, it is a capacitor
+   bank somewhere above the sky: a thin whine that rises for the whole TOF and
+   cuts out exactly when the beam arrives (the boom still happens — the column
+   of superheated air is real). */
+function chargeWhine(durSec) {
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  const t0 = audioCtx.currentTime, t1 = t0 + Math.max(1, durSec);
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(70, t0);
+  osc.frequency.exponentialRampToValueAtTime(1350, t1);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.8);
+  g.gain.exponentialRampToValueAtTime(0.09, t1 - 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, t1 + 0.05);
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 2400;
+  osc.connect(lp); lp.connect(g); g.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t1 + 0.1);
+}
+
 function boom(delaySec, dist) {
   if (!audioCtx || audioCtx.state !== 'running') return;
   const t0 = audioCtx.currentTime + Math.max(0, delaySec);
@@ -4458,6 +4490,34 @@ function updateIllum(dt) {
   ILLUM.spr.material.opacity = 0.95;
 }
 
+/* ---- 11c: the SUNLAMP beam --------------------------------------------------
+   One pooled column of noon-colored light, stood on the impact point for a
+   heartbeat. Purely presentational: the round's placement and effect already
+   happened in the ordinary direct-impact machinery by the time this glows. */
+const BEAM = { t0: -1e9, mesh: null };
+function initBeam() {
+  const geo = new THREE.CylinderGeometry(5.5, 8, 4200, 10, 1, true);
+  geo.translate(0, 2100, 0);
+  BEAM.mesh = new THREE.Mesh(geo, visTag(new THREE.MeshBasicMaterial({
+    color: 0xFFF4D6, transparent: true, opacity: 0, depthWrite: false,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
+    { nvg: 1.0, th: [1.0, 1.0, 1.0] }));
+  BEAM.mesh.visible = false;
+  scene.add(BEAM.mesh);
+}
+function fireBeam(x, z) {
+  BEAM.t0 = sim.now;
+  BEAM.mesh.position.set(x, Math.max(H(x, z), 0), z);
+}
+function updateBeam() {
+  const a = (sim.now - BEAM.t0) / 1.4;
+  if (a < 0 || a >= 1) { BEAM.mesh.visible = false; return; }
+  BEAM.mesh.visible = true;
+  const w = a < 0.12 ? a / 0.12 : 1 - (a - 0.12) / 0.88;   // snap on, burn off
+  BEAM.mesh.material.opacity = 0.75 * w;
+  BEAM.mesh.scale.set(1 + a * 0.6, 1, 1 + a * 0.6);
+}
+
 /* --- boot ------------------------------------------------------------------ */
 {
   VISION.ctx = VISION.cv.getContext('2d');
@@ -4470,6 +4530,7 @@ function updateIllum(dt) {
   initWisps();
   initScreens();              // 12h
   initIllum();
+  initBeam();                 // 11c
   visionReady = true;
   applyVision();              // 'day' — establishes _m0 on everything already built
 }
@@ -4573,6 +4634,7 @@ function updateBursts(dt) {
   }
   updateScreens();   // 12h
   updateIllum(dt);
+  updateBeam();      // 11c
 }
 
 /* ============================================================ CAMERA CONTROL + TOOLS */
@@ -4830,10 +4892,18 @@ function spotBurst(impact) {
   return { mils, otf, otRange, overShort, devCorr };
 }
 
-// 60mm mortars (Volume IV): much tighter dispersion than the 155 battery
+// 60mm mortars (Volume IV): much tighter dispersion than the 155 battery.
+// 11c — the orbital lance barely disperses at all; it is a beam with a grid.
 function assetScale() {
-  return activeChapter && activeChapter.asset === 'mortar60' ? 0.55 : 1;
+  const a = activeChapter && activeChapter.asset;
+  return a === 'mortar60' ? 0.55 : a === 'sunlamp' ? 0.22 : 1;
 }
+// 11c — the Epilogue finale swaps the delivery prowords, never the doctrine:
+// the six elements, the readback, the OT frame and the direct-impact model
+// all stand; only what the net CALLS a round in flight changes.
+const sunNet = () => activeChapter && activeChapter.asset === 'sunlamp';
+const shotWord = () => sunNet() ? 'DISCHARGE, OVER.' : 'SHOT, OVER.';
+const splashWord = () => sunNet() ? 'SOLAR EVENT, OVER.' : 'SPLASH, OVER.';
 /* F2 — danger close is WEAPON-SPECIFIC, not one number (BALLISTICS_RESEARCH.md
    §6): JFIRE's real tables put a 60mm mortar's danger-close on the order of a
    third to half of the 155's. The old flat 600 m meant the mortar chapters
@@ -5190,8 +5260,9 @@ function fireAdjustRound() {
   const impact = { x: mission.aim.x + err.x, z: mission.aim.z + err.z };
   const tof = tofFor(mission.aim);
   setState('SHOT');
-  const tShot = FDC.say('SHOT, OVER.', { delay: CONFIG.FDC.shotDelay });
-  FDC.say('SPLASH, OVER.', { delay: tof - B.splashLead });
+  const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay });
+  FDC.say(splashWord(), { delay: tof - B.splashLead });
+  if (sunNet()) chargeWhine(tof);   // 11c — TOF is a charging whine from everywhere at once
   schedule(tShot + tof, () => resolveImpact(impact, false));
 }
 
@@ -5208,8 +5279,9 @@ function fireForEffect() {
   if (Math.random() < 0.4) FDC.say(pick(QUIPS.ffeAck), { delay: 0.8 });
   const otAz = azTo(OP.x, OP.z, mission.aim.x, mission.aim.z);
   const tof = tofFor(mission.aim);
-  const tShot = FDC.say('SHOT, OVER.', { delay: CONFIG.FDC.shotDelay });
-  FDC.say('SPLASH, OVER.', { delay: tof - B.splashLead });
+  const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay });
+  FDC.say(splashWord(), { delay: tof - B.splashLead });
+  if (sunNet()) chargeWhine(tof);   // 11c
   // FFE with no prior adjustment still carries the full first-round spotting
   // error, applied to the whole volley as a common aim error.
   const base = mission.rounds.length === 0
@@ -5443,6 +5515,7 @@ function resolveImpact(impact, isFFE) {
     if (!isFFE) setState('ADJUSTING'); else setState('FIRE FOR EFFECT');
     return;
   }
+  if (sunNet()) fireBeam(impact.x, impact.z);   // 11c — a column of noon; the burst below is real
   spawnBurst(impact.x, y, impact.z);
   if (shell === 'smoke') deployScreen(impact.x, y, impact.z);   // 12h
   mission.rounds.push(impact);
@@ -6156,9 +6229,19 @@ function handleCFF(p) {
     const e3 = parseInt(p.digits.slice(0, 3)), n3 = parseInt(p.digits.slice(3));
     const w = enToWorld(e3 * 100 + 50, n3 * 100 + 50); cx = w.x; cz = w.z;
     locStr = `GRID ${e3} ${n3}`;
+    if (sunNet())   // 11c — cheerful, and it proceeds anyway (6-digit is always acceptable)
+      FDC.say('A six-digit grid! Charmingly analog. SUNLAMP would cheerfully accept TEN digits — one-meter fidelity — but we will simply aim at the middle of your hundred-meter square. Proceeding!', { delay: 1.3 });
   } else if (p.digits.length === 8) {
     const e4 = parseInt(p.digits.slice(0, 4)), n4 = parseInt(p.digits.slice(4));
     const w = enToWorld(e4 * 10 + 5, n4 * 10 + 5); cx = w.x; cz = w.z;
+    locStr = `GRID ${p.digits}`;
+    // 11c — SUNLAMP cheerfully requests ten digits, and cheerfully accepts eight
+    if (sunNet())
+      FDC.say('We do LOVE a ten-digit grid here at SUNLAMP — one-meter fidelity, zero-meter ambiguity. Eight will absolutely do. Proceeding!', { delay: 1.3 });
+  } else if (p.digits.length === 10 && sunNet()) {
+    // 11c — one-meter precision, honored exactly (grid squares are 1 m; aim at center)
+    const e5 = parseInt(p.digits.slice(0, 5)), n5 = parseInt(p.digits.slice(5));
+    const w = enToWorld(e5 + 0.5, n5 + 0.5); cx = w.x; cz = w.z;
     locStr = `GRID ${p.digits}`;
   } else {
     FDC.say(pick(QUIPS.badGrid), { delay: 1 });
@@ -6264,13 +6347,20 @@ function handleCFF(p) {
     const m60 = activeChapter && activeChapter.asset === 'mortar60';
     const natureTxt = shell === 'he' ? `HE, FUZE ${fuze.kind.toUpperCase()}`
       : shell === 'smoke' ? 'SMOKE' : 'ILLUMINATION, FUZE TIME';
-    mtoSpec = m60
+    mtoSpec = sunNet()
+      // 11c — corporate-orbital, but it is still a real MTO with a non-negotiable
+      // target number, and the observer still reads it back like anything else
+      ? { keys: ['aperture', 'array', 'adjust', 'effect', 'directed', 'energy'],
+          tgt: '7003', read: false, nagged: false }
+      : m60
       ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', shell === 'he' ? 'he' : shell],
           tgt: '7002', read: false, nagged: false }
       : { keys: ['gun', 'battery', 'adjust', 'effect', '155',
                  ...(shell === 'he' ? ['he', 'fuze', fuze.kind] : [shell])],
           tgt: '7001', read: false, nagged: false };
-    FDC.say(m60
+    FDC.say(sunNet()
+      ? 'MESSAGE TO OBSERVER: ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, TARGET NUMBER ALPHA ALPHA 7003. THANK YOU FOR CHOOSING SUNLAMP, OVER.'
+      : m60
       ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA 7002, OVER.`
       : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
             { delay: 1.4 });
@@ -8096,7 +8186,11 @@ const CAMPAIGN = [
       outro: 'The crab settles into the shallows. The village never knew. The after-action report lists one (1) hard structure, mobile, destroyed, and no further questions were taken.',
       coach: ['It is a MOVING TARGET, killer. Lead it like the convoy: fire where it is GOING to be, not where it makes you feel things.',
               'Big does not mean soft. That shell is a hard structure — FUZE DELAY pays, and you will need sustained effect. Volley, correct, REPEAT.'] },
-    { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'stage 11', impl: false },
+    { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'a call for fire to a space cannon. same book.', impl: true, type: 'bunker', seed: 503, par: 300, asset: 'sunlamp',
+      story: 'The last thing the war left behind is a bunker complex nobody can reach, so battalion has borrowed something from "a partner force": SUNLAMP, an intergalactic directed-energy space cannon satellite of mass destruction, now holding your net and PLEASED to be here. Same six elements. Same readback. Same corrections in the OT frame. The time of flight is a charging whine from everywhere at once, SHOT is DISCHARGE, SPLASH is SOLAR EVENT, and HELLHOUND — patched in to observe — has never sounded more tired. Send the call.',
+      outro: 'END OF MISSION. The bunker is a smooth glass bowl. SUNLAMP thanks you for your business and hopes you will consider orbital fires for your future fire support needs. HELLHOUND says nothing at all, which from HELLHOUND is a standing ovation. The book closes.',
+      coach: ['It is a SPACE CANNON, killer, and it still wants the six elements in three transmissions. Doctrine does not care where the tube is parked.',
+              'It will ask for a ten-digit grid. It will settle for what you have. Send the call like it is any other gun, because to the book, it is.'] },
   ]},
   { id: 'V5', tab: 'V', name: 'VOLUME V — ON WINGS', need: Infinity,
     tease: 'LOCKED — AWAITING AIRCRAFT. CAS, SOMEDAY.', chapters: [] },

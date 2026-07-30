@@ -172,9 +172,13 @@ const binoFovNow = () => CONFIG.CAMERA.fov / binoPower();
    for the vocative ("MUSTANG 12, HACKSAW — ..."), lowercase for parsing the
    observer's own transmissions. Everything asks these; nothing asks CONFIG
    directly, so a chapter's asset is the single switch. */
-const fdcCall = () => activeChapter && activeChapter.asset === 'mortar60'
-  ? CONFIG.FDC.fdc60 : CONFIG.FDC.fdc;
-const fdcShort = () => fdcCall().replace(/\s+FIRES$/, '');
+const fdcCall = () => {
+  const a = activeChapter && activeChapter.asset;
+  return a === 'mortar60' ? CONFIG.FDC.fdc60
+       : a === 'sunlamp' ? CONFIG.FDC.fdcSun   // 11c — the satellite has the net
+       : CONFIG.FDC.fdc;
+};
+const fdcShort = () => fdcCall().replace(/\s+(?:FIRES|ACTUAL)$/, '');
 
 const declMils = () => CONFIG.NAV.declEastDeg / 360 * 6400;
 const gridToMag = m => ((m - declMils()) % 6400 + 6400) % 6400;

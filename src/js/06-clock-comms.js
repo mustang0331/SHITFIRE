@@ -199,6 +199,11 @@ const FDC = {
       if (activeChapter && activeChapter.asset === 'mortar60')
         msg = msg.replace(/\bHELLHOUND(\s+FIRES)?\b/g,
                           (m0, f) => f ? CONFIG.FDC.fdc60 : fdcShort());
+      // 11c — same single-point swap for the satellite; the quip pools speak
+      // as SUNLAMP without editing forty strings
+      else if (activeChapter && activeChapter.asset === 'sunlamp')
+        msg = msg.replace(/\bHELLHOUND(\s+FIRES)?\b/g,
+                          (m0, f) => f ? CONFIG.FDC.fdcSun : fdcShort());
       this.lastMsg = msg;
       squelch();
       log(fdcCall(), msg, 'fdc');

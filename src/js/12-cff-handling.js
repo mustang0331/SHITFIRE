@@ -165,9 +165,19 @@ function handleCFF(p) {
     const e3 = parseInt(p.digits.slice(0, 3)), n3 = parseInt(p.digits.slice(3));
     const w = enToWorld(e3 * 100 + 50, n3 * 100 + 50); cx = w.x; cz = w.z;
     locStr = `GRID ${e3} ${n3}`;
+    if (sunNet())   // 11c — cheerful, and it proceeds anyway (6-digit is always acceptable)
+      FDC.say('A six-digit grid! Charmingly analog. SUNLAMP would cheerfully accept TEN digits — one-meter fidelity — but we will simply aim at the middle of your hundred-meter square. Proceeding!', { delay: 1.3 });
   } else if (p.digits.length === 8) {
     const e4 = parseInt(p.digits.slice(0, 4)), n4 = parseInt(p.digits.slice(4));
     const w = enToWorld(e4 * 10 + 5, n4 * 10 + 5); cx = w.x; cz = w.z;
+    locStr = `GRID ${p.digits}`;
+    // 11c — SUNLAMP cheerfully requests ten digits, and cheerfully accepts eight
+    if (sunNet())
+      FDC.say('We do LOVE a ten-digit grid here at SUNLAMP — one-meter fidelity, zero-meter ambiguity. Eight will absolutely do. Proceeding!', { delay: 1.3 });
+  } else if (p.digits.length === 10 && sunNet()) {
+    // 11c — one-meter precision, honored exactly (grid squares are 1 m; aim at center)
+    const e5 = parseInt(p.digits.slice(0, 5)), n5 = parseInt(p.digits.slice(5));
+    const w = enToWorld(e5 + 0.5, n5 + 0.5); cx = w.x; cz = w.z;
     locStr = `GRID ${p.digits}`;
   } else {
     FDC.say(pick(QUIPS.badGrid), { delay: 1 });
@@ -273,13 +283,20 @@ function handleCFF(p) {
     const m60 = activeChapter && activeChapter.asset === 'mortar60';
     const natureTxt = shell === 'he' ? `HE, FUZE ${fuze.kind.toUpperCase()}`
       : shell === 'smoke' ? 'SMOKE' : 'ILLUMINATION, FUZE TIME';
-    mtoSpec = m60
+    mtoSpec = sunNet()
+      // 11c — corporate-orbital, but it is still a real MTO with a non-negotiable
+      // target number, and the observer still reads it back like anything else
+      ? { keys: ['aperture', 'array', 'adjust', 'effect', 'directed', 'energy'],
+          tgt: '7003', read: false, nagged: false }
+      : m60
       ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', shell === 'he' ? 'he' : shell],
           tgt: '7002', read: false, nagged: false }
       : { keys: ['gun', 'battery', 'adjust', 'effect', '155',
                  ...(shell === 'he' ? ['he', 'fuze', fuze.kind] : [shell])],
           tgt: '7001', read: false, nagged: false };
-    FDC.say(m60
+    FDC.say(sunNet()
+      ? 'MESSAGE TO OBSERVER: ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, TARGET NUMBER ALPHA ALPHA 7003. THANK YOU FOR CHOOSING SUNLAMP, OVER.'
+      : m60
       ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA 7002, OVER.`
       : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
             { delay: 1.4 });

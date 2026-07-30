@@ -419,6 +419,28 @@ function ensureAudio() {
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   } catch (e) { audioCtx = null; }
 }
+/* 11c — SUNLAMP's time of flight is not a shell in the air, it is a capacitor
+   bank somewhere above the sky: a thin whine that rises for the whole TOF and
+   cuts out exactly when the beam arrives (the boom still happens — the column
+   of superheated air is real). */
+function chargeWhine(durSec) {
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  const t0 = audioCtx.currentTime, t1 = t0 + Math.max(1, durSec);
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(70, t0);
+  osc.frequency.exponentialRampToValueAtTime(1350, t1);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.8);
+  g.gain.exponentialRampToValueAtTime(0.09, t1 - 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, t1 + 0.05);
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 2400;
+  osc.connect(lp); lp.connect(g); g.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t1 + 0.1);
+}
+
 function boom(delaySec, dist) {
   if (!audioCtx || audioCtx.state !== 'running') return;
   const t0 = audioCtx.currentTime + Math.max(0, delaySec);

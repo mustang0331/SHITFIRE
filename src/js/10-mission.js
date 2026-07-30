@@ -51,10 +51,18 @@ function spotBurst(impact) {
   return { mils, otf, otRange, overShort, devCorr };
 }
 
-// 60mm mortars (Volume IV): much tighter dispersion than the 155 battery
+// 60mm mortars (Volume IV): much tighter dispersion than the 155 battery.
+// 11c — the orbital lance barely disperses at all; it is a beam with a grid.
 function assetScale() {
-  return activeChapter && activeChapter.asset === 'mortar60' ? 0.55 : 1;
+  const a = activeChapter && activeChapter.asset;
+  return a === 'mortar60' ? 0.55 : a === 'sunlamp' ? 0.22 : 1;
 }
+// 11c — the Epilogue finale swaps the delivery prowords, never the doctrine:
+// the six elements, the readback, the OT frame and the direct-impact model
+// all stand; only what the net CALLS a round in flight changes.
+const sunNet = () => activeChapter && activeChapter.asset === 'sunlamp';
+const shotWord = () => sunNet() ? 'DISCHARGE, OVER.' : 'SHOT, OVER.';
+const splashWord = () => sunNet() ? 'SOLAR EVENT, OVER.' : 'SPLASH, OVER.';
 /* F2 — danger close is WEAPON-SPECIFIC, not one number (BALLISTICS_RESEARCH.md
    §6): JFIRE's real tables put a 60mm mortar's danger-close on the order of a
    third to half of the 155's. The old flat 600 m meant the mortar chapters
@@ -411,8 +419,9 @@ function fireAdjustRound() {
   const impact = { x: mission.aim.x + err.x, z: mission.aim.z + err.z };
   const tof = tofFor(mission.aim);
   setState('SHOT');
-  const tShot = FDC.say('SHOT, OVER.', { delay: CONFIG.FDC.shotDelay });
-  FDC.say('SPLASH, OVER.', { delay: tof - B.splashLead });
+  const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay });
+  FDC.say(splashWord(), { delay: tof - B.splashLead });
+  if (sunNet()) chargeWhine(tof);   // 11c — TOF is a charging whine from everywhere at once
   schedule(tShot + tof, () => resolveImpact(impact, false));
 }
 
@@ -429,8 +438,9 @@ function fireForEffect() {
   if (Math.random() < 0.4) FDC.say(pick(QUIPS.ffeAck), { delay: 0.8 });
   const otAz = azTo(OP.x, OP.z, mission.aim.x, mission.aim.z);
   const tof = tofFor(mission.aim);
-  const tShot = FDC.say('SHOT, OVER.', { delay: CONFIG.FDC.shotDelay });
-  FDC.say('SPLASH, OVER.', { delay: tof - B.splashLead });
+  const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay });
+  FDC.say(splashWord(), { delay: tof - B.splashLead });
+  if (sunNet()) chargeWhine(tof);   // 11c
   // FFE with no prior adjustment still carries the full first-round spotting
   // error, applied to the whole volley as a common aim error.
   const base = mission.rounds.length === 0
@@ -664,6 +674,7 @@ function resolveImpact(impact, isFFE) {
     if (!isFFE) setState('ADJUSTING'); else setState('FIRE FOR EFFECT');
     return;
   }
+  if (sunNet()) fireBeam(impact.x, impact.z);   // 11c — a column of noon; the burst below is real
   spawnBurst(impact.x, y, impact.z);
   if (shell === 'smoke') deployScreen(impact.x, y, impact.z);   // 12h
   mission.rounds.push(impact);
