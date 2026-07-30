@@ -4,28 +4,34 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-29 · Baseline commit: `d586e54` (stage 13b)
+Last updated: 2026-07-29 · Head: `fbbc137` · **The file is `SHITFIRE.html`, not `index.html`**
 
-**Shipped off this board:** `13a` bino quality pin · `F1` range-rounding fix · `13b` ACES tone mapping
-· `13c` sky + time of day · `E1` target legibility · `E2` SALUTE spot report.
-**In progress: `E3`** (night + NVG/thermal).
+**Shipped off this board:** `13a` bino quality pin · `F1` range rounding · `13b` ACES tone mapping ·
+`13c` sky + time of day · **Track E complete** (`E1`–`E7`: legibility, SALUTE, night/NVG/thermal,
+asphalt roads, roads on the map, settlement hierarchy, rock outcrops) · **Track G-A complete**
+(`G1`–`G6`: watchtower rail, magnetic azimuth, dispersion toggle, bino zoom, mil-card z-order,
+movable comms panel) · `F8` mil-card sizes · `G19` CFF audit · `G22`–`G27` the CFF protocol rows.
 
-> 📋 **Build-out in progress.** The user directed a full build-out on 2026-07-29 ("do not stop until
-> completed"), adding Track E from side notes. Rows are being worked by sequential Opus subagents —
-> **one writer in `index.html` at a time, no exceptions.** Several rows are committed but carry
-> ⚠ *needs Chrome*: their gates are visual and no agent can close them. Expect a visual QA pass at the
-> end covering everything so marked.
+**Next:** `G11`, then `G7`/`G8`/`G9` — see §3.
 
-> ⚠ **Visual rows need a human in Chrome.** 13c–13i have gates ("no horizon seam", "figures countable
-> at 3000 m", "civilian/military discrimination survives") that cannot be closed by an agent that
-> cannot see the render. Opus writes the code and verifies the math with a harness; **someone has to
-> look at it before the row flips to DONE.** 13b's visual gate was closed this way — confirmed good
-> by the user on 2026-07-29, with `satComp` left neutral at 1.0.
+> ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
+> (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
+> what to look at lives in **[GRAPHICS.md](GRAPHICS.md) §Open visual QA backlog** (15 items, ~15
+> minutes); rows marked `DONE ⚠` keep the ⚠ until the matching item is confirmed by eye. Not
+> blocking — the active parser work does not touch rendering.
 
-> ⚠ **Concurrency is live in this repo, not hypothetical.** Another agent committed to `index.html`
-> at 03:36 while this board was being drafted (`a74cee7`), and BALLISTICS_RESEARCH.md plus new TLOG
-> transcripts appeared at ~08:48 during the 13a/F1 work. **Confirm nothing else holds `index.html`
-> before starting a row** — rule 1 below. This has now come up three times.
+> ⚠ **Concurrency is live in this repo, not hypothetical.** An off-board commit landed on the sim file
+> mid-session (`a74cee7`), BALLISTICS_RESEARCH.md and new TLOG transcripts appeared during other work,
+> and the `index.html` → `SHITFIRE.html` rename arrived from outside the session while a row was open.
+> **Confirm nothing else holds `SHITFIRE.html` before starting a row** — rule 1 below. Four occurrences
+> so far.
+
+> 🔧 **There is a working syntax gate.** `scratchpad/syntaxgate.ps1` extracts the inline module, strips
+> the imports, wraps it in `if (false) {}` and loads it as a classic script in headless Chrome, so a
+> syntax error surfaces as the early error it is while a clean parse executes nothing. **Its first
+> version was worthless** — `new Function(src)` compiles lazily and passed a deliberately broken file.
+> Both directions are verified against an injected unbalanced paren, which it catches and locates to
+> the exact line. Run it on every code row.
 
 ---
 
@@ -55,7 +61,7 @@ different item #27s and two different #28s. Backlog lives here now, with stable 
 
 ## 2. Work-order protocol (the anti-drift rules)
 
-1. **One writer on `index.html` at a time. Ever.** This is the rule that was already broken once:
+1. **One writer on `SHITFIRE.html` at a time. Ever.** This is the rule that was already broken once:
    GRAPHICS.md opens with "no code has been changed by this plan yet — it was written while another
    agent held the file." Two agents editing a 200 KB single file is how this project dies. Doc agents
    may run in parallel with a sim agent **only** on files the sim agent is not touching.
@@ -68,7 +74,7 @@ different item #27s and two different #28s. Backlog lives here now, with stable 
    [GRAPHICS.md §Verification checklist](GRAPHICS.md).
 5. **Docs land after the sim commit, in a separate commit.** Never bundle a doc rewrite into a code
    commit — it makes the diff unreviewable.
-6. **Model split** (per CLAUDE.md): sim code in `index.html` → **Opus**, worked directly.
+6. **Model split** (per CLAUDE.md): sim code in `SHITFIRE.html` → **Opus**, worked directly.
    Doc/planning files → **Sonnet subagent**. **Do not dispatch to Fable** — no credits on this
    account as of 2026-07-29, so the dispatch fails and wastes the turn. The `Fable` seen in older
    commit messages is history, not instruction.
@@ -106,7 +112,7 @@ file, no build step — but its wording and the references in README/SPEC/QUICKS
 until the docs sweep runs. Line-number references anywhere on this board predate the rename and have
 drifted by the E4–E7 insertions; **locate by symbol, not by line**.
 
-### Track A — Stage 13: Visual overhaul ← **ACTIVE**
+### Track A — Stage 13: Visual overhaul
 
 Detail spec: [GRAPHICS.md](GRAPHICS.md). Each row is gated behind one `CONFIG.GFX` flag so any row
 can be A/B'd or reverted alone.
@@ -157,13 +163,13 @@ the map, which breaks that requirement.
 ### Track B — Stage 12 remainder: FO skill depth
 
 Shipped: 12a coach · 12b mil-relation/OT-factor · 12c doctrinal metrics · 12d slow-fire reaction ·
-12e OT direction + RREMS. Remaining, all verified absent from `index.html`:
+12e OT direction + RREMS. Remaining, all verified absent from `SHITFIRE.html`:
 
 | ID | What | Owner | Gate | Status |
 |---|---|---|---|---|
 | 12-audit | **Verify what 12c/12d actually landed** — `timeToInit` and location-error-as-vector do not appear under any obvious identifier. Confirm present or demote to a row. | Opus | Named finding per SPEC stage-12 bullet | AUDIT |
-| 12f | **"At my command"** fire-control hold before FFE | Opus | FDC holds; observer's "fire" releases; strict mode grades it | BLOCKED by 13 |
-| 12g | **Immediate suppression** mission type (single transmission, no MTO per DOCTRINE.md). Confirmed live: a transcript shows a player typing `IMMEDIATE SUPPRESSION 253535 OUT` in a real friendlies-under-fire chapter and getting told to "say again... in English this time" — see [DIALOGUE_REVISIONS.md §9.3](DIALOGUE_REVISIONS.md). | Opus | Parser accepts; FDC skips MTO; DOCTRINE.md §mission-types satisfied | BLOCKED by 13 |
+| ~~12f~~ | ~~**"At my command"** fire-control hold before FFE~~ — **SUPERSEDED by G24**, shipped `bd1de09`. Struck rather than deleted so the ID is not reused. | — | **SUPERSEDED** |
+| ~~12g~~ | ~~**Immediate suppression** mission type~~ — **SUPERSEDED by G14/G26**, shipped `fbbc137`, which also covers immediate smoke. Struck, not deleted. | — | **SUPERSEDED** |
 | 12h | **Smoke + illumination** mission types | Opus | Impact-effect hooks fire; illum needs 13c TOD for a night mission to mean anything | BLOCKED by 13c |
 | 12i | **Wind model** — drifts smoke so it's readable as a tool | Opus | Smoke drift visible and directionally consistent | BLOCKED by 13c |
 | 12j | **Degraded optics / dead laser** condition forcing mil-relation ranging | Opus | Laser unavailable; 12b's mil-relation path is the only solution | BLOCKED by 13 |
@@ -185,7 +191,7 @@ Shipped: 12a coach · 12b mil-relation/OT-factor · 12c doctrinal metrics · 12d
 | 11d | G8 bloom, gated to SUNLAMP + quality tier 0 only | Opus | PARKED |
 | 11e | Campaign-wide star par balance pass | Opus | PARKED |
 
-Chapter stubs already exist at [index.html:3688-3691](index.html#L3688-L3691) with `impl: false`.
+Chapter stubs already exist in `SHITFIRE.html` with `impl: false` (search `impl: false`).
 Volume V "ON WINGS" stays a locked spine. **Do not build CAS.**
 
 ### Track D — Stage 14: Dialogue punch-up
@@ -206,7 +212,7 @@ between any two graphics rows on request. It still serializes — rule 1 has no 
 
 Plan and strategy live in **[ENGINE_PORT/](ENGINE_PORT/)** — engine choice (Godot 4 + C#), the
 transfers-vs-rebuilds inventory, the parity-testing strategy, and a staged plan P0–P8. No engine code
-exists and none is scheduled; nothing on this track competes with stage 13/14 rows for `index.html`.
+exists and none is scheduled; nothing on this track competes with stage 13/14 rows for `SHITFIRE.html`.
 
 | ID | What | Owner | Status |
 |---|---|---|---|
@@ -227,10 +233,10 @@ so continuing on this board is not wasted work if the port later goes ahead.
 | F2 | Tiered danger-close radio tension (≤800/≤700/≤600 bands) + FDC map-awareness gating — unmarked friendlies mean the FDC can't know, so no friction; marked friendlies mean a visible pause. **Read [BALLISTICS_RESEARCH.md](BALLISTICS_RESEARCH.md) §6 first** — it argues the flat 600 m gate is a deliberate and correct simplification, which bears directly on how far this row should go. | — | READY |
 | F3 | In-sim cheat-sheet overlay `[H]` from [CHEATSHEET.md](CHEATSHEET.md) | Opus | READY |
 | F4 | Multi-phase MEAT GRINDER chaining (4.4) — revisit after the single-mission version is balanced | Opus | PARKED |
-| F5 | **STT/typo tolerance in adjust corrections.** Transcript evidence: voice recognition renders "right" as "WRITE" and "drop" as "DROPPED"/"DRAW"; the `\b(left\|right)\s+(\d+)` and `\b(add\|drop)\s+(\d+)` regexes (`index.html:3457,3459,3497,3499,3531,3533`) match none of these, so a mangled deviation word is silently dropped from the correction (no error, no notice) while a mangled range word alone parses as full `unknown`. See [DIALOGUE_REVISIONS.md §9.4](DIALOGUE_REVISIONS.md). | Opus | Correction with one STT-plausible word variant (e.g. "write"/"dropped") still parses both fields; nothing is silently dropped | READY |
-| F6 | **"Danger clothes" — fuzzy-match the danger-close proword.** `p.raw.includes('danger close')` (`index.html:3635`) is an exact substring match; transcript shows voice recognition twice rendering "DANGER CLOSE" as "DANGER CLOTHES," and the player gets rebuked for a proword they actually said. Needs tolerance for that near-homophone before gating on it. | Opus | A close STT variant of "danger close" (e.g. "danger clothes") still satisfies the gate | READY |
+| F5 | **STT/typo tolerance in adjust corrections.** Transcript evidence: voice recognition renders "right" as "WRITE" and "drop" as "DROPPED"/"DRAW"; the `\b(left\|right)\s+(\d+)` and `\b(add\|drop)\s+(\d+)` regexes (the `left|right` / `add|drop` matches in `parseMessage`) match none of these, so a mangled deviation word is silently dropped from the correction (no error, no notice) while a mangled range word alone parses as full `unknown`. See [DIALOGUE_REVISIONS.md §9.4](DIALOGUE_REVISIONS.md). | Opus | Correction with one STT-plausible word variant (e.g. "write"/"dropped") still parses both fields; nothing is silently dropped | READY |
+| F6 | **"Danger clothes" — fuzzy-match the danger-close proword.** `p.raw.includes('danger close')` in `handleCFF` is an exact substring match; transcript shows voice recognition twice rendering "DANGER CLOSE" as "DANGER CLOTHES," and the player gets rebuked for a proword they actually said. Needs tolerance for that near-homophone before gating on it. | Opus | A close STT variant of "danger close" (e.g. "danger clothes") still satisfies the gate | READY |
 | F8 | **Mil card reference sizes did not match the world.** The card teaches `range = size / mils × 1000`, so a size that disagrees with the geometry silently teaches a wrong range. Truck card 5 m vs geometry 4.6 m (+174 m at 2000 m); target hut 3 vs 3.2 (−125 m); **village hut 3 vs 2.6 (+308 m)** — the card says "hut" once but the two hut types differed and are indistinguishable by eye; watchtower 100 m vs 300 m (3× error, and the observer stands on it so it can never be milled at all). Geometry rounded to the card, watchtower replaced by the airfield hangar. | Opus | **DONE** `ef0ef31` |
-| F7 | **Readback duplicates DANGER CLOSE.** When the observer's own raw text already contains "danger close", the readback-generation code appends `, DANGER CLOSE` unconditionally (`index.html:3640`), producing "...DANGER CLOSE, DANGER CLOSE TROOPS..." in the one line CLAUDE.md calls sacred. Dedupe. | Opus | Readback shows DANGER CLOSE once regardless of how the observer phrased it | READY |
+| F7 | **Readback duplicates DANGER CLOSE.** When the observer's own raw text already contains "danger close", `handleCFF` appends `, DANGER CLOSE` to `locStr` unconditionally while the target description may already contain the words, producing "...DANGER CLOSE, DANGER CLOSE TROOPS..." in the one line CLAUDE.md calls sacred. Dedupe. | Opus | Readback shows DANGER CLOSE once regardless of how the observer phrased it | READY |
 
 **F1 is a correctness bug in the doctrine the app exists to teach.** Recommend landing it alongside
 13a as the other small, high-value, low-risk fix.
@@ -291,7 +297,7 @@ DO NOT MIL A MAN warning two panels away. Re-referenced to the 5 m truck.
 | G11 | **Observer must read the MTO back** to the FDC — word-for-word intent, but accept a correct-gist readback | Opus | Readback required; gist-level match accepted; strict mode grades it tighter | READY |
 | G12 | **Fratricide fails the mission but must NOT auto-end it.** Currently ends immediately. The mission still has to be *finished* — target destroyed / neutralized / suppressed — it is simply a failure when it ends. Same question applies to collateral damage. | Opus | Friendly hit = recorded failure + 0★, mission continues to a real conclusion; CLAUDE.md's auto-fail rule reworded from "auto-end" to "auto-fail" | READY |
 | G13 | **Effects criteria and casualty radii are probably too small.** Needs **destroyed / neutralized / suppressed** as distinct outcomes with distinct criteria, per JFIRE. Give the observer the option to **continue the mission if the target is only suppressed**. | Opus | Three graded outcomes with sourced radii/criteria; "suppressed" offers continue-or-end; `effectRadius`/`hitsToNeutralize` replaced by the graded model | RESEARCH FIRST |
-| G14 | **Immediate suppression *and* immediate smoke are one-transmission calls.** Supersedes and widens row **12g**, which covered suppression only. Live transcript evidence of a player hitting this: [DIALOGUE_REVISIONS.md §9.3](DIALOGUE_REVISIONS.md). | Opus | Both parse as a single transmission; FDC skips the MTO per DOCTRINE.md | READY |
+| G14 | **Immediate suppression *and* immediate smoke are one-transmission calls.** Supersedes row **12g**. Live transcript evidence: [DIALOGUE_REVISIONS.md §9.3](DIALOGUE_REVISIONS.md). | Opus | Both parse as a single transmission; FDC skips the MTO | **DONE** `fbbc137` |
 | G15 | **Sheaf selection** — needed most for convoys and bunkers. If the observer does not specify, **the FDC chooses from the target description**. | Opus | Sheaf accepted when given, inferred when not, and the inference is explainable in the AAR | READY |
 | G16 | **Fuze selection** — airburst for troops in the open, delay for bunkers; FDC infers if unspecified. Follow the doctrine PDFs. | Opus | Fuze accepted/inferred; choice affects the graded effect, not just the text | READY |
 | G17 | **60mm and artillery need different callsigns.** Currently both talk to HELLHOUND FIRES. | Opus | Distinct callsign per asset; NARRATIVE.md updated so the name is story-consistent | READY |
@@ -323,10 +329,10 @@ Everything else, grouped:
 |---|---|---|
 | G22 | ~~**No 3-transmission CFF state machine**. Transmission 1 alone → `unknown`.~~ **DONE** `4570bbd` — `CFFQ` accumulates partial transmissions and hands the merged call to the *same* `handleCFF`, so one code path still validates and fires. Purely additive: a complete one-shot call never enters the new code, which is how every existing chapter and transcript keeps working. Per-transmission readbacks; a half-sent call lapses after 75 s. Harness 25/25, including a five-case regression guard proving one-shot calls bypass the queue entirely. | §15, and CLAUDE.md |
 | G23 | ~~**Height-of-burst corrections are parsed and thrown away.**~~ **DONE** `d81a93e` — vertical captured in all three doctrinal places. HOB is acknowledged but **provably does not move the aimpoint** (fuze quick; no trajectory sim per CLAUDE.md), with a hook comment for G16. Polar/shift verticals are checked against the **35 m rule** using the heightfield, coaching both the omission *and* the spurious inclusion. Fixed two description-swallowing bugs found while wiring it. Harness 21/21. | §54, §27, §28 |
-| G24 | **Fire-control prowords all unrecognised**: `at my command`, `fire`, `cancel at my command`, `do not load`, `cannot observe`, `time on target`. Worse, `"at my command, grid …"` parses as an ordinary grid CFF and the hold is swallowed into the target description. Supersedes/absorbs **12f**. | §34 |
+| G24 | ~~**Fire-control prowords all unrecognised.**~~ **DONE** `bd1de09` — all six work. `at my command` **persists** until cancelled (not a one-shot); cancelling releases anything already laid rather than stranding it. Ordering is load-bearing since every one of these strings contains "fire". Harness 34/34, including proof that without the one-shot latch, FIRE could never get a round out. Supersedes **12f**. | §34 |
 | G25 | ~~**Safety prowords unrecognised**: `check firing`, `cease loading`.~~ **DONE** `33fe820` — both matched early, always answered (even with no mission), hold enforced twice including at the last gate before rounds leave the tube. **Rounds already in the air are deliberately not recalled** — pretending a check-firing call can do that would teach the observer the call is a bigger safety net than it is. Resuming is implicit. Harness 22/22, including a demonstration that gating before the lift would deadlock the mission permanently. | §67 |
-| G26 | **`immediate smoke` / `immediate suppression` with a grid parse as an ordinary HE grid mission** — mission type silently lost. Without a grid (`"immediate suppression 253535"`, from a real transcript) → `unknown`. Folds into **G14**. | §22 |
-| G27 | **`suppress target AK1002, 10 minutes`** (a recorded target by number + duration) → `unknown`. | §22 |
+| G26 | ~~**`immediate smoke` / `immediate suppression` parse as an ordinary HE grid mission.**~~ **DONE** `fbbc137` (with G14/G27) — mission type captured, **no MTO** per §42, and the grid-less transcript form (`"immediate suppression 253535"`) plus spoken digits both parse. | §22 |
+| G27 | ~~**`suppress target AK1002, 10 minutes`** → `unknown`.~~ **DONE** `fbbc137` — needed a store that did not exist: the target number from `record as target` was announced and discarded. `RECTGT` now holds it with the post-refinement aimpoint. Unknown numbers are refused and the FDC lists what it holds. Duration is graded as format, not simulated. | §22 |
 | G28 | **Sheaf and fuze/ammunition terms unrecognised** as standalone transmissions. Currently a documented simplification (§76) that **G15/G16 deliberately overturn** — noted so the two are reconciled rather than half-built. | §33, §76 |
 
 Working as intended, for the record: grid / polar / shift CFFs, standalone OT direction,
@@ -355,13 +361,15 @@ code path validates and fires a mission.
 
 **Order:** ~~G1 → G5 → G3 → G2 → G4 → G6~~ ✅ shipped · ~~G19 audit~~ ✅ · ~~G22~~ ✅ `4570bbd`.
 
-~~G23~~ ✅ `d81a93e` · ~~G25~~ ✅ `33fe820`.
+~~G23~~ ✅ `d81a93e` · ~~G25~~ ✅ `33fe820` · ~~G24~~ ✅ `bd1de09` · ~~G14/G26/G27~~ ✅ `fbbc137`.
 
-**Next: G24** (fire control — `at my command` / `fire` / `cancel at my command` / `do not load` /
-`cannot observe` / `time on target`, absorbing **12f**), then **G14/G26/G27** (the one-transmission
-mission types). All of those extend `CFFQ` rather than forking it. Then the **G10/G13 doctrine
-research**, then G7/G8/G9/G11, then G15–G18.
-**G20 is PARKED at the user's direction — do not action it until they raise it.** G21 last.
+**Every row the G19 audit found is now closed except G28** (sheaf/fuze, which is G15/G16's job).
+
+**Next: G11** (observer reads back the MTO) and **G7/G8/G9** (OT factor vs OT direction, the
+no-direction block, the polar POS REP) — all four need no research and all extend `CFFQ`. Then the
+**G10/G13 doctrine research**, then G15–G18 (sheaf, fuze, per-asset callsigns and radii), then **G12**
+(fratricide must fail without auto-ending) and **G21**.
+**G20 is PARKED at the user's direction — do not action it until they raise it.**
 
 **Two G-A rows added keybinds** that the docs sweep must pick up: `[Z]` / mouse wheel cycles
 binocular power (4X/7X/14X), and `SHIFT+D` toggles dispersion. Both are in the in-app hint line
@@ -420,6 +428,7 @@ work does not touch rendering.
 | 2026-07-29 | **Track E closed** — E3 `ef9d473`, E4 `830d3cc`, E5 `cee195f`, E6 `0d2eaed`, E7 `ddd22f9`. All seven rows shipped; all carry ⚠, since the track is entirely about appearance and none of it has been seen in Chrome. New §5 collects that QA into one 15-minute pass. |
 | 2026-07-29 | **`index.html` → `SHITFIRE.html`**, renamed by the user, recorded as a git rename in `f4e7ad8` (staged from HEAD's exact blob so the diff is a pure path change and `--follow` still reaches all history). CLAUDE.md's first golden rule and the references in README/SPEC/QUICKSTART/GRAPHICS are stale until the docs sweep. |
 | 2026-07-29 | **A working JS syntax gate exists now** (`scratchpad/syntaxgate.ps1`): extracts the inline module, strips the imports, wraps it in `if (false) {}` and loads it as a classic script in headless Chrome, so a syntax error is reported as the early error it is while a clean parse executes nothing. Its first version used `new Function(src)` and was **worthless** — that compiles lazily, so it reported OK on a deliberately broken file. Both directions are now verified against an injected unbalanced paren, which it caught and located to the exact line. Every code row from E7 on should run it. |
+| 2026-07-29 | **G24** `bd1de09` and **G14/G26/G27** `fbbc137` shipped, closing every G19 audit row except G28. G24 absorbs the long-blocked **12f**: `at my command` persists until cancelled, and the harness demonstrates that without a one-shot latch the held round could never be released however many times FIRE was sent. G14/G26/G27 fix a MIS-recognition rather than a gap — `immediate smoke` was parsing as an ordinary HE mission, so the observer got high explosive when he asked for smoke — and G27 required storing the target number that `record as target` had been announcing and discarding. **12f and 12g are now superseded and should be struck from Track B.** |
 | 2026-07-29 | **G23** `d81a93e` and **G25** `33fe820` shipped. G23 restores the vertical element in all three doctrinal places and checks polar/shift verticals against the 35 m rule off the heightfield — height of burst is acknowledged but provably does not move the aimpoint, since the model is horizontal-only and faking it would teach a lie. G25 makes the two gun-stopping prowords work; rounds already in the air are deliberately not recalled, and the harness demonstrates that lifting the hold after the state gate (rather than before) would have deadlocked the mission with no way back. |
 | 2026-07-29 | **G22 shipped** `4570bbd` — the three-transmission CFF exists. `CFFQ` accumulates partial transmissions and hands the merged call to the same `handleCFF` the one-shot path uses, so there is still exactly one code path that validates and fires a mission. Deliberately purely additive: a complete one-shot call never enters the new code, which is what keeps every existing chapter, tutorial and saved transcript working. Unblocks G7, G8, G9, G11, G14, G24, G26, G27. |
 | 2026-07-29 | **G19 CFF protocol audit done, and it reordered the track.** The shipped parser was run against 29 transmissions taken from DOCTRINE.md: **16 classify as `unknown`** and get the FDC's gibberish reply, 3 more mis-classify and are acted on wrongly. Headline: **the 3-transmission CFF does not exist** — there is no multi-transmission state machine, so the doctrinal Transmission 1 gets mocked, contradicting both DOCTRINE.md §15 and CLAUDE.md. Logged as **G22–G28**; G22 is now NEXT because eight other rows sit inside it. |
