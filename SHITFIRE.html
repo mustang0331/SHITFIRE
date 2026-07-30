@@ -964,7 +964,19 @@ function rebuildWorld() {
   placeBattery();
   buildWorldFeatures();
   oceanShallows.visible = !DEM;
+  /* G21 — recorded targets do not survive an island change. RECTGT holds WORLD
+     COORDINATES; on a new heightfield those coordinates are an arbitrary point
+     that could be open water, a friendly position, or a village. "SUPPRESS
+     TARGET AB7101" firing at where a target USED to be on a different island is
+     the audit finding this row existed to catch. Same-island missions keep
+     their targets — that is what "on file" means. */
+  wipeRecordedTargets();
   newMission(false);
+}
+function wipeRecordedTargets() {
+  let n = 0;
+  for (const k in RECTGT) { delete RECTGT[k]; n++; }
+  if (n) log('', `Recorded target list wiped (${n}) — target numbers do not transfer between islands.`, 'sys');
 }
 function loadDEMFile(file) {
   const url = URL.createObjectURL(file);
@@ -6994,6 +7006,7 @@ function newMission(first, type, chapter) {
         CONFIG.SEED.terrain = vol.tseed;
         TERRAIN_PALETTE = wantPal;
         buildTerrain(); buildMinimap(); placeOP(); placeBattery(); buildWorldFeatures();
+        wipeRecordedTargets();   // G21 — same reasoning as rebuildWorld: new island, stale coordinates
         log('', 'Deploying to a new island — new map sheets are in the library [P].', 'sys');
       }
     }
