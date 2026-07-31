@@ -478,6 +478,85 @@ function SPOT_SRC_SEEDED(rng) {
   return QUIPS.spotSrc[Math.floor(rng() * QUIPS.spotSrc.length)];
 }
 
+/* ============================================================ CALLERS (NET1) */
+/* Rock eaters — friendly ground units who call MUSTANG 12 direct. Voice and
+   humor authority: NARRATIVE.md §Callers & guest voices (four archetypes, the
+   wrongness mechanic, the five-point contract). The caller leg is NEVER
+   doctrinal — no readback, no MTO, no strict-mode challenge — and a joke never
+   costs the caller's tactical information. Text-only by design: voice must
+   never be load-bearing (CLAUDE.md), and the typed net carries everything. */
+const CALLERS = [
+  { cs: 'RAZOR 3',   // team leader, in contact — fast, scared, fixating
+    open: 'RAZOR 3, RAZOR 3, we are getting FUCKED UP out here, I need you to do something about that right now.',
+    tgt: 'machine gun',
+    ack: ['Copy — wait, copy what? Just shoot it, over, or whatever you say, OVER.',
+          'I don\'t know what a grid is, man, I just need the trees to stop shooting at us.',
+          'Doc\'s working on Guerrero — he\'s gonna be pissed he missed this. Still firing, same spot, GO.'],
+    sup: 'It stopped — it stopped, holy shit, okay. Stay on it, do not let them get back up.',
+    dead: 'They\'re done. They\'re DONE. Whoever\'s on that gun, I owe you a beer and Guerrero owes you two.' },
+  { cs: 'GATOR 6',   // convoy escort NCO — bored, deadpan, unbothered
+    open: 'GATOR 6. We got a truck full of very angry people shooting at us. Whenever\'s convenient.',
+    tgt: 'truck and dismounts',
+    ack: ['Copy whatever you\'re about to say. Just make it quiet, I\'ve got a schedule to keep.',
+          'Nobody\'s dead yet, so no rush, but I\'d appreciate it before that changes.',
+          'Funny thing, I was just telling the driver this route never has any trouble. Universe has a sense of humor.'],
+    sup: 'Well, they\'ve stopped. Appreciated. We\'ll be on our way before they reconsider.',
+    dead: 'That did it. Quiet as church out here. GATOR 6 out — got a schedule to keep.' },
+  { cs: 'IRON 2',    // 2LT Purdy — over-formal, clueless, trying so hard
+    open: 'IRON 2, be advised, we are experiencing significant enemy contact from a, ah, fortified emplacement, over.',
+    tgt: 'emplacement',
+    ack: ['Copy your last, I think. Say again what a grid is, over. No, belay that, don\'t say again, just proceed.',
+          'This is IRON 2, danger close, I mean — is it danger close? My guys are close to it. Use your judgment, over.',
+          'Solid copy, HELLHOUND — sorry, MUSTANG — solid copy either way, out. Out. Over and out.'],
+    sup: 'Effect on target is, ah, effective. Outstanding. Continue to, uh, continue, over.',
+    dead: 'Target is — I want to say neutralized? Destroyed. One of those. Fine work, MUSTANG. IRON 2, over and out.' },
+  { cs: 'SPADE 4',   // Sgt Tran — laconic, fragments, calmest voice on the net
+    open: 'SPADE 4. Gun. Ours are pinned.',
+    tgt: 'gun',
+    ack: ['Negative on grid. Don\'t have one. You got eyes, I don\'t.',
+          'Still there. Do it again.',
+          'Copy.'],
+    sup: 'They\'re down. Keep it coming.',
+    dead: 'Good hit. SPADE 4 out.' }
+];
+// one line on the caller's net: distinct class, TLOG'd for transcript review
+function callerLine(cs, msg) {
+  log(cs, msg, 'caller');
+  TLOG.add('caller', cs, msg, {});
+}
+/* The location report: the caller's own position honestly (they know where
+   THEY are — grid square + landmark), then the target relative to THEMSELVES,
+   possibly corrupted per S.caller.wrong. The observer resolves it. */
+function callerLocLine() {
+  const S = Scenario, c = CALLERS[S.caller.i];
+  const lm = nearestLandmark(S.team.x, S.team.z);
+  const pos = `We're in grid square ${grid4(S.team.x, S.team.z)}` +
+              (lm ? `, ${cardinal8(azTo(lm.x, lm.z, S.team.x, S.team.z)).toLowerCase()} of ${lm.name.toLowerCase()}` : '') + '.';
+  return `${pos} The ${c.tgt} is ${cardinal8(S.caller.repAz).toLowerCase()} of us, ` +
+         `maybe ${S.caller.repDist} meters. That's my best guess, don't quote me.`;
+}
+function callerKickoff() {
+  const S = Scenario;
+  if (!S || !S.caller) return;
+  const c = CALLERS[S.caller.i];
+  const P = CONFIG.SPOT;
+  schedule(sim.now + P.lead, () => { callerLine(c.cs, c.open); });
+  schedule(sim.now + P.lead + P.gap, () => { callerLine(c.cs, callerLocLine()); });
+}
+// observer talks to the caller (dispatch intercept in onPlayerMessage):
+// "say again" repeats the location report; anything else draws an archetype ack
+function callerReply(raw) {
+  const S = Scenario, c = CALLERS[S.caller.i];
+  if (/say again|repeat|where/i.test(raw))
+    callerLine(c.cs, callerLocLine());
+  else
+    callerLine(c.cs, c.ack[Math.floor(Math.random() * c.ack.length)]);
+}
+function callerSay(kind) {
+  const S = Scenario, c = CALLERS[S.caller.i];
+  callerLine(c.cs, c[kind]);
+}
+
 /* ============================================================ AUDIO (minimal boom; polish in stage 4) */
 let audioCtx = null, noiseBuf = null;
 function ensureAudio() {

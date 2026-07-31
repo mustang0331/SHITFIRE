@@ -52,6 +52,9 @@
   .obs { color: #ffd98a; }
   .fdc { color: #9fd0ff; }
   .sys { color: #8fa387; font-style: italic; }
+  /* NET1 — the caller's net reads visually distinct from both the observer
+     (amber) and the FDC (blue): a rock eater is neither. */
+  .caller { color: #ff9d7a; }
   .call { opacity: .75; margin-right: 6px; }
   #txform { display: flex; align-items: center; border-top: 1px solid #39442e; }
   #txprompt { padding: 0 0 0 10px; color: #ffd98a; opacity: .7; white-space: nowrap; }
@@ -728,6 +731,7 @@ const SCN_META = {
   wreck:       { name: 'DERELICT WRECK (TRAINING)' },
   battery:     { name: 'COUNTERBATTERY — GUNS IN ACTION' },   // ENEMY1
   defense:     { name: 'DEFEND THE OP — DANGER CLOSE' },      // ENEMY2
+  callin:      { name: 'CALL FOR SUPPORT — ROCK EATERS' },    // NET1
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);
@@ -3174,6 +3178,45 @@ function genScenario(type, seed) {
     S.lastT = null;            // incremental advance (speed varies with losses)
     S.overrun = false;
     S.brief = `You are the objective. Assault force forming up near grid ${gridOf(en.x, en.z)}, grid bearing ~${brgTo(en)} mils, advancing on YOUR TOWER. Your own position is the friendly element — expect DANGER CLOSE, expect creeping corrections, and do not drop one on yourself. Break the assault before it reaches the wire.`;
+  } else if (type === 'callin') {
+    /* NET1 — a rock eater with a problem. A friendly team is pinned by an
+       enemy element; the caller reports it in plain language, relative to the
+       TEAM's own position, and the report can be WRONG (flipped cardinal,
+       distance wildly off) — NARRATIVE.md §Callers. The observer's job is to
+       weigh the report against their own optics and map, find the real
+       target, and build the doctrinal call themselves. The caller leg is
+       never doctrinal; the FDC leg stays fully doctrinal (contract §1/§4). */
+    let en = null;
+    for (let tries = 0; tries < 400 && !en; tries++)
+      en = findSpot(M.targetRange[0], M.targetRange[1], 2, spread ? 999 : 60, true);
+    en = en || { x: OP.x + 2000, z: OP.z };
+    let team = null;
+    for (let tries = 0; tries < 300 && !team; tries++) {
+      const az = rng() * Math.PI * 2, r = lerp(180, 350, rng());
+      const x = en.x + Math.sin(az) * r, z = en.z - Math.cos(az) * r;
+      if (H(x, z) < 2) continue;
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+      team = { x, z };
+    }
+    team = team || { x: en.x + 250, z: en.z };
+    S.enemy = en;
+    S.team = team;
+    S.friendlies = [{ x: team.x, z: team.z, r: M.fratricideRadius }];
+    /* the wrongness mechanic (contract §2): truth first, then the corruption.
+       40% clean, 30% flipped cardinal, 30% distance off by a wide margin.
+       The REAL enemy stands (and shoots) at S.enemy regardless — the caller
+       being wrong is checkable against the observer's own glass. */
+    const azTT = azTo(team.x, team.z, en.x, en.z);
+    const dTT = dist2(team.x, team.z, en.x, en.z);
+    const roll = rng();
+    const wrong = roll < 0.4 ? 'clean' : roll < 0.7 ? 'dirflip' : 'dist';
+    const repAz = wrong === 'dirflip' ? azTT + Math.PI : azTT;
+    const repDist = wrong === 'dist'
+      ? Math.round(dTT * (rng() < 0.5 ? lerp(0.15, 0.3, rng()) : lerp(2.5, 4, rng())) / 50) * 50
+      : Math.round(dTT / 50) * 50;
+    S.caller = { i: Math.floor(rng() * 4), wrong, repAz, repDist,
+                 saidThanks: false, saidDead: false };
+    S.brief = `A friendly team is up on your net asking for fire — no grid, no format, just a problem. Get their position, weigh their report against your own glass, and build the call yourself. The FDC still expects doctrine from YOU.`;
   } else if (type === 'chow') {
     /* 11a — Epilogue E.1. The war is won; the flock is not aware. A seagull
        flock (personnel-class target — FM 6-30 has no column for wingspan)
@@ -3393,6 +3436,10 @@ function updateScenario() {
       const z = S.fStart.z + fz * adv + rz * l;
       units.fSquad[i].position.set(x, H(x, z), z);   // figure origin is at the feet
     }
+  } else if (S.type === 'callin' && S.caller) {
+    // NET1 — the caller reacts to what the rounds actually do, once each
+    if (!S.caller.saidDead && !enemyAlive) { S.caller.saidDead = true; callerSay('dead'); }
+    else if (!S.caller.saidThanks && S.everSuppressed) { S.caller.saidThanks = true; callerSay('sup'); }
   } else if (S.type === 'defense' && !S.overrun) {
     /* ENEMY2 — the assault closes on the tower. Advance is incremental so it
        honestly responds to what the observer does: suppression halts it (and
@@ -3516,6 +3563,15 @@ function placeUnits() {
     });
   } else if (S.type === 'troops') {
     troopCluster(S.enemy.x, S.enemy.z, 8, 26);
+  } else if (S.type === 'callin') {
+    // NET1 — the enemy element, and the pinned team as friendly figures
+    troopCluster(S.enemy.x, S.enemy.z, 8, 20);
+    units.fSquad.forEach((m, i) => {
+      const a = (i / units.fSquad.length) * Math.PI * 2;
+      const x = S.team.x + Math.sin(a) * 7, z = S.team.z + Math.cos(a) * 7;
+      m.visible = true;
+      m.position.set(x, H(x, z), z);
+    });
   } else if (S.type === 'defense') {
     // ENEMY2 — eight figures; positions are driven per-frame as they advance
     troopCluster(S.enemy.x, S.enemy.z, 8, 20);
@@ -4334,6 +4390,85 @@ function sendSpotReport(reason) {
 // seeded pick that does not disturb the shared QUIPS._last rotation
 function SPOT_SRC_SEEDED(rng) {
   return QUIPS.spotSrc[Math.floor(rng() * QUIPS.spotSrc.length)];
+}
+
+/* ============================================================ CALLERS (NET1) */
+/* Rock eaters — friendly ground units who call MUSTANG 12 direct. Voice and
+   humor authority: NARRATIVE.md §Callers & guest voices (four archetypes, the
+   wrongness mechanic, the five-point contract). The caller leg is NEVER
+   doctrinal — no readback, no MTO, no strict-mode challenge — and a joke never
+   costs the caller's tactical information. Text-only by design: voice must
+   never be load-bearing (CLAUDE.md), and the typed net carries everything. */
+const CALLERS = [
+  { cs: 'RAZOR 3',   // team leader, in contact — fast, scared, fixating
+    open: 'RAZOR 3, RAZOR 3, we are getting FUCKED UP out here, I need you to do something about that right now.',
+    tgt: 'machine gun',
+    ack: ['Copy — wait, copy what? Just shoot it, over, or whatever you say, OVER.',
+          'I don\'t know what a grid is, man, I just need the trees to stop shooting at us.',
+          'Doc\'s working on Guerrero — he\'s gonna be pissed he missed this. Still firing, same spot, GO.'],
+    sup: 'It stopped — it stopped, holy shit, okay. Stay on it, do not let them get back up.',
+    dead: 'They\'re done. They\'re DONE. Whoever\'s on that gun, I owe you a beer and Guerrero owes you two.' },
+  { cs: 'GATOR 6',   // convoy escort NCO — bored, deadpan, unbothered
+    open: 'GATOR 6. We got a truck full of very angry people shooting at us. Whenever\'s convenient.',
+    tgt: 'truck and dismounts',
+    ack: ['Copy whatever you\'re about to say. Just make it quiet, I\'ve got a schedule to keep.',
+          'Nobody\'s dead yet, so no rush, but I\'d appreciate it before that changes.',
+          'Funny thing, I was just telling the driver this route never has any trouble. Universe has a sense of humor.'],
+    sup: 'Well, they\'ve stopped. Appreciated. We\'ll be on our way before they reconsider.',
+    dead: 'That did it. Quiet as church out here. GATOR 6 out — got a schedule to keep.' },
+  { cs: 'IRON 2',    // 2LT Purdy — over-formal, clueless, trying so hard
+    open: 'IRON 2, be advised, we are experiencing significant enemy contact from a, ah, fortified emplacement, over.',
+    tgt: 'emplacement',
+    ack: ['Copy your last, I think. Say again what a grid is, over. No, belay that, don\'t say again, just proceed.',
+          'This is IRON 2, danger close, I mean — is it danger close? My guys are close to it. Use your judgment, over.',
+          'Solid copy, HELLHOUND — sorry, MUSTANG — solid copy either way, out. Out. Over and out.'],
+    sup: 'Effect on target is, ah, effective. Outstanding. Continue to, uh, continue, over.',
+    dead: 'Target is — I want to say neutralized? Destroyed. One of those. Fine work, MUSTANG. IRON 2, over and out.' },
+  { cs: 'SPADE 4',   // Sgt Tran — laconic, fragments, calmest voice on the net
+    open: 'SPADE 4. Gun. Ours are pinned.',
+    tgt: 'gun',
+    ack: ['Negative on grid. Don\'t have one. You got eyes, I don\'t.',
+          'Still there. Do it again.',
+          'Copy.'],
+    sup: 'They\'re down. Keep it coming.',
+    dead: 'Good hit. SPADE 4 out.' }
+];
+// one line on the caller's net: distinct class, TLOG'd for transcript review
+function callerLine(cs, msg) {
+  log(cs, msg, 'caller');
+  TLOG.add('caller', cs, msg, {});
+}
+/* The location report: the caller's own position honestly (they know where
+   THEY are — grid square + landmark), then the target relative to THEMSELVES,
+   possibly corrupted per S.caller.wrong. The observer resolves it. */
+function callerLocLine() {
+  const S = Scenario, c = CALLERS[S.caller.i];
+  const lm = nearestLandmark(S.team.x, S.team.z);
+  const pos = `We're in grid square ${grid4(S.team.x, S.team.z)}` +
+              (lm ? `, ${cardinal8(azTo(lm.x, lm.z, S.team.x, S.team.z)).toLowerCase()} of ${lm.name.toLowerCase()}` : '') + '.';
+  return `${pos} The ${c.tgt} is ${cardinal8(S.caller.repAz).toLowerCase()} of us, ` +
+         `maybe ${S.caller.repDist} meters. That's my best guess, don't quote me.`;
+}
+function callerKickoff() {
+  const S = Scenario;
+  if (!S || !S.caller) return;
+  const c = CALLERS[S.caller.i];
+  const P = CONFIG.SPOT;
+  schedule(sim.now + P.lead, () => { callerLine(c.cs, c.open); });
+  schedule(sim.now + P.lead + P.gap, () => { callerLine(c.cs, callerLocLine()); });
+}
+// observer talks to the caller (dispatch intercept in onPlayerMessage):
+// "say again" repeats the location report; anything else draws an archetype ack
+function callerReply(raw) {
+  const S = Scenario, c = CALLERS[S.caller.i];
+  if (/say again|repeat|where/i.test(raw))
+    callerLine(c.cs, callerLocLine());
+  else
+    callerLine(c.cs, c.ack[Math.floor(Math.random() * c.ack.length)]);
+}
+function callerSay(kind) {
+  const S = Scenario, c = CALLERS[S.caller.i];
+  callerLine(c.cs, c[kind]);
 }
 
 /* ============================================================ AUDIO (minimal boom; polish in stage 4) */
@@ -7304,6 +7439,24 @@ function onPlayerMessage(raw) {
       return;
     }
   }
+  /* NET1 — the caller's net. A transmission that names the caller's callsign
+     and parses as nothing doctrinal goes to the rock eater, not the FDC: the
+     FDC never sees, mocks, or reads back caller-net traffic (NARRATIVE.md
+     contract §1). parseMessage itself is untouched — replay-stable — and any
+     transmission that DOES parse (a CFF, a correction, an EOM) still takes
+     its doctrinal path even with the callsign in it. */
+  if (Scenario && Scenario.type === 'callin' && Scenario.caller &&
+      !CFFQ.on && !(mission && mission.mto && !mission.mto.read) &&
+      (p.type === 'unknown' || p.type === 'sayagain') &&
+      raw.toLowerCase().includes(CALLERS[Scenario.caller.i].cs.split(' ')[0].toLowerCase())) {
+    /* Two guards, both found by the harness: an open CFF queue owns unknown
+       transmissions (T3 treats them as the target description — a caller
+       callsign inside a description must not hijack the call), and a pending
+       MTO readback owns them per G11. "SAY AGAIN <callsign>" is caller-net
+       traffic; a bare SAY AGAIN still goes to the FDC as always. */
+    callerReply(raw);
+    return;
+  }
   if (p.type !== 'unknown' && p.type !== 'empty') unknownStreak = 0;
   /* G22 — the three-transmission CFF. Every branch below is reached only by a
      PARTIAL transmission, which did not work at all before this row; a complete
@@ -9211,7 +9364,8 @@ function newMission(first, type, chapter) {
     else if (car.missions >= 5) FDC.say(pick(QUIPS.careerVet), { delay: 1.6 });
   }
   // orient the observer onto a target AREA — never the grid. See sendSpotReport().
-  if (SPOT_SCN[Scenario.type]) sendSpotReport('start');
+  if (Scenario.type === 'callin') callerKickoff();   // NET1 — the caller IS the cue
+  else if (SPOT_SCN[Scenario.type]) sendSpotReport('start');
   else FDC.say(pick(QUIPS.spotNone), { delay: CONFIG.SPOT.lead });
   if (first) {
     const c = Scenario.compound || Scenario.enemy;
@@ -9625,7 +9779,8 @@ function animate(tMs) {
   const flashOn = enemyAlive && Scenario && sim.now >= (Scenario.suppressedUntil || 0) &&
     (Scenario.type === 'strongpoint' || Scenario.type === 'assault' ||
      Scenario.type === 'bunker' || Scenario.type === 'raid' ||
-     Scenario.type === 'defense');   // ENEMY2 — they are shooting at YOU
+     Scenario.type === 'defense' ||  // ENEMY2 — they are shooting at YOU
+     Scenario.type === 'callin');    // NET1 — they are shooting at the team
   for (let i = 0; i < units.flashes.length; i++) {
     const f = units.flashes[i];
     f.s.visible = flashOn && (Scenario.type !== 'bunker' || i === 0) &&

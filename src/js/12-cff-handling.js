@@ -729,6 +729,24 @@ function onPlayerMessage(raw) {
       return;
     }
   }
+  /* NET1 — the caller's net. A transmission that names the caller's callsign
+     and parses as nothing doctrinal goes to the rock eater, not the FDC: the
+     FDC never sees, mocks, or reads back caller-net traffic (NARRATIVE.md
+     contract §1). parseMessage itself is untouched — replay-stable — and any
+     transmission that DOES parse (a CFF, a correction, an EOM) still takes
+     its doctrinal path even with the callsign in it. */
+  if (Scenario && Scenario.type === 'callin' && Scenario.caller &&
+      !CFFQ.on && !(mission && mission.mto && !mission.mto.read) &&
+      (p.type === 'unknown' || p.type === 'sayagain') &&
+      raw.toLowerCase().includes(CALLERS[Scenario.caller.i].cs.split(' ')[0].toLowerCase())) {
+    /* Two guards, both found by the harness: an open CFF queue owns unknown
+       transmissions (T3 treats them as the target description — a caller
+       callsign inside a description must not hijack the call), and a pending
+       MTO readback owns them per G11. "SAY AGAIN <callsign>" is caller-net
+       traffic; a bare SAY AGAIN still goes to the FDC as always. */
+    callerReply(raw);
+    return;
+  }
   if (p.type !== 'unknown' && p.type !== 'empty') unknownStreak = 0;
   /* G22 — the three-transmission CFF. Every branch below is reached only by a
      PARTIAL transmission, which did not work at all before this row; a complete

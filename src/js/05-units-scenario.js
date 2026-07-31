@@ -460,6 +460,45 @@ function genScenario(type, seed) {
     S.lastT = null;            // incremental advance (speed varies with losses)
     S.overrun = false;
     S.brief = `You are the objective. Assault force forming up near grid ${gridOf(en.x, en.z)}, grid bearing ~${brgTo(en)} mils, advancing on YOUR TOWER. Your own position is the friendly element — expect DANGER CLOSE, expect creeping corrections, and do not drop one on yourself. Break the assault before it reaches the wire.`;
+  } else if (type === 'callin') {
+    /* NET1 — a rock eater with a problem. A friendly team is pinned by an
+       enemy element; the caller reports it in plain language, relative to the
+       TEAM's own position, and the report can be WRONG (flipped cardinal,
+       distance wildly off) — NARRATIVE.md §Callers. The observer's job is to
+       weigh the report against their own optics and map, find the real
+       target, and build the doctrinal call themselves. The caller leg is
+       never doctrinal; the FDC leg stays fully doctrinal (contract §1/§4). */
+    let en = null;
+    for (let tries = 0; tries < 400 && !en; tries++)
+      en = findSpot(M.targetRange[0], M.targetRange[1], 2, spread ? 999 : 60, true);
+    en = en || { x: OP.x + 2000, z: OP.z };
+    let team = null;
+    for (let tries = 0; tries < 300 && !team; tries++) {
+      const az = rng() * Math.PI * 2, r = lerp(180, 350, rng());
+      const x = en.x + Math.sin(az) * r, z = en.z - Math.cos(az) * r;
+      if (H(x, z) < 2) continue;
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+      team = { x, z };
+    }
+    team = team || { x: en.x + 250, z: en.z };
+    S.enemy = en;
+    S.team = team;
+    S.friendlies = [{ x: team.x, z: team.z, r: M.fratricideRadius }];
+    /* the wrongness mechanic (contract §2): truth first, then the corruption.
+       40% clean, 30% flipped cardinal, 30% distance off by a wide margin.
+       The REAL enemy stands (and shoots) at S.enemy regardless — the caller
+       being wrong is checkable against the observer's own glass. */
+    const azTT = azTo(team.x, team.z, en.x, en.z);
+    const dTT = dist2(team.x, team.z, en.x, en.z);
+    const roll = rng();
+    const wrong = roll < 0.4 ? 'clean' : roll < 0.7 ? 'dirflip' : 'dist';
+    const repAz = wrong === 'dirflip' ? azTT + Math.PI : azTT;
+    const repDist = wrong === 'dist'
+      ? Math.round(dTT * (rng() < 0.5 ? lerp(0.15, 0.3, rng()) : lerp(2.5, 4, rng())) / 50) * 50
+      : Math.round(dTT / 50) * 50;
+    S.caller = { i: Math.floor(rng() * 4), wrong, repAz, repDist,
+                 saidThanks: false, saidDead: false };
+    S.brief = `A friendly team is up on your net asking for fire — no grid, no format, just a problem. Get their position, weigh their report against your own glass, and build the call yourself. The FDC still expects doctrine from YOU.`;
   } else if (type === 'chow') {
     /* 11a — Epilogue E.1. The war is won; the flock is not aware. A seagull
        flock (personnel-class target — FM 6-30 has no column for wingspan)
@@ -679,6 +718,10 @@ function updateScenario() {
       const z = S.fStart.z + fz * adv + rz * l;
       units.fSquad[i].position.set(x, H(x, z), z);   // figure origin is at the feet
     }
+  } else if (S.type === 'callin' && S.caller) {
+    // NET1 — the caller reacts to what the rounds actually do, once each
+    if (!S.caller.saidDead && !enemyAlive) { S.caller.saidDead = true; callerSay('dead'); }
+    else if (!S.caller.saidThanks && S.everSuppressed) { S.caller.saidThanks = true; callerSay('sup'); }
   } else if (S.type === 'defense' && !S.overrun) {
     /* ENEMY2 — the assault closes on the tower. Advance is incremental so it
        honestly responds to what the observer does: suppression halts it (and
@@ -802,6 +845,15 @@ function placeUnits() {
     });
   } else if (S.type === 'troops') {
     troopCluster(S.enemy.x, S.enemy.z, 8, 26);
+  } else if (S.type === 'callin') {
+    // NET1 — the enemy element, and the pinned team as friendly figures
+    troopCluster(S.enemy.x, S.enemy.z, 8, 20);
+    units.fSquad.forEach((m, i) => {
+      const a = (i / units.fSquad.length) * Math.PI * 2;
+      const x = S.team.x + Math.sin(a) * 7, z = S.team.z + Math.cos(a) * 7;
+      m.visible = true;
+      m.position.set(x, H(x, z), z);
+    });
   } else if (S.type === 'defense') {
     // ENEMY2 — eight figures; positions are driven per-frame as they advance
     troopCluster(S.enemy.x, S.enemy.z, 8, 20);

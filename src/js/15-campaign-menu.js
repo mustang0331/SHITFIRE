@@ -588,7 +588,8 @@ function newMission(first, type, chapter) {
     else if (car.missions >= 5) FDC.say(pick(QUIPS.careerVet), { delay: 1.6 });
   }
   // orient the observer onto a target AREA — never the grid. See sendSpotReport().
-  if (SPOT_SCN[Scenario.type]) sendSpotReport('start');
+  if (Scenario.type === 'callin') callerKickoff();   // NET1 — the caller IS the cue
+  else if (SPOT_SCN[Scenario.type]) sendSpotReport('start');
   else FDC.say(pick(QUIPS.spotNone), { delay: CONFIG.SPOT.lead });
   if (first) {
     const c = Scenario.compound || Scenario.enemy;

@@ -299,6 +299,7 @@ const SCN_META = {
   wreck:       { name: 'DERELICT WRECK (TRAINING)' },
   battery:     { name: 'COUNTERBATTERY — GUNS IN ACTION' },   // ENEMY1
   defense:     { name: 'DEFEND THE OP — DANGER CLOSE' },      // ENEMY2
+  callin:      { name: 'CALL FOR SUPPORT — ROCK EATERS' },    // NET1
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);
