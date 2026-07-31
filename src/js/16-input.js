@@ -9,6 +9,24 @@ const pttLiveEl = document.getElementById('pttlive');
 loadComms();
 let rec = null, recActive = false, recFinal = '', recInterim = '';
 let srWarned = false;
+/* Chrome cannot PERSIST microphone permission for a file:// page — there is no
+   origin to remember the grant against — and SpeechRecognition re-prompts on
+   every start() unless the tab already holds a live audio stream. So on the
+   first PTT we also acquire ONE getUserMedia stream and hold it for the life
+   of the tab: the permission prompt covers both (same mic permission), and
+   every later transmission starts clean. The held stream is never recorded,
+   routed, or read — it exists purely so the grant stays live. Failure is
+   silent and changes nothing: PTT still works, it just prompts as before.
+   (For a grant that survives ACROSS sessions, serve over localhost — see
+   tools/serve.cmd — where Chrome has a real origin to remember.) */
+let _micHeld = null, micTried = false;   // _ prefix: assigned-never-read is the point
+function micHold() {
+  if (micTried || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+  micTried = true;
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(s => { _micHeld = s; })
+    .catch(() => { _micHeld = null; });   // denied/unavailable: degrade to per-use prompts
+}
 function startPTT() {
   if (recActive) return;
   if (!SR) {
@@ -18,6 +36,7 @@ function startPTT() {
     }
     return;
   }
+  micHold();
   try {
     rec = new SR();
   } catch (e) { return; }
