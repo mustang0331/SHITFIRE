@@ -5891,6 +5891,11 @@ const STT_FIX = {
   lft: 'left', laft: 'left',
   ads: 'add', adds: 'add', added: 'add',
   danjer: 'danger',
+  /* NET3 — "FIRE FOR AFFECT" (transcript 20-01 t=2111.8) silently fired an
+     adjust round instead of the FFE the observer called for. Same class of
+     repair as the rest of this table; "affect" has no other meaning on a
+     fire net. */
+  affect: 'effect',
 };
 function normalize(s) {
   let toks = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
@@ -6087,12 +6092,20 @@ function parseMessage(raw) {
              vertM: sUD ? (sUD[1] === 'up' ? 1 : -1) * parseInt(sUD[2]) : null,
              desc, raw: t, toks };
   }
-  // polar: "direction 4400, distance 2100"
-  const mDir = t.match(/\bdirection\s+(\d+)\b/);
-  const mDist = t.match(/\bdistance\s+(\d+)\b/);
+  /* polar: "direction 4400, distance 2100"
+     NET3 — tolerance, from transcript evidence (a real player lost ~17 minutes
+     to this): RANGE is accepted as a synonym for DISTANCE, and a natural
+     connective word between the proword and the number ("distance TO 600",
+     "direction FOR 500") no longer breaks the match. A human FDC hears
+     "direction 4500, range 600" and knows exactly what is being attempted. */
+  const mDir = t.match(/\bdirection\s+(?:for\s+|of\s+)?(\d+)\b/);
+  const mDist = t.match(/\b(?:distance|range)\s+(?:to\s+|of\s+|at\s+)?(\d+)\b/);
   if (mDir && mDist) {
     const warno = ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none');
-    let di = toks.indexOf('distance') + 1;
+    let di = toks.indexOf('distance');
+    if (di < 0) di = toks.indexOf('range');
+    di++;
+    while (di < toks.length && /^(?:to|of|at)$/.test(toks[di])) di++;
     while (di < toks.length && /^\d+$/.test(toks[di])) di++;
     const stop = new Set(['over', 'out', 'break']);
     const descToks = [];
@@ -6110,8 +6123,9 @@ function parseMessage(raw) {
              raw: t, toks };
   }
   // standalone OT direction ("direction 5920, over") — doctrine requires it
-  // before or with the first correction on a grid mission
-  const mDirOnly = t.match(/\bdirection\s+(\d+)\b/);
+  // before or with the first correction on a grid mission (NET3: same
+  // connective tolerance as the polar branch)
+  const mDirOnly = t.match(/\bdirection\s+(?:for\s+|of\s+)?(\d+)\b/);
   if (mDirOnly && !/\b(left|right|add|drop)\b/.test(t))
     return { type: 'direction', dirMils: parseInt(mDirOnly[1]) };
   /* G23 — the correction now carries its VERTICAL. `corr` had exactly two fields,

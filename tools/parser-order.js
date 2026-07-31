@@ -37,7 +37,7 @@ var order = [
   ["suppress by number",     "suppresstgt"],
   ["grid extraction",        "toks.indexOf('grid')"],
   ["shift",                  "known point\\s+"],
-  ["polar",                  "\\bdistance\\s+"],
+  ["polar",                  "\\b(?:distance|range)\\s+"],   // NET3 — range is a distance synonym
   ["standalone direction",   "type: 'direction'"],
   ["corrections (incl HOB)", "type: 'adjust'"],
   ["repeat",                 "type: 'repeat'"],
