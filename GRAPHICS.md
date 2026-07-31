@@ -534,10 +534,22 @@ correctness fix, and it establishes the `CONFIG.GFX` block that everything else 
 
 ---
 
-## ⚠ Open visual QA backlog — 15 items awaiting eyes in Chrome
+## 🚫 Visual QA backlog — DISMISSED 2026-07-30, reference only
 
-**This is the standing to-do list for anything that can only be confirmed by looking at it.**
-Moved here from ROADMAP.md §5 on 2026-07-29 at the user's direction; ROADMAP now points here.
+> **User direction, 2026-07-30: ignore this backlog.** It is no longer open work, it gates nothing,
+> and it must not be offered as a next step. [ROADMAP.md](ROADMAP.md) §5 is the authority on that
+> status. The list below is **kept as reference** for the user if they ever want to run the pass —
+> it is not a to-do list any more, and nothing should be appended to it.
+>
+> Consequences, so this is not re-derived from the markers: every row marked `DONE ⚠` on the board
+> **is simply `DONE`**. The `⚠` glyphs are historical residue from when this was tracked work. Do not
+> treat one as an unmet gate, do not hold a row for one, and do not add `⚠` to rows that land from
+> here on. `tools/shots.js` — which boots the real page and captures 12 screenshot states, and which
+> caught 13h's temporal-dead-zone boot failure and 12h's unlit illumination flare, both invisible to
+> the parse gate — is why this can be dismissed rather than merely deferred.
+
+**Original framing, kept as history:** this was the standing to-do list for anything that can only be
+confirmed by looking at it. Moved here from ROADMAP.md §5 on 2026-07-29 at the user's direction.
 
 Why it exists: every row below shipped with an *executable* harness (real arithmetic run through
 `cscript //E:JScript`) and a headless-Chrome **parse** gate. Neither can see a picture. So for these

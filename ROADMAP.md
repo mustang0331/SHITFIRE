@@ -4,7 +4,7 @@
 If another document disagrees with this one about order or status, this one wins and the other
 document is the bug.
 
-Last updated: 2026-07-30 · Head: `1cc645a` · **The file is `SHITFIRE.html`, not `index.html`**
+Last updated: 2026-07-30 · Head: `d3b9f6d` · **The file is `SHITFIRE.html`, not `index.html`**
 
 **Shipped off this board:** `13a` bino quality pin · `F1` range rounding · `13b` ACES tone mapping ·
 `13c` sky + time of day · **Track E complete** (`E1`–`E7`: legibility, SALUTE, night/NVG/thermal,
@@ -28,40 +28,38 @@ to end · `14a` DIALOGUE_REVISIONS QUIPS punch-up (pools 6–8+ entries, §2a pr
 career pools expanded) `e56de84` · `14b` chapter narrative punch-ups + raid-brief copy pass `1cc645a`.
 **Track D / STAGE 14 COMPLETE** except the parked `14c`.
 
-**THE BOARD IS CLOSED. There is no `NEXT` row.** Every track is complete: the campaign runs Foreword
-through the Epilogue end to end, graphics `§G0`–`§G8` have all landed, and every doctrine track (E, F,
-G) is closed. `11d`/`11e` closed Track C (Epilogue fully built); `14a`/`14b` closed everything buildable
-in Track D. The only work left on this board is **parked by explicit user decision** — nothing here is
-waiting on more building, only on the user choosing to unpark it:
+**THE BOARD REOPENED AND WAS REORGANIZED BY DOMAIN, 2026-07-30, at the user's direction.** Everything
+built before that date is complete and now lives in **§4 as the historical record**: the campaign runs
+Foreword through the Epilogue end to end, graphics `§G0`–`§G8` have all landed, and every letter track
+(A–G) is closed.
 
-- **`G20`** — the 10×10 km map may be too small. **Parked at the user's direction 2026-07-29: do not
-  raise, cost, or implement until the user brings it up.**
-- **`F4`** — multi-phase MEAT GRINDER chaining (4.4). Parked pending the single-mission version being
-  balanced first.
-- **`14c`** — LIBERTY FIRES guest FDC. Parked: it introduces a new named character, which needs a
-  NARRATIVE.md home before it belongs in code. §8's proposed slot (E.1 THE GREAT CHOW RAID) has since
-  been *built* (`11a`, `57532a5`) with HELLHOUND running the net throughout the Epilogue — so the slot
-  question is now a live user decision (does LIBERTY FIRES bump HELLHOUND out of E.1, get its own
-  chapter, or get dropped), not a default the docs can pick for them.
-- **Volume V "ON WINGS"** — locked by design, a menu tease at most. **Never build unasked** (CLAUDE.md).
-- **⚠ The standing human-in-Chrome visual QA backlog** in [GRAPHICS.md](GRAPHICS.md) §Open visual QA
-  backlog. Every graphics row shipped verified by harness and headless-Chrome parse, but neither can
-  see a picture — this is the one item that is genuinely still open work, not a parked decision, and it
-  is a look-at-it-in-a-browser pass, not a code row.
+**Open work lives in [§3, THE LIVE BOARD](#3-the-live-board--open-work-by-domain), grouped by what
+kind of work it is** — `PERF` · `WORLD` · `ENEMY` · `NET` · `TEMPO` · `GFX` · `BUILD` · `PORT`. The
+old A–G letters were historical accident; they recorded *when* work happened and could never say
+*what* it was. Completed tracks keep their letters forever (they map to commit messages); new rows
+take a domain prefix.
 
-**Next: none.** The board does not advance again until the user raises one of the four items above.
+**Next: `PERF1`** — *"looking around is too laggy"*, reported by the user from real play 2026-07-30.
+It outranks everything, including the `BUILD1` that briefly held `NEXT` earlier the same day, because
+it degrades **every mission on every frame** and because most other open rows add to the scene and
+would make it worse. Fix the frame budget before spending more of it.
 
-> ⚠ **Nine shipped rows still need a human in Chrome.** Every visual row was verified by harness
-> (real arithmetic) and by a headless-Chrome **parse** gate. Neither can see a picture. The list of
-> what to look at lives in **[GRAPHICS.md](GRAPHICS.md) §Open visual QA backlog** (15 items, ~15
-> minutes); rows marked `DONE ⚠` keep the ⚠ until the matching item is confirmed by eye. Not
-> blocking — the active parser work does not touch rendering.
+**Two questions the user asked, answered from the code, both now rows in §3.5:** there are **no**
+missions at any time of day but noon, and **no** missions that call for immediate fire — and in both
+cases the machinery is fully built and shipped with **zero chapters using it**. `TEMPO1` and `TEMPO2`
+are authoring rows, not engineering ones.
 
-> ⚠ **Concurrency is live in this repo, not hypothetical.** An off-board commit landed on the sim file
-> mid-session (`a74cee7`), BALLISTICS_RESEARCH.md and new TLOG transcripts appeared during other work,
-> and the `index.html` → `SHITFIRE.html` rename arrived from outside the session while a row was open.
-> **Confirm nothing else holds `SHITFIRE.html` before starting a row** — rule 1 below. Four occurrences
-> so far.
+**Parked items moved to [§3.9](#39-parked--do-not-action-until-the-user-raises-them)** — `G20`, `F4`,
+`14c`, and Volume V, all untouched and all still do-not-action.
+
+> 🚫 **The visual QA backlog is DISMISSED — do not raise it.** **User direction, 2026-07-30: ignore
+> the human-in-Chrome visual QA backlog.** The 18-item list in [GRAPHICS.md](GRAPHICS.md) §Open visual
+> QA backlog stays in that file as a reference for anyone who wants it, but it is **no longer open work
+> on this board, is not a gate on anything, and must not be offered as a next step.** The `DONE ⚠`
+> markers on shipped rows are henceforth decoration: **treat every `⚠` row as simply `DONE`.** Do not
+> re-open this, do not append to it, and do not cite an unconfirmed ⚠ as a reason to hold a row.
+
+
 
 > 🔧 **There is a working syntax gate.** `scratchpad/syntaxgate.ps1` extracts the inline module, strips
 > the imports, wraps it in `if (false) {}` and loads it as a classic script in headless Chrome, so a
@@ -78,13 +76,13 @@ Confusion in this project comes from asking the wrong file. One question, one au
 
 | Question | Authority | Not |
 |---|---|---|
-| What ships next? What's done? | **ROADMAP.md** (this file) | SPEC, README |
+| What ships next? What's done? | **ROADMAP.md** §3 (open, by domain) · §4 (done, historical) | SPEC, README |
 | What is stage N supposed to contain? | **SPEC.md** | README |
 | How do agents work here? Rules? | **CLAUDE.md** | QUICKSTART |
 | What is doctrinally correct? | **DOCTRINE.md** | SPEC, vibes |
 | Story, chapters, characters, humor | **NARRATIVE.md** | — |
 | Graphics implementation detail | **GRAPHICS.md** (detail for stage 13) | SPEC |
-| **What still needs looking at in Chrome** | **GRAPHICS.md** §Open visual QA backlog | ROADMAP §5 (pointer only) |
+| ~~What still needs looking at in Chrome~~ | **DISMISSED 2026-07-30** — see §5. The GRAPHICS.md list is reference only and gates nothing. | — |
 | Dialogue rewrite text | **DIALOGUE_REVISIONS.md** (detail for stage 14) | NARRATIVE |
 | Training-objective crosswalk | **TLO.md** | — |
 | Real-world dispersion / lethality figures | **BALLISTICS_RESEARCH.md** (reference only — nothing in it is applied, and it does **not** license a trajectory sim) | — |
@@ -121,7 +119,155 @@ different item #27s and two different #28s. Backlog lives here now, with stable 
 
 ---
 
-## 3. Shipping order
+## 3. THE LIVE BOARD — open work, by domain
+
+**Reorganized 2026-07-30 at the user's direction.** The old A–G letter tracks were *historical* —
+they grew in the order work happened, and by the time every one of them closed, the board had no way
+to say what kind of work a row was. Open work now lives here, grouped by **domain**. The completed
+letter tracks move to §4 as the historical record and **keep their IDs**, because those map to commit
+messages and must never be renumbered.
+
+**Prefix legend.** New rows take a domain prefix instead of a letter: `PERF` (frame rate and
+responsiveness) · `WORLD` (what is on the island and where) · `ENEMY` (what the enemy does) ·
+`NET` (who is on the radio and how well they use it) · `TEMPO` (time of day, immediacy, clocks) ·
+`GFX` (rendering beyond the shipped graphics plan) · `BUILD` (the shipped artifact itself) ·
+`PORT` (engine port). Rules §2 apply unchanged — **exactly one row is `NEXT`**, one row is one
+commit, gate before commit, docs in a follow-up.
+
+**NEXT: `PERF1`.** It is promoted above everything else here, including the `BUILD1` that was `NEXT`
+earlier today, because the user reports *"looking around is too laggy"* — a defect that degrades
+**every mission in the game on every frame**, and one that most of the rows below would make worse by
+adding to the scene. Fix the frame budget before spending more of it. `BUILD1` stays small and
+grabbable the moment `PERF1` closes.
+
+### 3.1 PERF — frame rate and responsiveness
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| PERF1 | **"Looking around is too laggy."** User-reported 2026-07-30, from real play. **Diagnose before changing anything** — this row is an investigation first and a fix second. The input path is *not* the suspect: the `mousemove` handler in [src/js/09-camera.js:5](src/js/09-camera.js#L5) only adds to `yaw`/`pitch` and does no work, so this is **frame rate**, not input handling. Ranked suspects, all added recently and none yet measured together: (1) **the 13a/§G0.4 bino quality pin** — it forces tier 0 *and skips adaptive step-down entirely* while binos are up, which disables the frame-rate relief valve at exactly the moment load peaks, and glassing is when the observer looks around most; (2) **13f vegetation** (`vegBudget` 4000 instanced canopy + scrub); (3) **13e's near-field patch** (+44k tris, +1 draw call); (4) `antialias: true` with pixel ratio up to **1.75**, which on a high-DPI screen is ~3× the fill of ratio 1.0; (5) 12h's illumination `PointLight`. **First question to settle: is it laggy with binos UP, DOWN, or both?** Up-only points hard at suspect 1 and the fix is bounded; both means it is scene cost and suspects 2–4 own it. | Opus | `renderer.info.render.calls` and `.triangles` recorded before/after; **60 fps held while sweeping the view at 4X, 7X and 14X on the default island (seed 1337)**, measured, not asserted; the §G0.4 correctness guarantee survives — **troop figures still countable at 3000 m through binos** (dropping pixel ratio to buy frame rate is the one fix that is NOT allowed to win here, per GRAPHICS.md defect #2) | **NEXT** |
+
+### 3.2 WORLD — what is on the island, and where
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| WORLD1 | **Disperse targets across the map.** User: *"targets are mostly at the ends of the island… it's fine to leave those missions there but I want to add more targets across the map dispersed fairly evenly."* **Measured cause, not a guess:** `findSpot()` ([src/js/05-units-scenario.js:99](src/js/05-units-scenario.js#L99)) picks a random azimuth and a range in `CONFIG.MISSION.targetRange` `[1500, 3200]` — an **annulus around one fixed OP**, so nothing is ever nearer than 1500 m or further than 3200 m, on a 10 km map with a 3900 m island radius. On top of that, troops-in-the-open call `findSpot(…, 2, 14, true)` — a **14 m elevation ceiling**, which on an island with a 95 m ridge and a 165 m massif is *only the coastal fringe*. That height clamp is what puts targets "at the ends." **Existing chapter missions stay where they are** (the user asked for this explicitly — fixed seeds, authored pars); this row widens where *new* targets can go. | Opus | Target positions across a large sample are **visibly spread over the island, not ringed around the OP**; nothing lands inside a civilian village exclusion; every target still has an OP sight line where its scenario type requires one; **no existing chapter's target moves** — fixed-seed chapters byte-identical, pars from `11e`/`12k` untouched | READY |
+| WORLD2 | **Enemy-occupied settlements, bases and the airfield.** User: towns, bases and the airfield *occupied by enemy forces*. Today `WORLD.villages`, the facilities and the airfield are **neutral scenery** — `findSpot` actively excludes a 120 m ring around every village so targets never land there. This row makes a settlement a place the enemy can *hold*, which is a different tactical problem: no-strike civilian structures interleaved with legitimate targets, at a scale bigger than 3.3 UNINVITED GUESTS' single fishing village. | Opus | Occupied vs. civilian settlements distinguishable **from the OP at 2000 m and on the `[M]` map/printed sheets**; the collateral-damage auto-fail rule is unchanged and still winnable; E6's three settlement scales still read correctly | READY (after `WORLD1`) |
+
+### 3.3 ENEMY — what the enemy actually does
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| ENEMY1 | **Enemy batteries that fire on friendlies.** User-requested. An enemy indirect-fire asset that is *actively hurting your side* while you work — the counterbattery problem, and the first target in this trainer with a real reason to hurry. Pairs directly with `TEMPO3`'s clock. **Design decision needed before code:** do friendly casualties taken from enemy fire count against the observer's grade? Recommend **yes as a time cost, no as a fail** — fratricide and collateral damage stay the only auto-fails (CLAUDE.md), because failing a mission for being slow would collapse into the star-par system that already measures exactly that. | Opus | Enemy fires are visible and locatable **from their effects** (this is the skill — find the gun by watching where it shoots); silencing the battery measurably stops them; auto-fail rules unchanged; `impact = aimpoint + error` untouched for enemy rounds too — **no trajectory sim on either side** | READY — decide the grading question first |
+| ENEMY2 | **The OP watchtower base is assaulted.** User-requested: at least one mission where **the observer's own position** is the objective. This is the trainer's sharpest danger-close problem — the friendly element you are protecting is the tower you are standing on, so the OT range shrinks toward zero as the enemy closes, and every correction walks fire toward yourself. Inherently danger close under `F2`'s asset-keyed radius (battery 600 m). | Opus | Danger-close proword and creeping-fire rules enforced against **the OP itself as the friendly element**; fratricide on your own position is a real, reachable outcome that fails the mission (and still does not *end* it, per `G12`); the mission stays winnable | READY (after `ENEMY1`) |
+
+### 3.4 NET — who is calling, and how badly
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| NET1 | **Friendly ground units request fires through the JFO — and they are rock eaters.** User's words: *"assaulted by friendlies requesting missions from the jfo (They don't know CFF and sometimes basic radio etiquette, they're rock eaters)."* This is the single best *training* idea on the board: it inverts the drill. Today the observer is always handed a clean brief; here a grunt under fire says something like *"there's a machine gun in the treeline messing us up, can you drop something on it"* — **no grid, no format, no proword** — and the observer's job becomes the real one: extract a target location from plain language, convert it into a doctrinal call for fire, and send *that* to the FDC. **Two-net problem:** the observer now talks to a caller *and* an FDC, and only the FDC leg is doctrinal. | Opus | The caller's traffic is **never** doctrinal and the FDC's **always** is — the readback stays sacred (CLAUDE.md); the observer can resolve a target from plain language plus terrain association; **the caller can be wrong** (misidentified landmark, bad direction) and the observer is expected to catch it; nothing here weakens strict mode on the FDC leg | **BLOCKED — needs a NARRATIVE.md home first** |
+
+> **Why `NET1` is blocked and `14c` is parked for the same reason.** It introduces new speaking
+> characters onto the net, and NARRATIVE.md is the authority for characters, voice and humor rules.
+> Writing rock-eater dialogue straight into `src/` would put a whole cast in the sim with no
+> narrative home — exactly the problem that parked `14c` (LIBERTY FIRES). **Sequence: NARRATIVE.md
+> gets a callers section → then this becomes buildable.** The doc work is a Sonnet-subagent job per
+> §2 rule 6 and does not touch `SHITFIRE.html`, so it can run alongside a sim row.
+
+### 3.5 TEMPO — time of day, immediacy, and the clock
+
+**Both questions the user asked have the same answer, and it is a good one: the machinery is fully
+built and shipped, and not one chapter uses it.** These are the cheapest rows on the board — data and
+authoring, not engineering.
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| TEMPO1 | **Are there missions at different times of day? — NO. Give chapters a time of day.** Measured: `newMission` reads `chapter.tod \|\| vol.tod \|\| 'day'` ([src/js/15-campaign-menu.js:470](src/js/15-campaign-menu.js#L470)), `TOD_TABLE` carries **dawn / day / dusk / overcast / night** (13c, plus night from E3) — and **no chapter and no volume sets `tod`.** All 19 playable chapters render at noon. 3.3 UNINVITED GUESTS literally opens its briefing with *"First light."* and renders in full daylight. **This is a one-word-per-chapter data edit**, no code: `tod: 'dawn'` on 3.3, dusk on the Epilogue, overcast on Volume IV's black sand, night on whatever should be flown with `[O]` NVG/thermal — 13c's own §G1 note calls this "nearly free campaign flavour." **Constraint from §G1: keep chapter assignments away from `elev < 5`**, where long shadows rake toward the observer and hide targets. | Opus | Each assignment's target is **still resolvable and civ/mil-discriminable at its assigned TOD** — the legibility rule outranks the mood; skirmish stays locked to day (already enforced at line 480); map sheets and `[M]` inherit no tint | READY |
+| TEMPO2 | **Are there missions that call for immediate fire? — NO. Author chapters that demand one.** Measured: `immediate suppression` and `immediate smoke` both parse, skip the MTO per §42, and carry real effect — shipped in `fbbc137` (G14/G26) and `6b7fd3c` (12h, obscuration suppression). **No chapter ever requires either.** A one-transmission emergency call is a distinct doctrinal skill from the three-transmission deliberate mission, and right now it is reachable only by a player who already knows to try it. Pairs naturally with `ENEMY1` and `NET1` — a battery firing on friendlies, or a panicking rock eater, is exactly what immediate suppression is *for*. | Opus | At least one chapter where the correct answer is an immediate mission and the deliberate three-transmission call is too slow; the existing forgiving path is unchanged; `[H]` cheat sheet and CHEATSHEET.md cover the call | READY |
+| TEMPO3 | **A visible countdown for time-sensitive missions.** User-requested. Distinct from the existing star-par clock, which is a *scoring* mechanism revealed in the AAR — this is a **diegetic deadline the observer can see while working**: the convoy reaches the junction, the assault steps off, the enemy battery fires its next volley, the crab makes landfall. Some of these deadlines already exist in code (`3.1` convoy escape, `E.2` landfall) and are **invisible until they have already been missed.** | Opus | Timer appears **only** on missions that have a real deadline, never on the rest; it is a mission clock and not a second par clock — the AAR must not read as though every mission is now timed; surfacing an existing deadline (convoy escape, E.2 landfall) does not change that deadline's value or any authored par | READY |
+
+### 3.6 GFX — rendering beyond the shipped graphics plan
+
+GRAPHICS.md §G0–§G8 is the *shipped* plan and it is closed (see §4). This section holds what
+[GRAPHICS.md](GRAPHICS.md) **Appendix A** rated highest on ceiling-per-line while explicitly declining
+to schedule it. Appendix A's **training caveat** governs everything here: depth of field, heavy
+volumetrics, dense canopy, aggressive bloom, grain, motion blur and chromatic aberration are **net
+negative** for this trainer, because they cost target legibility at 1500–3200 m. A change that raises
+the graphics ceiling but costs the observer the target is a regression, not an upgrade.
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| GFX1 | **Hydraulic erosion at boot** *(was `H1`, renumbered in this reorg — never committed under the old ID)*. Appendix A: *"the biggest single realism jump per line of code in the project."* Ping-pong ~50–100 flow iterations over a 1024² heightfield at island build, producing drainage networks, carved valley profiles and sediment fans — the difference between terrain that reads as **terrain** and terrain that reads as fbm blobs. Budgeted under 500 ms. Must run **before** the 13d hillshade/AO bake and before `setTerrainFocus`/`buildNearPatch`. | Opus | All four gates below | READY (after `PERF1`) |
+
+**`GFX1`'s four gates, spelled out, because this row can silently break the campaign:**
+
+1. **`H(x,z)` stays the sole authority.** Erosion produces a *grid*; today's `H` is analytic fbm.
+   Afterwards `H` must sample the eroded field and **everything else keeps reading `H`** —
+   `groundHit()`, `hasLOS()`, impact placement, `[M]`, and the printed sheets. Same constraint
+   13e/§G3 already states: **do not "optimise" LOS or impact placement onto the mesh.**
+   *Cheap route:* `demSample` ([src/js/01-math-terrain.js](src/js/01-math-terrain.js)) already turns a
+   sampled grid into an `H` — land erosion on that representation instead of inventing a second one.
+2. **Every fixed-seed chapter still plays.** The real risk: **erosion moves the ground under authored
+   content.** A target that sat on a gentle slope can end up in a new gully, an OP→target sight line
+   can be cut by a freshly sharpened ridge, and `11e`/`12k`'s pars assume the terrain they were audited
+   against. Walk **every** chapter: nothing buried or floating, LOS intact, pars still achievable.
+   **This gate compounds with `WORLD1`** — do not land both without re-walking the campaign after each.
+3. **Cost stays inside budget.** `buildTerrain()` runs on every mission regen via `rebuildWorld()`;
+   standing gate ~250 ms perceived (13e measured 182 ms). If erosion cannot fit, cache per
+   `(terrainSeed, TOD)` — §G2's own mitigation — so fixed-seed chapters pay once.
+4. **Standard row gates.** 12/12 `tools/shots.js`, lint 0, offline zero-network, `--check` byte-exact,
+   and §5's definition of done in full.
+
+**Real DEM data — no row needed, it already works.** Appendix A calls loading a real DEM "the
+cheapest large realism win available, full stop," at **zero new code**, and
+[KOFA_KING_VALLEY_FO_HEIGHTMAP.png](KOFA_KING_VALLEY_FO_HEIGHTMAP.png) — USGS 3DEP bare-earth, Kofa
+Mountains / King Valley — is already in the repo. Mission Menu → Terrain → Load DEM Heightmap.
+Logged so it is never mistaken for unbuilt work.
+
+### 3.7 BUILD — the shipped artifact
+
+| ID | What | Owner | Gate | Status |
+|---|---|---|---|---|
+| BUILD1 | **Vendor the MINIFIED three.js r160 instead of the readable build** *(was `F9`, renumbered in this reorg — never committed under the old ID)*. `vendor/three/three.module.js` is the unminified distribution — 53,044 lines, 1.24 MB — and [tools/build.js:38](tools/build.js#L38) base64-inlines it at a flat 1.333× tax, so it is **~1.7 MB of the 2.17 MB artifact**. The official `three.module.min.js` for the same revision is ~660 KB, landing the artifact near **1.4 MB (~36% smaller)** and cutting a 53k-line boot parse. **Not a minify step** — the build stays a deterministic paste; this changes *which upstream file is vendored*, the same act as the original vendoring. Same revision, so no API moves. **Scope:** the addons (`Sky.js`, the eight postprocessing/shader files) ship unminified upstream and **stay as they are** — `PP_REWRITE` does literal-string substitution on them and a minified addon could break it. Core only. | Opus | Artifact ≥30% smaller; `node tools/build.js --check` byte-exact; **`tools/shots.js` 12/12 pixel-unchanged** (a minified build that renders differently is the wrong file, not a smaller one); offline zero-network; `vendor/**` LF pin (`9067a2e`) still satisfied | READY |
+
+### 3.8 PORT — engine port (over the horizon)
+
+**Renumbered `E0`–`E2` → `PORT0`–`PORT2` in this reorg**, at the user's direction. The old IDs
+collided outright with Track E (Observation & target acquisition, `E1`–`E7`): `E1` and `E2` each meant
+two different things depending on which section you were reading. **No engine code was ever committed
+under the old IDs**, so the renumber costs nothing. Plan and strategy live in
+[ENGINE_PORT/](ENGINE_PORT/) — engine choice (Godot 4 + C#), the transfers-vs-rebuilds inventory, the
+parity-testing strategy, and a staged plan P0–P8.
+
+**User's framing, 2026-07-30: this is over the horizon.** Nothing in this section competes with the
+domain sections above, and no row here should be picked up before them.
+
+| ID | What | Owner | Status |
+|---|---|---|---|
+| PORT0 | **P0 freeze the oracle** — record the transcript library + export fixtures while the browser build is the only implementation. Cheap, and the plan's biggest risk if skipped. | — | READY (over the horizon) |
+| PORT1 | P1–P2 headless sim core (`SHITFIRE.Core` + parity tests) | — | PARKED |
+| PORT2 | P3–P8 engine shell through parity sign-off | — | PARKED |
+
+**The browser build is not retired by the port.** It stays as the parity oracle and the zero-install
+distribution channel. Every row landed on this board makes the oracle *better*, not obsolete.
+
+### 3.9 PARKED — do not action until the user raises them
+
+- **`G20`** — the 10×10 km map may be too small. **Parked at the user's direction 2026-07-29.**
+  ⚠ Note for `WORLD1`: that row spreads targets across the *existing* 10 km map and does **not**
+  reopen this question. If dispersion turns out to need a bigger world, that is `G20`, and it stops
+  and asks.
+- **`F4`** — multi-phase MEAT GRINDER chaining (4.4). Parked pending the single-mission version being
+  balanced first.
+- **`14c`** — LIBERTY FIRES guest FDC. Parked: new named character, needs a NARRATIVE.md home.
+  **Same blocker as `NET1`** — if NARRATIVE.md gains a callers/guest-voices section, both unblock together.
+- **Volume V "ON WINGS"** — locked by design, a menu tease at most. **Never build unasked** (CLAUDE.md).
+
+---
+
+## 4. Completed tracks — historical record (A–G)
+
+**Everything below is DONE and is kept as the record.** These IDs map to commit messages and
+**must never be renumbered.** Open work lives in §3; nothing here is waiting on anything.
 
 Decided 2026-07-29: **graphics overhaul → stage 12 remainder → stage 11 (Epilogue).**
 
@@ -261,21 +407,13 @@ already written and unapplied.
 **Track D is now complete except the parked `14c`.** With `14a`/`14b` shipped, every non-parked row on
 the entire board is DONE — see the top-of-file summary.
 
-### Track E — Engine port (planning complete; execution not scheduled)
+### ~~Track E — Engine port~~ → MOVED to §3.8 and RENUMBERED `PORT0`–`PORT2`
 
-Plan and strategy live in **[ENGINE_PORT/](ENGINE_PORT/)** — engine choice (Godot 4 + C#), the
-transfers-vs-rebuilds inventory, the parity-testing strategy, and a staged plan P0–P8. No engine code
-exists and none is scheduled; nothing on this track competes with stage 13/14 rows for `SHITFIRE.html`.
-
-| ID | What | Owner | Status |
-|---|---|---|---|
-| E0 | **P0 freeze the oracle** — record the transcript library + export fixtures while the browser build is the only implementation. Cheap, and the plan's biggest risk if skipped. | — | READY |
-| E1 | P1–P2 headless sim core (`SHITFIRE.Core` + parity tests) | — | PARKED |
-| E2 | P3–P8 engine shell through parity sign-off | — | PARKED |
-
-**The browser build is not retired by the port.** It stays as the parity oracle and the zero-install
-distribution channel. Every stage-12/13/14 row landed here makes the oracle *better*, not obsolete —
-so continuing on this board is not wasted work if the port later goes ahead.
+**Renumbered 2026-07-30 at the user's direction.** This section's `E0`/`E1`/`E2` collided head-on with
+Track E (Observation & target acquisition, `E1`–`E7`) immediately above — the same board had two
+different `E1`s and two different `E2`s. **No engine code was ever committed under the old IDs**, so
+the renumber was free. The engine port now lives in **§3.8 as `PORT0`–`PORT2`**, flagged over the
+horizon. This stub stays so anyone following an old `E0`/`E1`/`E2` reference lands somewhere.
 
 ### Track F — Fixes (not stages; schedulable anytime)
 
@@ -291,8 +429,19 @@ so continuing on this board is not wasted work if the port later goes ahead.
 | F8 | **Mil card reference sizes did not match the world.** The card teaches `range = size / mils × 1000`, so a size that disagrees with the geometry silently teaches a wrong range. Truck card 5 m vs geometry 4.6 m (+174 m at 2000 m); target hut 3 vs 3.2 (−125 m); **village hut 3 vs 2.6 (+308 m)** — the card says "hut" once but the two hut types differed and are indistinguishable by eye; watchtower 100 m vs 300 m (3× error, and the observer stands on it so it can never be milled at all). Geometry rounded to the card, watchtower replaced by the airfield hangar. | Opus | **DONE** `ef0ef31` |
 | F7 | ~~**Readback duplicates DANGER CLOSE.**~~ **DONE** `21d0dc1` — when the observer's own raw text already contained "danger close", `handleCFF` appended `, DANGER CLOSE` to `locStr` unconditionally while the target description could already contain the words, producing "...DANGER CLOSE, DANGER CLOSE TROOPS..." in the one line CLAUDE.md calls sacred. Now deduped. | Opus | Readback shows DANGER CLOSE once regardless of how the observer phrased it | **DONE** `21d0dc1` |
 
+**~~`F9`~~ → MOVED to §3.7 and RENUMBERED `BUILD1`** (minified three.js vendor swap). It was opened
+here earlier on 2026-07-30 because Track F was the only "schedulable anytime" home on the board; the
+domain reorg later the same day gave it a real one. Never committed under the old ID, so the renumber
+was free.
+
 **F1 is a correctness bug in the doctrine the app exists to teach.** Recommend landing it alongside
 13a as the other small, high-value, low-risk fix.
+
+**F9 is the one row on this board that was not found by playing the trainer or by reading the spec** —
+it came out of comparing the artifact against how portal-published browser games manage size, 2026-07-30.
+It buys nothing visually and everything distributionally: a self-contained file that gets emailed, put on
+a USB stick, or dropped in a SharePoint folder is the app's actual delivery channel, and 780 KB is a
+third of it. Land it before `H1` so every build after it is smaller.
 
 ### Track G — User feedback notebook (source: [user_feedback.md](user_feedback.md), 2026-07-29)
 
@@ -442,9 +591,16 @@ already; README's control table is not yet updated.
 - **G14 vs row 12g.** 12g is narrower than the truth (suppression only, and marked `BLOCKED by 13`).
   G14 supersedes it; 12g should be struck when G14 lands rather than both being carried.
 
+### ~~Track H — Beyond the graphics plan~~ → MOVED to §3.6 as `GFX1`
+
+Opened earlier on 2026-07-30 to hold GRAPHICS.md Appendix A's outside-the-plan items; the domain
+reorg later the same day made it **§3.6 GFX**, and `H1` (hydraulic erosion) became **`GFX1`** with its
+four gates intact. Never committed under the old ID. This stub stays so an `H1` reference lands
+somewhere.
+
 ---
 
-## 4. Definition of done (every row)
+## 5. Definition of done (every row)
 
 1. Gate in the table passes.
 2. 60 fps held; no per-frame allocation added.
@@ -457,23 +613,29 @@ already; README's control table is not yet updated.
 
 ---
 
-## 5. ⚠ Visual QA — lives in GRAPHICS.md
+## 6. 🚫 Visual QA backlog — DISMISSED, do not raise it
 
-**The 15-item needs-Chrome list moved to [GRAPHICS.md](GRAPHICS.md) §Open visual QA backlog**
-(user direction, 2026-07-29). It is a graphics to-do list, so it belongs with the graphics spec, and
-§1 of this file says one question gets one authority.
+**User direction, 2026-07-30: ignore the visual QA backlog.** It is closed as a matter of board
+status. This section is kept only so nobody re-derives it from the `⚠` markers and re-opens it.
 
-What stays here: the rows it gates. Every row marked **DONE ⚠** in the tables above has landed and
-been verified by harness and by parse, but has **not been seen running**. The ⚠ comes off a row only
-when the matching item in GRAPHICS.md is confirmed by eye. A failure there becomes a Track F row, not
-a revert.
+- The 18-item needs-Chrome list in [GRAPHICS.md](GRAPHICS.md) §Open visual QA backlog **stays in that
+  file as reference**, for the user if they ever want it. It is no longer tracked here.
+- **It gates nothing.** No row is held, blocked, or downgraded for want of a Chrome look.
+- **Every `DONE ⚠` row above is simply `DONE`.** The `⚠` glyphs are historical residue from when this
+  was open work. Do not treat one as an unmet gate, and do not cite one as a reason to hold a row.
+- **Do not offer this as a next step**, do not append new items to it, and do not add `⚠` markers to
+  rows that land from here on.
 
-Currently 15 open items covering 13b/13c, E1, E3–E7 and G1–G6. Not blocking — the active parser
-work does not touch rendering.
+The original reasoning stands as history and is worth understanding even though the list is dismissed:
+every visual row shipped verified by an executable harness (real arithmetic) and a headless-Chrome
+**parse** gate, and neither of those can see a picture. `tools/shots.js` has since narrowed that gap
+considerably — it boots the real page and captures 12 screenshot states, which is what caught 13h's
+temporal-dead-zone boot failure and 12h's unlit illumination flare, both invisible to the parse gate.
+Automated coverage is the reason this list can be dismissed rather than merely deferred.
 
 ---
 
-## 6. Change log
+## 7. Change log
 
 | Date | Change |
 |---|---|
@@ -519,4 +681,6 @@ work does not touch rendering.
 | 2026-07-30 | **11e closed by audit, no code changed — Track C / STAGE 11 IS COMPLETE, and the campaign is built end to end.** The campaign-wide star-par balance pass: pre-Epilogue chapters were re-audited at 12k and the pars hold under the graded model (looser neutralization bar, par clock running from first round). The three Epilogue chapters check out on the same model: E.1 par 300 (a one-volley neutralize on standing personnel floors ≈60–90 s), E.2 par 420 (2–4 volleys on a moving armored target ≈150–260 s plus corrections), E.3 par 300 (`assetScale` 0.22 dispersion plus 10-digit precision drives it to 1–2 volleys). Difficulty caps and volume-unlock thresholds are unchanged and reachable. No chapter data changed. **With `11d`/`11e` both closed, Track C / STAGE 11 IS NOW COMPLETE — the Epilogue is fully built, and the campaign (Foreword tutorial through Volumes I–IV through all three SUNBURN chapters) is now built end to end.** Track A, Track B, and Track C are all complete; Track G is complete except the user-parked `G20`; Track F holds only the parked `F4`. The standing order (stage 13 → stage 12 remainder → stage 11 → stage 14 + Track F) reaches **stage 14 (Track D, dialogue punch-up)** for the first time; `14a` (apply the revised QUIPS pools) is marked NEXT. |
 | 2026-07-30 | **14a shipped `e56de84` — the DIALOGUE_REVISIONS QUIPS punch-up applied verbatim.** Every pool expanded to 6–8+ entries (`corrSnark` 4→8 was the transcript-caught repeat — pool depth is the actual fix, since `pick()` only guards against an *immediate* repeat, not a distant one). The whole set was scrubbed to §2a's profanity boundary (no taking God's name in vain: all ten flagged lines plus one straggler the doc itself missed, the AAR "HOLE IN ONE" medal line), and the career-callback pools (`careerFrat`/`careerCollat`/`careerVet`) were moved/expanded with their wiring untouched. The lint tool caught transitional duplicate keys left mid-edit. Verified lint 0, 12/12 shots, 15/15 mission e2e, replay over 247 recorded transmissions unchanged. **Board advances to `14b`.** |
 | 2026-07-30 | **14b shipped `1cc645a` — chapter narrative punch-ups and the raid-brief copy pass, closing Track D / stage 14 down to the parked `14c`.** DIALOGUE_REVISIONS.md §4's five tabled line edits applied exactly as written (1.2, 1.3, 2.3, 3.2, 3.5) and nothing beyond them — every line marked "keep" was kept, including 4.4's "...acceptable, MUSTANG." payoff (the campaign's emotional close) and every GUNNY tutorial line (§5's deliberate profanity contrast against HELLHOUND, left untouched). §6's `raid` brief copy pass applied — one flowing op order in place of the awkward trailing string concatenation, content unchanged. **With `14a`/`14b` both closed, every non-parked row on the entire board is now DONE.** What remains is parked by explicit user decision only: `G20` (map size), `F4` (multi-phase MEAT GRINDER), `14c` (LIBERTY FIRES — §8's proposed E.1 slot has since been built with HELLHOUND running the net, so the slot question is now a live decision for the user rather than a default), and Volume V (locked by design, never build unasked). The standing visual-QA backlog in GRAPHICS.md is the one item left that isn't a parked decision — a human-in-Chrome look, not a code row. **The board has no NEXT row.** |
+| 2026-07-30 | **THE BOARD REOPENED with two rows, and the visual QA backlog was dismissed — all three at the user's direction.** Context: a review of how this artifact compares to portal-published browser games (size caps, graphics-fidelity tiers, perf ceilings) turned up one thing the board had never recorded and confirmed one thing GRAPHICS.md already knew. **`F9` (Track F, NEXT)** — `vendor/three/three.module.js` is the *unminified* r160 distribution, 53,044 lines and 1.24 MB, and since `tools/build.js` base64-inlines it at a flat 1.333× tax it accounts for ~1.7 MB of the 2.17 MB artifact; vendoring the official minified build of the same revision lands it near 1.4 MB (~36% smaller) and cuts a 53k-line boot parse, for zero visual change. This is not a minify *step* — the build stays a deterministic paste, and the row only changes which upstream file is vendored. **`H1` (new Track H, READY)** — hydraulic erosion at boot, which GRAPHICS.md Appendix A had already identified as "the biggest single realism jump per line of code in the project" while explicitly declining to schedule it; Track H exists to hold Appendix A's outside-the-plan items. H1 carries four spelled-out gates because it is the one row that can silently break the campaign: erosion moves the ground under authored fixed-seed chapter content, so every chapter must be walked for buried/floating targets, cut sight lines, and pars that no longer hold. **The visual QA backlog is dismissed** — §5 rewritten from a tracked list to a do-not-raise notice, the §1 authority-map row struck, and every `DONE ⚠` above is now to be read as plain `DONE`. Also recorded, so it is not mistaken for unbuilt work: Appendix A's "cheapest large realism win, full stop" — loading a real DEM — needs **zero code** and the asset is already in the repo (`KOFA_KING_VALLEY_FO_HEIGHTMAP.png`, USGS 3DEP bare-earth). |
+| 2026-07-30 | **THE BOARD WAS REORGANIZED BY DOMAIN and eight new rows opened — all at the user's direction, second pass of the day.** The A–G letter tracks were historical accident: they grew in the order work happened, so the board could say *when* a row was written but never *what kind of work it was*. Open work now lives in **§3, grouped by domain** (`PERF`/`WORLD`/`ENEMY`/`NET`/`TEMPO`/`GFX`/`BUILD`/`PORT`); the completed letter tracks moved wholesale to **§4 as the historical record and keep their IDs forever**, because those map to commit messages. Old §4/§5/§6 renumbered to §5/§6/§7. **Three renumbers, all free — none had ever been committed under its old ID:** the engine port `E0`–`E2` → `PORT0`–`PORT2` (at the user's explicit request; the old IDs collided head-on with Track E *Observation & target acquisition*, so the board carried two different `E1`s and two different `E2`s), `F9` → `BUILD1`, and `H1` → `GFX1`. Stubs left at all three old sites so stale references land somewhere. **New rows, all from the user's own play and direction:** `PERF1` (**now NEXT** — *"looking around is too laggy"*; promoted over `BUILD1` because it degrades every mission on every frame and most other open rows would make it worse; diagnosed as frame rate rather than input handling, since the `mousemove` handler does no work, with the 13a bino quality pin named as prime suspect because it disables adaptive step-down exactly while glassing); `WORLD1` (disperse targets — measured cause: `findSpot` draws from a **1500–3200 m annulus around one fixed OP**, and troops-in-the-open additionally clamp to a **14 m elevation ceiling**, which on a 95 m-ridge island is only the coastal fringe, and *that* is why targets read as "at the ends of the island"; existing chapter missions explicitly stay put); `WORLD2` (enemy-occupied towns/bases/airfield — today all neutral scenery that `findSpot` actively excludes); `ENEMY1` (enemy batteries firing on friendlies, with the grading question flagged as a decision needed before code); `ENEMY2` (the OP watchtower itself assaulted — the sharpest danger-close case in the trainer, since the friendly element is the tower you are standing on); `NET1` (**BLOCKED** — friendly rock eaters requesting fires in plain language with no CFF and no radio etiquette, so the observer's job becomes translating it into a doctrinal call; blocked on a NARRATIVE.md callers section for exactly the reason `14c` is parked, and the two unblock together); `TEMPO1`/`TEMPO2` (both answering questions the user asked — **no chapter sets a time of day** despite `TOD_TABLE` carrying five and `newMission` reading `chapter.tod`, and **no chapter demands an immediate mission** despite both parsing and carrying real effect since `fbbc137`/`6b7fd3c`; 3.3 UNINVITED GUESTS opens its brief with "First light." and renders at noon — these are one-word data edits, not engineering); `TEMPO3` (a visible countdown for time-sensitive missions, distinct from the star-par clock, surfacing deadlines like convoy escape and E.2 landfall that already exist in code and are currently invisible until already missed). |
 | 2026-07-30 | **Mic-permission friction fixed, off-board** `de5d44b` — user-reported: Chrome was re-prompting for microphone permission on every push-to-talk transmission instead of once. Cause: `file://` pages have no origin for Chrome to remember a grant against, and `SpeechRecognition` re-prompts on every `start()` unless the tab holds a live audio stream — the sim was creating a fresh recognition per push-to-talk with no stream held open. Fix: the first push-to-talk now also acquires one `getUserMedia` stream held for the tab's life, so double-clicking `SHITFIRE.html` gets exactly one prompt per session instead of one per transmission; the stream is never recorded, routed, or read, and denial degrades silently with typed input unchanged. Added an optional zero-prompt path alongside it: `tools/serve.cmd`, a double-clickable stdlib-only Node static server at `http://localhost:8137` that opens the sim at a real origin, where Chrome remembers the grant permanently after the first click — strictly optional, the double-clicked file still works with nothing installed. Not tied to a board row (the board is closed, no `NEXT`); logged here since it's a real shipped fix that would otherwise only be reachable through git history. |
