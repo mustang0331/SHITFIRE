@@ -127,24 +127,32 @@ document.addEventListener('keydown', e => {
   else if (k === 'n') newMission(false);
   /* G3 — SHIFT+D, not plain D. This is a test aid that removes the difficulty
      from the trainer, so it should take deliberate intent to hit and should never
-     be reachable by a stray keypress while flying a graded chapter. */
-  else if (k === 'd' && e.shiftKey) {
-    const B = CONFIG.BALLISTICS;
-    B.dispersion = !B.dispersion;
-    refreshTool();
-    if (mission && !mission.done) markDispersion();
-    log('', B.dispersion
-      ? 'Round dispersion ON — rounds fall with normal first-round and follow-up error.'
-      : 'Round dispersion OFF (test mode) — every round lands exactly on the aimpoint. ' +
-        'This mission will NOT be graded and no stars will be recorded.', 'sys');
-    TLOG.add('sys', '', `dispersion ${B.dispersion ? 'on' : 'off'}`, { noDisp: !B.dispersion });
-  }
+     be reachable by a stray keypress while flying a graded chapter. Also
+     reachable as the IMPACT DISPERSION toggle in the mission menu [K]. */
+  else if (k === 'd' && e.shiftKey) toggleDispersion();
   else if (k === 'enter') { e.preventDefault(); txInput.focus(); }
 });
 document.addEventListener('keyup', e => {
   if (e.target === txInput) return;
   if (e.code === 'Space') { e.preventDefault(); endPTT(); }
 });
+/* G3 — one toggle, two entrances (SHIFT+D and the mission-menu button), so the
+   HUD flag, the not-graded marking and the TLOG entry can never disagree about
+   which state the trainer is in. OFF means every round lands exactly on the
+   aimpoint: call grid 123456 and the impact IS 123456 (center of the square at
+   that precision) — the observer's own arithmetic checked without dispersion
+   muddying the result. */
+function toggleDispersion() {
+  const B = CONFIG.BALLISTICS;
+  B.dispersion = !B.dispersion;
+  refreshTool();
+  if (mission && !mission.done) markDispersion();
+  log('', B.dispersion
+    ? 'Round dispersion ON — rounds fall with normal first-round and follow-up error.'
+    : 'Round dispersion OFF (test mode) — every round lands exactly on the aimpoint. ' +
+      'This mission will NOT be graded and no stars will be recorded.', 'sys');
+  TLOG.add('sys', '', `dispersion ${B.dispersion ? 'on' : 'off'}`, { noDisp: !B.dispersion });
+}
 /* G4 — the wheel is what a hand reaches for to zoom, so bind it too. Only while
    glassing: with binos down the wheel is left alone for the page. */
 addEventListener('wheel', e => {

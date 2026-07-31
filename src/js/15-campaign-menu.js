@@ -375,6 +375,13 @@ function renderMenu() {
   const devB = document.getElementById('mdevunlock');
   devB.textContent = 'DEV UNLOCK: ' + (DEV_UNLOCK ? 'ON' : 'OFF');
   devB.classList.toggle('sel', DEV_UNLOCK);
+  // G3 — the menu face of SHIFT+D. Highlighted when OFF: no-dispersion is the
+  // unusual state, and it must be impossible to be in it without noticing.
+  const dispB = document.getElementById('mdisp');
+  dispB.textContent = CONFIG.BALLISTICS.dispersion
+    ? 'IMPACT DISPERSION: ON'
+    : 'IMPACT DISPERSION: OFF — rounds land exactly on the aimpoint, not graded';
+  dispB.classList.toggle('sel', !CONFIG.BALLISTICS.dispersion);
 }
 function toggleMenu(force) {
   const on = force !== undefined ? force : !menuEl.classList.contains('on');
@@ -415,6 +422,12 @@ document.getElementById('mdevunlock').addEventListener('click', () => {
   CAMP.data._devUnlock = DEV_UNLOCK;
   CAMP.save();
   log('', `Developer unlock ${DEV_UNLOCK ? 'ON — all chapters open (progress untouched)' : 'OFF — normal star-gated progression'}.`, 'sys');
+  renderMenu();
+});
+// G3 — same toggle as SHIFT+D; toggleDispersion owns the flag, the HUD marker,
+// the not-graded marking and the TLOG entry, so the two entrances cannot drift
+document.getElementById('mdisp').addEventListener('click', () => {
+  toggleDispersion();
   renderMenu();
 });
 
