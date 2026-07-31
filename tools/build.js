@@ -60,7 +60,7 @@ function addonUrl(rel) {
   return 'data:text/javascript;base64,' + Buffer.from(src).toString('base64');
 }
 let head = read(manifest.head).toString('latin1');
-head = head.replace('__VENDOR_THREE_CORE__', dataUrl('three/three.module.js'))
+head = head.replace('__VENDOR_THREE_CORE__', dataUrl('three/three.module.min.js'))
            .replace('__VENDOR_THREE_SKY__', dataUrl('three/addons/objects/Sky.js'))
            .replace('__VENDOR_PP_COMPOSER__', addonUrl('three/addons/postprocessing/EffectComposer.js'))
            .replace('__VENDOR_PP_PASS__', addonUrl('three/addons/postprocessing/Pass.js'))

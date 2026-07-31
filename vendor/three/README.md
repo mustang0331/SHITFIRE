@@ -4,7 +4,7 @@ Three.js **r160** (`0.160.0`), vendored so SHITFIRE runs with no network.
 
 | File | Source |
 |---|---|
-| `three.module.js` | `https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js` |
+| `three.module.min.js` | `https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js` (BUILD1, 2026-07-31 — the minified core replaced the readable `three.module.js`; same revision, ~660 KB vs 1.24 MB, so the shipped artifact drops ~36%) |
 | `addons/objects/Sky.js` | `https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/objects/Sky.js` |
 | `addons/postprocessing/*.js` (6 files, 11d) | `https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/…` |
 | `addons/shaders/CopyShader.js`, `LuminosityHighPassShader.js` | `…/examples/jsm/shaders/…` |
