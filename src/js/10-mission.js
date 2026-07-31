@@ -156,6 +156,7 @@ function fireMission(targetLocation, warno, meta) {
     cannotObserve: false,   // §34 — observer has declared he cannot spot
     tot: null,              // §34 — time on target, accepted and acknowledged
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
+    shotExtra: (meta && meta.shotExtra) || 0,   // SUGG2 — re-lay delay before SHOT
   };
   if (warno === 'ffe') fireForEffect();
   else fireAdjustRound();
@@ -250,6 +251,53 @@ function handlePosRep(p) {
    (that is what "on file" means) but is not persisted, because a target number is
    only meaningful to the fire unit that assigned it. */
 const RECTGT = {};
+/* SUGG2 — the priority target (ATP 3-09.30 §1-29): AT MOST ONE recorded
+   target the firing unit stays laid on. "FIRE TARGET <n>" on the priority
+   target gets steel with almost no delay; on any other filed target the
+   guns re-lay first and the observer feels the difference — that reaction
+   gap is the trainable skill. Designating a new priority moves it (doctrine:
+   priority shifts as the situation does). */
+let PRIORITY = null;
+function handlePriorityTarget(p) {
+  const tgt = RECTGT[p.tgtNum];
+  if (!tgt) {
+    const known = Object.keys(RECTGT);
+    FDC.say(`NEGATIVE — no target ${p.tgtNum} on file. ` +
+      (known.length ? `I hold ${known.join(', ')}. ` : 'Record one at end of mission first. ') +
+      'Over.', { delay: 1 });
+    return;
+  }
+  const moved = PRIORITY && PRIORITY !== p.tgtNum;
+  PRIORITY = p.tgtNum;
+  FDC.say(`TARGET ${p.tgtNum} IS PRIORITY${moved ? ' — SHIFTING OFF THE OLD ONE' : ''}. ` +
+          'GUNS ARE LAID AND STANDING BY, OUT.', { delay: 1 });
+  log('', `Priority target set: ${p.tgtNum}. Re-engage it with "FIRE TARGET ${p.tgtNum}, OVER" ` +
+    'and the rounds come fast — any other filed target waits for the re-lay.', 'sys');
+}
+function handleFireTarget(p) {
+  if (mission && !mission.done) {
+    FDC.say('MUSTANG 12, we are mid-mission. Finish this one, over.', { delay: 1 });
+    return;
+  }
+  const tgt = RECTGT[p.tgtNum];
+  if (!tgt) {
+    const known = Object.keys(RECTGT);
+    FDC.say(`NEGATIVE — no target ${p.tgtNum} on file. ` +
+      (known.length ? `I hold ${known.join(', ')}. ` : 'Nothing is recorded on this net yet. ') +
+      'Say again, over.', { delay: 1 });
+    return;
+  }
+  const pri = PRIORITY === p.tgtNum;
+  if (!pri)
+    FDC.say(`STAND BY — RE-LAYING ONTO TARGET ${p.tgtNum}. That is what priority would have bought you, over.`, { delay: 0.8 });
+  FDC.say(`FIRE TARGET ${p.tgtNum}, OUT.`, { delay: pri ? 0.6 : 1.4 });
+  setState('MISSION SENT');
+  fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
+    { desc: 'RECORDED TARGET', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
+      intent: 'destroy', sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw),
+      /* the felt difference: laid guns shoot now; anyone else re-lays first */
+      shotExtra: pri ? 0 : 22 });
+}
 function handleSuppressTarget(p) {
   if (mission && !mission.done) {
     FDC.say('MUSTANG 12, we are mid-mission. Finish this one, over.', { delay: 1 });
@@ -422,7 +470,7 @@ function fireAdjustRound() {
   const impact = { x: mission.aim.x + err.x, z: mission.aim.z + err.z };
   const tof = tofFor(mission.aim);
   setState('SHOT');
-  const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay });
+  const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay + (mission.shotExtra || 0) });
   FDC.say(splashWord(), { delay: tof - B.splashLead });
   if (sunNet()) chargeWhine(tof);   // 11c — TOF is a charging whine from everywhere at once
   schedule(tShot + tof, () => resolveImpact(impact, false));
@@ -441,7 +489,7 @@ function fireForEffect() {
   if (Math.random() < 0.4) FDC.say(pick(QUIPS.ffeAck), { delay: 0.8 });
   const otAz = azTo(OP.x, OP.z, mission.aim.x, mission.aim.z);
   const tof = tofFor(mission.aim);
-  const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay });
+  const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay + (mission.shotExtra || 0) });
   FDC.say(splashWord(), { delay: tof - B.splashLead });
   if (sunNet()) chargeWhine(tof);   // 11c
   // FFE with no prior adjustment still carries the full first-round spotting

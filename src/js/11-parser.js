@@ -174,6 +174,18 @@ function parseMessage(raw) {
     return { type: 'suppresstgt', tgtNum: (mSup[1] + mSup[2]).toUpperCase(),
              minutes: mMin ? parseInt(mMin[1]) : null, raw: t, toks };
   }
+  /* SUGG2 — priority target (ATP 3-09.30 §1-29): designate a RECORDED target
+     as the one the guns stay laid on. Same target-number shape as suppress,
+     tested before location parsing for the same reason. */
+  const mPri = t.match(/\bpriority\s+target\s+([a-z]{2})\s*(\d{4})\b/);
+  if (mPri && !imm)
+    return { type: 'prioritytgt', tgtNum: (mPri[1] + mPri[2]).toUpperCase(), raw: t, toks };
+  /* SUGG2 — fire a recorded target by number ("FIRE TARGET AB7101"). On the
+     priority target the guns are already laid; on any other filed target the
+     FDC re-lays first and the reaction time shows it. */
+  const mFire = t.match(/\bfire\s+target\s+([a-z]{2})\s*(\d{4})\b/);
+  if (mFire && !imm)
+    return { type: 'firetgt', tgtNum: (mFire[1] + mFire[2]).toUpperCase(), raw: t, toks };
   // grid extraction
   const gi = toks.indexOf('grid');
   let digits = '';
