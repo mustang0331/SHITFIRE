@@ -199,6 +199,10 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   /* TEMPO1 — TOD legibility QA: point the view at a world point so a harness
      can screenshot the target area at any time of day. Sets the same yaw/pitch
      state the mouse input does; presentation (sway) rides on top as always. */
+  /* TEMPO5 — flare QA: burn time and liveness, so a harness can verify the
+     per-flare draw without guessing from pixels. Read-only. */
+  illumInfo: () => ({ T: ILLUM.T || null, age: +(sim.now - ILLUM.t0).toFixed(1),
+                      lit: ILLUM.light ? ILLUM.light.intensity > 0 : false }),
   qaLookAt(x, z) {
     yaw = azTo(OP.x, OP.z, x, z);
     const d = dist2(OP.x, OP.z, x, z);

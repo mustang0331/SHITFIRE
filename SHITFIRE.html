@@ -531,6 +531,12 @@ const CONFIG = {
     // 12h — a smoke screen laid within `radius` of the enemy suppresses by
     // obscuration for `sec` (a screened gun cannot serve its target)
     screen: { radius: 120, sec: 90 },
+    /* TEMPO5 — illumination burn time varies PER FLARE, drawn from this band
+       (seconds) off the mission's seeded stream. User decision 2026-07-31;
+       brackets JFIRE Table 24's per-weapon burn times (40 s for the 60mm
+       M721 up to 120 s for the 155 M485A2). No two flares burn alike, which
+       makes re-illumination timing a judged skill instead of a metronome. */
+    illumBurn: [50, 130],
     posture: { standing: 1.0, prone: 0.4 }, // FM 7-90 App. B: posture alone swings ~2.5x
     /* G18 — per-asset band sets: a 60mm round and a 155 do not do the same
        thing. Per-round contribution (%) at full effect, and the distance
@@ -5179,15 +5185,25 @@ function initIllum() {
 function igniteIllum(x, z) {
   ILLUM.t0 = sim.now; ILLUM.x = x; ILLUM.z = z;
   ILLUM.y = Math.max(H(x, z), 0) + 330;                 // burst height above the point
+  /* TEMPO5 — burn time drawn per flare from CONFIG.EFFECTS.illumBurn, off the
+     mission's seeded stream so a fixed-seed chapter's flares reproduce. The
+     fall rate is derived from the burn so the flare dies at burnout, not on
+     the deck: 295 m of ride over 50–130 s is 5.9 down to 2.3 m/s, bracketing
+     Table 24's real 5–6 m/s chute rates. */
+  const [bLo, bHi] = CONFIG.EFFECTS.illumBurn;
+  const u = (typeof mission !== 'undefined' && mission && mission.rng) ? mission.rng() : Math.random();
+  ILLUM.T = bLo + (bHi - bLo) * u;
+  ILLUM.rate = 295 / ILLUM.T;
 }
 function updateIllum(dt) {
   const t = sim.now - ILLUM.t0;
-  const dead = t < 0 || t > 55 || ILLUM.y < Math.max(H(ILLUM.x, ILLUM.z), 0) + 35;
+  const dead = t < 0 || t > (ILLUM.T || 55) ||
+               ILLUM.y < Math.max(H(ILLUM.x, ILLUM.z), 0) + 35;
   if (dead) {
     if (ILLUM.light.intensity) { ILLUM.light.intensity = 0; ILLUM.spr.visible = false; }
     return;
   }
-  ILLUM.y -= 6.5 * dt;                                  // the flare rides its chute down
+  ILLUM.y -= (ILLUM.rate || 6.5) * dt;                  // the flare rides its chute down
   ILLUM.x += WIND.dx * 0.8 * dt;                        // 12i — the chute drifts downwind
   ILLUM.z += WIND.dz * 0.8 * dt;
   ILLUM.light.position.set(ILLUM.x, ILLUM.y, ILLUM.z);
@@ -9400,11 +9416,11 @@ const CAMPAIGN = [
        reqImmediate: fighting it dark (thermal is a real tool) still completes,
        capped at 2★ — the chapter's skill is the light. */
     { id: '2.5', title: 'FLARES OUT', blurb: 'night defense — light first, then steel', impl: true, type: 'strongpoint', seed: 205, par: 540, tod: 'night', reqIllum: true,
-      story: 'The perimeter again, except somebody turned the island off. A friendly strongpoint is taking fire in the dark and the assault is close enough to hear over the net. You cannot adjust what you cannot see: get ILLUMINATION up — send the call with SHELL ILLUMINATION and walk the light over the attackers, big corrections, the flare does not need ten-meter precision. When they are lit, switch to steel: "SHELL HE, OVER", and fight it like any adjust mission, under your own light. The flare burns about a minute. When it dies, buy another. Registration won the dark for the guns in 2.2 — tonight, light wins it for you.',
+      story: 'The perimeter again, except somebody turned the island off. A friendly strongpoint is taking fire in the dark and the assault is close enough to hear over the net. You cannot adjust what you cannot see: get ILLUMINATION up — send the call with SHELL ILLUMINATION and walk the light over the attackers, big corrections, the flare does not need ten-meter precision. When they are lit, switch to steel: "SHELL HE, OVER", and fight it like any adjust mission, under your own light. A flare burns a minute, give or take — no two burn alike, so watch the light, not a clock. When it dies, buy another. Registration won the dark for the guns in 2.2 — tonight, light wins it for you.',
       outro: 'The flare settles into the sea and the shooting stops. The strongpoint counts heads twice and comes up even both times. Nobody out there knows the light had a callsign.',
       coach: [
         'Light FIRST, killer. Send a normal call with ILLUMINATION in it. Adjust the flare in big steps — hundreds, not tens — until the attackers are lit.',
-        'When you can SEE them: "SHELL HE, OVER" — same mission, new nature — then walk steel onto them under the light. If the flare dies mid-adjust, send SHELL ILLUMINATION again and buy more. Doctrine calls the whole dance COORDINATED ILLUMINATION.' ] },
+        'When you can SEE them: "SHELL HE, OVER" — same mission, new nature — then walk steel onto them under the light. No two flares burn the same, so when the light starts to die, send SHELL ILLUMINATION again and buy more — do not wait for the dark. Doctrine calls the whole dance COORDINATED ILLUMINATION.' ] },
   ]},
   { id: 'V3', tab: 'III', name: 'VOLUME III — THUNDER RUN', need: 14, tseed: 5150, chapters: [
     { id: '3.1', title: 'ROLLING STOCK', blurb: 'convoy — lead it, or catch the pit stop', impl: true, type: 'convoy', seed: 301, par: 420,
@@ -10368,6 +10384,10 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   /* TEMPO1 — TOD legibility QA: point the view at a world point so a harness
      can screenshot the target area at any time of day. Sets the same yaw/pitch
      state the mouse input does; presentation (sway) rides on top as always. */
+  /* TEMPO5 — flare QA: burn time and liveness, so a harness can verify the
+     per-flare draw without guessing from pixels. Read-only. */
+  illumInfo: () => ({ T: ILLUM.T || null, age: +(sim.now - ILLUM.t0).toFixed(1),
+                      lit: ILLUM.light ? ILLUM.light.intensity > 0 : false }),
   qaLookAt(x, z) {
     yaw = azTo(OP.x, OP.z, x, z);
     const d = dist2(OP.x, OP.z, x, z);

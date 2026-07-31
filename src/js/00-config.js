@@ -99,6 +99,12 @@ const CONFIG = {
     // 12h — a smoke screen laid within `radius` of the enemy suppresses by
     // obscuration for `sec` (a screened gun cannot serve its target)
     screen: { radius: 120, sec: 90 },
+    /* TEMPO5 — illumination burn time varies PER FLARE, drawn from this band
+       (seconds) off the mission's seeded stream. User decision 2026-07-31;
+       brackets JFIRE Table 24's per-weapon burn times (40 s for the 60mm
+       M721 up to 120 s for the 155 M485A2). No two flares burn alike, which
+       makes re-illumination timing a judged skill instead of a metronome. */
+    illumBurn: [50, 130],
     posture: { standing: 1.0, prone: 0.4 }, // FM 7-90 App. B: posture alone swings ~2.5x
     /* G18 — per-asset band sets: a 60mm round and a 155 do not do the same
        thing. Per-round contribution (%) at full effect, and the distance

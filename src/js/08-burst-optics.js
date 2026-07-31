@@ -514,15 +514,25 @@ function initIllum() {
 function igniteIllum(x, z) {
   ILLUM.t0 = sim.now; ILLUM.x = x; ILLUM.z = z;
   ILLUM.y = Math.max(H(x, z), 0) + 330;                 // burst height above the point
+  /* TEMPO5 — burn time drawn per flare from CONFIG.EFFECTS.illumBurn, off the
+     mission's seeded stream so a fixed-seed chapter's flares reproduce. The
+     fall rate is derived from the burn so the flare dies at burnout, not on
+     the deck: 295 m of ride over 50–130 s is 5.9 down to 2.3 m/s, bracketing
+     Table 24's real 5–6 m/s chute rates. */
+  const [bLo, bHi] = CONFIG.EFFECTS.illumBurn;
+  const u = (typeof mission !== 'undefined' && mission && mission.rng) ? mission.rng() : Math.random();
+  ILLUM.T = bLo + (bHi - bLo) * u;
+  ILLUM.rate = 295 / ILLUM.T;
 }
 function updateIllum(dt) {
   const t = sim.now - ILLUM.t0;
-  const dead = t < 0 || t > 55 || ILLUM.y < Math.max(H(ILLUM.x, ILLUM.z), 0) + 35;
+  const dead = t < 0 || t > (ILLUM.T || 55) ||
+               ILLUM.y < Math.max(H(ILLUM.x, ILLUM.z), 0) + 35;
   if (dead) {
     if (ILLUM.light.intensity) { ILLUM.light.intensity = 0; ILLUM.spr.visible = false; }
     return;
   }
-  ILLUM.y -= 6.5 * dt;                                  // the flare rides its chute down
+  ILLUM.y -= (ILLUM.rate || 6.5) * dt;                  // the flare rides its chute down
   ILLUM.x += WIND.dx * 0.8 * dt;                        // 12i — the chute drifts downwind
   ILLUM.z += WIND.dz * 0.8 * dt;
   ILLUM.light.position.set(ILLUM.x, ILLUM.y, ILLUM.z);
