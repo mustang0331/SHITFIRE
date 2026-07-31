@@ -19,7 +19,7 @@ git add . && git commit -m "spec + project memory"
 claude
 ```
 - Sign in on first launch.
-- Select the model: type `/model` and choose **Opus**. Sim (`SHITFIRE.html`) work is done directly by Opus; doc-only passes can be handed to a Sonnet subagent. **Fable has no credits on this account — don't route work to it.**
+- Select the model: type `/model` and choose **Fable**. Sim (`SHITFIRE.html`) work is done directly by Fable unless it decides to use subagents; doc-only passes can be handed to a Sonnet subagent.
 
 ## 3. Build stage 1 (the MVP core loop)
 Paste this as your first prompt:
@@ -49,13 +49,18 @@ One ROADMAP row per prompt. One row per commit. Never two.
 
 Then flip the row to `DONE` in ROADMAP.md as a **separate doc commit** — never bundled into the code commit.
 
-### The two rules that keep this from going sideways
 
-1. **One agent in `SHITFIRE.html` at a time.** This already went wrong once — GRAPHICS.md had to be written blind because another agent held the file.
-2. **Never mark a row done from memory.** Grep the code or run it.
 
 ## Testing notes
 - **Voice**: needs mic permission on a real Chrome tab (won't work in the Artifact sandbox).
+- **Microphone permission**: double-clicked `SHITFIRE.html` is a `file://` page, so Chrome has no
+  origin to remember a mic grant against — expect **one prompt per session**, not one per
+  transmission (the first push-to-talk holds the mic stream open for the rest of the tab's life; the
+  stream is never recorded or read). To grant once and be done forever, double-click
+  `tools/serve.cmd` instead: it launches a stdlib-only Node static server at `http://localhost:8137`
+  and opens the same sim there, and a real origin means Chrome remembers the grant permanently after
+  the first click. Needs Node (already on the dev machine); strictly optional — double-clicking
+  `SHITFIRE.html` directly still works with nothing installed.
 - **Print / map library**: test via the browser print dialog (Save as PDF).
 - **DEMs**: for stage 7, drop a grayscale island heightmap in the folder and tell Claude to wire it behind `H(x,z)`.
 - **DEV UNLOCK**: a toggle in the mission menu's DEVELOPER row opens every volume/chapter regardless of star progress or sequence, without touching saved progress — flip it on to jump straight to a late-campaign chapter for testing instead of grinding unlocks.
