@@ -151,7 +151,8 @@ function animate(tMs) {
   // resumes when it lapses: the observer can SEE suppression working and wearing off
   const flashOn = enemyAlive && Scenario && sim.now >= (Scenario.suppressedUntil || 0) &&
     (Scenario.type === 'strongpoint' || Scenario.type === 'assault' ||
-     Scenario.type === 'bunker' || Scenario.type === 'raid');
+     Scenario.type === 'bunker' || Scenario.type === 'raid' ||
+     Scenario.type === 'defense');   // ENEMY2 — they are shooting at YOU
   for (let i = 0; i < units.flashes.length; i++) {
     const f = units.flashes[i];
     f.s.visible = flashOn && (Scenario.type !== 'bunker' || i === 0) &&

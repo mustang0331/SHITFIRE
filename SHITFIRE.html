@@ -727,6 +727,7 @@ const SCN_META = {
   raid:        { name: 'VILLAGE RAID — NO-STRIKE ADJACENT' },
   wreck:       { name: 'DERELICT WRECK (TRAINING)' },
   battery:     { name: 'COUNTERBATTERY — GUNS IN ACTION' },   // ENEMY1
+  defense:     { name: 'DEFEND THE OP — DANGER CLOSE' },      // ENEMY2
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);
@@ -2840,6 +2841,15 @@ function scenarioDeadline() {
        Suppression visibly pushes it out; a dead battery clears the clock. */
     return { t: Math.max(0, S.bty.next - (sim.now - scenarioT0)), label: 'VOLLEY' };
   }
+  if (S.type === 'defense' && enemyAlive && !S.overrun &&
+      sim.now >= (S.suppressedUntil || 0)) {
+    /* ENEMY2 — time to the wire at the assault's CURRENT pace. Suppressing or
+       attriting them visibly buys time; a halted assault clears the clock. */
+    const dOP = dist2(S.enemy.x, S.enemy.z, OP.x, OP.z);
+    const pace = S.aSpeed * Math.max(0.25, 1 - Math.min(S.eff, 1));
+    if (dOP > 90 && pace > 0)
+      return { t: (dOP - 90) / pace, label: 'WIRE' };
+  }
   if (!S.path) return null;
   if (S.type === 'convoy' && S.veh && !S.escaped &&
       S.veh.filter(v => !v.dead).length > 1) {
@@ -3140,6 +3150,30 @@ function genScenario(type, seed) {
     // first volley soon after the brief lands; period is seeded per scenario
     S.bty = { next: 12 + rng() * 8, period: lerp(24, 38, rng()), tof: lerp(9, 14, rng()) };
     S.brief = `Friendly position at grid ${gridOf(fb.x, fb.z)} is taking sustained indirect fire. The gun is somewhere out there — find it by its signature and its fall of shot, and silence it. Every volley that lands while you work is friendly casualties on your clock.`;
+  } else if (type === 'defense') {
+    /* ENEMY2 — the OP watchtower base is the objective. The sharpest
+       danger-close problem in the trainer: the friendly element is the tower
+       the observer is standing on, the OT range shrinks as the enemy closes,
+       and every correction walks fire toward yourself. S.friendlies is the OP
+       itself, so the F2 danger-close gate and the fratricide check both key
+       on your own position with zero special cases. */
+    let en = null;
+    for (let tries = 0; tries < 500 && !en; tries++) {
+      const az = rng() * Math.PI * 2, r = lerp(1000, 1600, rng());
+      const x = OP.x + Math.sin(az) * r, z = OP.z - Math.cos(az) * r;
+      const h = H(x, z);
+      if (h < 2) continue;
+      if (!hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) continue;
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+      en = { x, z };
+    }
+    en = en || { x: OP.x + 1200, z: OP.z };
+    S.enemy = en;
+    S.friendlies = [{ x: OP.x, z: OP.z, r: M.fratricideRadius }];
+    S.aSpeed = 0.7;            // a deliberate assault pace: ~25 min to the wire
+    S.lastT = null;            // incremental advance (speed varies with losses)
+    S.overrun = false;
+    S.brief = `You are the objective. Assault force forming up near grid ${gridOf(en.x, en.z)}, grid bearing ~${brgTo(en)} mils, advancing on YOUR TOWER. Your own position is the friendly element — expect DANGER CLOSE, expect creeping corrections, and do not drop one on yourself. Break the assault before it reaches the wire.`;
   } else if (type === 'chow') {
     /* 11a — Epilogue E.1. The war is won; the flock is not aware. A seagull
        flock (personnel-class target — FM 6-30 has no column for wingspan)
@@ -3238,8 +3272,13 @@ function genScenario(type, seed) {
 function friendlyPositions() {
   const S = Scenario;
   if (!S) return [];
-  if (S.type === 'strongpoint') return S.friendlies;
-  if (S.type !== 'assault') return [];
+  /* ENEMY2 (bug found during its build): this returned [] for every type
+     except strongpoint/assault — so chow's COOKS no-fire line and battery's
+     position were never actually fratricide-protected or danger-close gated,
+     despite E.1's brief promising "FRATRICIDE, same rules, no appeals".
+     Static friendlies now come straight off S.friendlies for every type;
+     assault keeps its computed advancing positions below. */
+  if (S.type !== 'assault') return S.friendlies || [];
   const adv = Math.min(S.fSpeed * (sim.now - S.ft0), S.fAdvMax);
   const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
   const rx = Math.cos(S.fAdvAz), rz = Math.sin(S.fAdvAz);
@@ -3354,6 +3393,42 @@ function updateScenario() {
       const z = S.fStart.z + fz * adv + rz * l;
       units.fSquad[i].position.set(x, H(x, z), z);   // figure origin is at the feet
     }
+  } else if (S.type === 'defense' && !S.overrun) {
+    /* ENEMY2 — the assault closes on the tower. Advance is incremental so it
+       honestly responds to what the observer does: suppression halts it (and
+       the halt is watchable), casualties slow it in proportion, a broken
+       assault (enemyAlive false) stops for good. */
+    const dt2 = S.lastT === null ? 0 : sim.now - S.lastT;
+    S.lastT = sim.now;
+    const dOP = dist2(S.enemy.x, S.enemy.z, OP.x, OP.z);
+    if (enemyAlive && sim.now >= (S.suppressedUntil || 0) && dt2 > 0) {
+      const pace = S.aSpeed * Math.max(0.25, 1 - Math.min(S.eff, 1));
+      const step = Math.min(pace * dt2, Math.max(dOP - 60, 0));
+      if (dOP > 60) {
+        S.enemy.x += (OP.x - S.enemy.x) / dOP * step;
+        S.enemy.z += (OP.z - S.enemy.z) / dOP * step;
+      }
+    }
+    // figures: line abreast on the advance azimuth, at the feet of S.enemy
+    const aAz = Math.atan2(OP.x - S.enemy.x, -(OP.z - S.enemy.z));
+    const rx = Math.cos(aAz), rz = Math.sin(aAz);
+    for (let i = 0; i < 8; i++) {
+      const m = units.troops[i];
+      if (!m.visible) continue;
+      const l = (i - 3.5) * 9;
+      const x = S.enemy.x + rx * l, z = S.enemy.z + rz * l;
+      m.position.set(x, H(x, z), z);
+      if (i < units.flashes.length)
+        units.flashes[i].s.position.set(x, H(x, z) + 1.6, z);
+    }
+    if (dOP <= 90 && !S.overrun) {
+      S.overrun = true;
+      log('', 'They are through the wire and on the tower stairs. The OP is overrun — mission over.', 'sys');
+      if (mission && !mission.done) {
+        mission.done = true; mission.failReason = 'overrun'; mission.tEnd = sim.now;
+        schedule(sim.now + 2, showAAR);
+      }
+    }
   }
 }
 
@@ -3441,6 +3516,9 @@ function placeUnits() {
     });
   } else if (S.type === 'troops') {
     troopCluster(S.enemy.x, S.enemy.z, 8, 26);
+  } else if (S.type === 'defense') {
+    // ENEMY2 — eight figures; positions are driven per-frame as they advance
+    troopCluster(S.enemy.x, S.enemy.z, 8, 20);
   } else if (S.type === 'bunker') {
     const e = S.enemy;
     units.bunker.visible = true;
@@ -4205,6 +4283,9 @@ const SPOT_SCN = {
   battery:     { size: 'ONE GUN, SECTION-STRENGTH CREW',            // ENEMY1
                  act: 'DELIVERING INDIRECT FIRE ON A FRIENDLY POSITION. THEY ARE IN ACTION NOW',
                  eq: 'ONE MEDIUM MORTAR, EMPLACED, WITH A TRUCK STANDING OFF' },
+  defense:     { size: 'SQUAD PLUS — EIGHT OR MORE DISMOUNTS',      // ENEMY2
+                 act: 'ADVANCING ON YOUR OBSERVATION POST. YOU ARE THE OBJECTIVE',
+                 eq: 'SMALL ARMS AND AT LEAST ONE MACHINE GUN, MOVING LIGHT' },
 };
 const SPOT_UNIT = [
   'UNKNOWN. NO MARKINGS, NO INSIGNIA',
@@ -7588,7 +7669,8 @@ function showAAR() {
   const frat = m.failReason === 'fratricide';
   const collat = m.failReason === 'collateral';
   const escaped = m.failReason === 'escaped';
-  const pass = !frat && !collat && !escaped && accomplished && m.adjustRounds <= M.passMaxAdjustRounds;
+  const overrun = m.failReason === 'overrun';   // ENEMY2
+  const pass = !frat && !collat && !escaped && !overrun && accomplished && m.adjustRounds <= M.passMaxAdjustRounds;
   const grade = ['A', 'B', 'C', 'D'][Math.min(m.notes.length, 3)];
   const dur = (m.tEnd || sim.now) - m.tStart;
   let verdict, why = '';
@@ -7599,6 +7681,10 @@ function showAAR() {
     why = S.type === 'kaiju'
       ? 'The crab reached the village. The report will describe it as "weather".'
       : 'Fewer than three vehicles destroyed before the column ran off the map.';
+  }
+  else if (overrun) {   // ENEMY2 — the objective was you
+    verdict = 'FAIL — POSITION OVERRUN';
+    why = 'The assault reached the tower before you broke it. The last correction you never sent was the one that mattered.';
   }
   else if (S.type === 'kaiju' && a.outcome !== 'destroyed') {   // 11b — walking or not
     verdict = 'FAIL — IT IS STILL WALKING';
@@ -9538,7 +9624,8 @@ function animate(tMs) {
   // resumes when it lapses: the observer can SEE suppression working and wearing off
   const flashOn = enemyAlive && Scenario && sim.now >= (Scenario.suppressedUntil || 0) &&
     (Scenario.type === 'strongpoint' || Scenario.type === 'assault' ||
-     Scenario.type === 'bunker' || Scenario.type === 'raid');
+     Scenario.type === 'bunker' || Scenario.type === 'raid' ||
+     Scenario.type === 'defense');   // ENEMY2 — they are shooting at YOU
   for (let i = 0; i < units.flashes.length; i++) {
     const f = units.flashes[i];
     f.s.visible = flashOn && (Scenario.type !== 'bunker' || i === 0) &&

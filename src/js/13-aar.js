@@ -257,7 +257,8 @@ function showAAR() {
   const frat = m.failReason === 'fratricide';
   const collat = m.failReason === 'collateral';
   const escaped = m.failReason === 'escaped';
-  const pass = !frat && !collat && !escaped && accomplished && m.adjustRounds <= M.passMaxAdjustRounds;
+  const overrun = m.failReason === 'overrun';   // ENEMY2
+  const pass = !frat && !collat && !escaped && !overrun && accomplished && m.adjustRounds <= M.passMaxAdjustRounds;
   const grade = ['A', 'B', 'C', 'D'][Math.min(m.notes.length, 3)];
   const dur = (m.tEnd || sim.now) - m.tStart;
   let verdict, why = '';
@@ -268,6 +269,10 @@ function showAAR() {
     why = S.type === 'kaiju'
       ? 'The crab reached the village. The report will describe it as "weather".'
       : 'Fewer than three vehicles destroyed before the column ran off the map.';
+  }
+  else if (overrun) {   // ENEMY2 — the objective was you
+    verdict = 'FAIL — POSITION OVERRUN';
+    why = 'The assault reached the tower before you broke it. The last correction you never sent was the one that mattered.';
   }
   else if (S.type === 'kaiju' && a.outcome !== 'destroyed') {   // 11b — walking or not
     verdict = 'FAIL — IT IS STILL WALKING';
