@@ -2,7 +2,7 @@
 
 A condensed, at-a-glance version of `DOCTRINE.md` for a player mid-mission. **DOCTRINE.md remains the authority** — if anything here ever drifts from it, DOCTRINE.md wins and this file gets corrected to match, not the other way around. Written for scanning in a few seconds, not reading start to finish.
 
-**Status:** reference content only — not yet wired into the sim. Planned as an in-sim pull-up sheet (see README backlog item 26); suggested binding **`[H]`** (unclaimed — current keys are Space/Esc/B/L/M/K/P/V/N/Enter), toggled like the map/library overlays, visible without pausing or losing the mission state underneath.
+**Status:** shipped in-sim as the `[H]` pull-up overlay (ROADMAP fix F3, done) — toggled like the map/library overlays, visible without pausing or losing the mission state underneath. This file is the source the in-sim card was transcribed from; if the two ever drift, DOCTRINE.md is the tiebreaker for both.
 
 ---
 

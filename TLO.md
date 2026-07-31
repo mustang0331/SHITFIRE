@@ -105,14 +105,12 @@ Each chapter is graded 0–5★ by `gradeMission()`, which converts mission metr
 
 The per-mission **TLOG** (session transcript: radio traffic, parse classification, impacts, AAR outcome) is the instructor-review artifact — it is exportable as text/JSON from the mission menu and is the mechanism by which a maintainer (human or agent) audits *why* a chapter scored the way it did, independent of the star number alone.
 
-### Known assessment gaps
+### Assessment gaps — CLOSED (stage 12)
 
-A review of a real player session transcript (chapter 1.2, Normal — first grid 1,149 m off, then seven corrections that crept the miss down ~25%/round instead of bracketing toward doctrine's ~50%/round, never crossing the OT line, three rounds in a row changing nothing) surfaced two gaps between what this TLO specifies and what `gradeMission()` actually measures:
+A review of a real player session transcript (chapter 1.2, Normal — first grid 1,149 m off, then seven corrections that crept the miss down ~25%/round instead of bracketing toward doctrine's ~50%/round, never crossing the OT line, three rounds in a row changing nothing) originally surfaced two gaps between what this TLO specifies and what `gradeMission()` measured. **Both are closed** — SPEC.md BUILD ORDER stage 12 (FO skill depth & training fidelity) shipped in full, per ROADMAP.md's historical record:
 
-- **Time-to-initiate** (Course TLO standard: CFF complete within 2 minutes of target ID) and **correction efficiency** (each correction should roughly halve the prior miss, per successive-bracketing doctrine) are both stated standards above but are **not currently computed or scored** — the AAR reports rounds-to-effect and first-round accuracy, but nothing tracks whether the observer was fast to initiate or whether each correction was doctrinally efficient.
-- The **adjustment-doctrine ELOs** — I.2 successive bracketing, and the mil-relation/OT-factor arithmetic implied throughout — are currently **taught only by chapter briefing text**. Nothing in the running mission assesses whether the player is actually bracketing, and nothing coaches them toward it if they aren't; a player can fail I.2's method silently and only see it reflected as extra adjusting rounds, not as a named error.
-
-Both gaps are slated for **SPEC.md BUILD ORDER stage 12** (FO skill depth & training fidelity): in-mission coaching nudges for timid corrections, bracket failure, and stagnant rounds, plus `gradeMission()` support for time-to-initiate and correction-efficiency metrics.
+- **Time-to-initiate** and **correction efficiency** are both computed and scored, present under the names `tInit` (set in `fireMission`, gated at 120 s, shown in the AAR against the ≤2:00 standard, TLOG'd) and the AAR's miss-trace/shot-plot presentation of each correction's effect.
+- **In-mission coaching** for timid corrections, bracket failure, and stagnant rounds is live on Easy/Normal (off on Hard, per design). The mil-relation/OT-factor workflow is wired to the reticle (stage 12b), not just taught in briefing text, and initial-location error is reported as a vector (direction + distance) on the AAR shot plot, not a bare scalar.
 
 ## 5. Chapter Crosswalk
 
@@ -139,9 +137,9 @@ Both gaps are slated for **SPEC.md BUILD ORDER stage 12** (FO skill depth & trai
 | 4.3 | No Second Chances | IV.3 — Time-Constrained Precision | Tightened adjusting-round budget | FFE within reduced round budget |
 | 4.4 | The Meat Grinder | IV.4 — Integrated Exam | Composite of prior ELOs under strict+hard | Full Course TLO standard met |
 
-## 6. Future Objectives (not yet assessed / not yet built)
+## 6. Future Objectives (not yet built) / Built-but-not-chaptered
 
-- **Epilogue (E.1–E.3, SUNBURN)** exercises the same doctrine and direct-impact model against deliberately absurd targets (seagulls, a kaiju crab, an orbital directed-energy platform). It is unlocked by finishing Volume IV but is **not graded as a serious TLO** — full doctrinal traffic is played for comedic contrast, not competency measurement. Consider it culture, not curriculum.
-- **Volume V — On Wings (future).** A prospective TLO for close air support: employ fixed/rotary-wing CAS via a 9-line brief, talk-on, and attack-geometry deconfliction. Locked menu tease only; do not build ahead of the surface-to-surface campaign per `NARRATIVE.md`.
-- **Smoke and illumination missions (future ELOs).** Would extend the Volume II–III ELOs with marking, screening, and night-shoot skills using the existing impact-effect hooks; not yet scoped as chapters.
-- **Mil-relation range estimation / degraded-optics observation (future ELO).** Estimate range from a known object's size and its subtended mils when the laser rangefinder is unavailable (dead-laser or degraded-optics condition); not yet a scored ELO, tracked for stage 12 alongside the assessment gaps above.
+- **Epilogue (E.1–E.3, SUNBURN)** exercises the same doctrine and direct-impact model against deliberately absurd targets (seagulls, a kaiju crab, an orbital directed-energy platform). It shipped in full (Track C, stage 11) and is unlocked by finishing Volume IV, but is **not graded as a serious TLO** — full doctrinal traffic is played for comedic contrast, not competency measurement. Consider it culture, not curriculum.
+- **Volume V — On Wings (future, parked).** A prospective TLO for close air support: employ fixed/rotary-wing CAS via a 9-line brief, talk-on, and attack-geometry deconfliction. Locked menu tease only; do not build ahead of the surface-to-surface campaign per `NARRATIVE.md`.
+- **Smoke and illumination missions — the mechanics are built** (stage 12h: SHELL SMOKE/WP screening with obscuration-based suppression grading, ILLUMINATION missions with a real night TOD requirement), **but no campaign chapter currently requires either one** — they're reachable in Skirmish/immediate-fire traffic. Authoring dedicated chapters for these ELOs remains open (see ROADMAP.md `TEMPO` rows).
+- **Mil-relation range estimation / degraded-optics observation — built and scored**, not merely planned: the reticle-to-OT-factor workflow (stage 12b) and the degraded-optics/dead-laser condition (stage 12j, chapter 2.1 "NUMBERS ON A COMPASS") both shipped.

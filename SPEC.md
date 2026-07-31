@@ -1,5 +1,7 @@
 # SHITFIRE — FORWARD OBSERVER (CALL-FOR-FIRE) TRAINER — ONE-SHOT PROMPT
 
+> **Historical design record.** This is the original one-shot prompt and BUILD ORDER the sim was built from; its BUILD ORDER (stages 1–14) has fully shipped. **[ROADMAP.md](ROADMAP.md) is the authority on current status and what ships next** — the sim as built may exceed or refine what's written below. Kept here unedited for scope-per-stage reference.
+
 > Feed this to a coding agent (Claude Code / Cursor). Fill in the **PARAMETERS** block first — every `[Q#]` in the spec body pulls from it. Anything you leave blank, the agent should resolve using the stated default.
 
 ---
