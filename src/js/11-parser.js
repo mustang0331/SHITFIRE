@@ -186,6 +186,35 @@ function parseMessage(raw) {
   const mFire = t.match(/\bfire\s+target\s+([a-z]{2})\s*(\d{4})\b/);
   if (mFire && !imm)
     return { type: 'firetgt', tgtNum: (mFire[1] + mFire[2]).toUpperCase(), raw: t, toks };
+  /* SUGG1 — the final protective fire (ATP 3-09.30 §1-30–1-32, §7-16–7-23).
+     Three shapes, all tested before location parsing:
+       "FIRE THE FPF" / "REPEAT THE FPF"      — execute at max rate
+       "PLAN FPF, GRID nnnnnn, DIRECTION dddd" — establish the line
+       "NUMBER n, RIGHT/LEFT x, ADD/DROP y" / "NUMBER n, REPEAT"
+                                               — flank-piece-in adjustment
+     The gun-number regex demands a single digit at a word boundary, so an MTO
+     readback's "TARGET NUMBER 7001" can never be mistaken for a piece. */
+  if (/\b(?:fire|repeat)\s+(?:the\s+)?fpf\b/.test(t))
+    return { type: 'firefpf', raw: t, toks };
+  if (/\bfpf\b/.test(t) && toks.includes('grid')) {
+    const gi2 = toks.indexOf('grid');
+    let d2 = '';
+    for (let i = gi2 + 1; i < toks.length && /^\d+$/.test(toks[i]); i++) d2 += toks[i];
+    const mDir = t.match(/\bdirection\s+(\d{3,4})\b/);
+    return { type: 'planfpf', digits: d2, dirMils: mDir ? parseInt(mDir[1], 10) : null,
+             raw: t, toks };
+  }
+  const mGun = t.match(/\bnumber\s+(\d)\b/);
+  if (mGun) {
+    const gR = t.match(/\bright\s+(\d+)\b/), gL = t.match(/\bleft\s+(\d+)\b/);
+    const gA = t.match(/\badd\s+(\d+)\b/), gD = t.match(/\bdrop\s+(\d+)\b/);
+    const rep = /\brepeat\b/.test(t);
+    if (rep || gR || gL || gA || gD)
+      return { type: 'fpfadj', gun: parseInt(mGun[1], 10), repeat: rep,
+               right: gR ? parseInt(gR[1], 10) : gL ? -parseInt(gL[1], 10) : 0,
+               add: gA ? parseInt(gA[1], 10) : gD ? -parseInt(gD[1], 10) : 0,
+               raw: t, toks };
+  }
   // grid extraction
   const gi = toks.indexOf('grid');
   let digits = '';

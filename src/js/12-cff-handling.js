@@ -821,6 +821,9 @@ function onPlayerMessage(raw) {
     case 'suppresstgt': handleSuppressTarget(p); break;
     case 'prioritytgt': handlePriorityTarget(p); break;   // SUGG2
     case 'firetgt': handleFireTarget(p); break;           // SUGG2
+    case 'planfpf': handlePlanFPF(p); break;              // SUGG1
+    case 'fpfadj': handleFPFAdjust(p); break;             // SUGG1
+    case 'firefpf': handleFireFPF(p); break;              // SUGG1
     case 'sheaf': handleSheaf(p); break;
     case 'fuze': handleFuze(p); break;
     case 'shell': handleShell(p); break;

@@ -487,6 +487,7 @@ function newMission(first, type, chapter) {
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   FDC.lastT = 0;
   cffqReset();            // G22 — a half-sent call must not survive into a new mission
+  FPF = null;             // SUGG1 — an FPF is planned against THIS fight's geometry
   mission = null;
   bursts.forEach(b => { b.active = false; b.group.visible = false; });
   activeChapter = chapter || null;

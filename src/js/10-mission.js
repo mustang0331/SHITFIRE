@@ -157,6 +157,7 @@ function fireMission(targetLocation, warno, meta) {
     tot: null,              // §34 — time on target, accepted and acknowledged
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
     shotExtra: (meta && meta.shotExtra) || 0,   // SUGG2 — re-lay delay before SHOT
+    fpf: !!(meta && meta.fpf),                  // SUGG1 — this FFE is the planned line
   };
   if (warno === 'ffe') fireForEffect();
   else fireAdjustRound();
@@ -297,6 +298,112 @@ function handleFireTarget(p) {
       intent: 'destroy', sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw),
       /* the felt difference: laid guns shoot now; anyone else re-lays first */
       shotExtra: pri ? 0 : 22 });
+}
+/* SUGG1 — the final protective fire (ATP 3-09.30 §1-30–1-32, §7-16–7-23).
+   A PRE-PLANNED defensive line as close to friendlies as the observer dares:
+   plan it quiet, adjust each piece individually ("NUMBER 1, RIGHT 20, DROP
+   25" → "NUMBER 2, REPEAT"), then "FIRE THE FPF" brings the whole line down
+   at max rate when the assault crosses it. Everything is the direct-impact
+   model: four fixed gun points on a 180 m line, each round = its gun's point
+   + error. Marking rounds during adjustment are single presentation rounds
+   (spawnBurst — no mission machinery), but the fratricide invariant is NOT
+   waived for them: a marking round inside a friendly radius is recorded and
+   fails the FPF mission the moment it opens. The executed FPF itself fires
+   through fireMission/resolveImpact, so effects, fratricide and collateral
+   all run under the ordinary rules. */
+let FPF = null;
+function fpfMarkRound(g) {
+  const p0 = FPF.pts[g];
+  const err = followUpError(FPF.rng, azTo(OP.x, OP.z, p0.x, p0.z));
+  const ix = p0.x + err.x, iz = p0.z + err.z;
+  schedule(sim.now + CONFIG.FDC.shotDelay + tofFor(p0) - 2, () => {
+    spawnBurst(ix, Math.max(H(ix, iz), 0), iz);
+    for (const f of friendlyPositions())
+      if (dist2(ix, iz, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius)) {
+        FPF.frat = true;
+        log('', 'That marking round landed INSIDE the friendly position. The FPF is compromised — the failure is recorded and rides the mission.', 'sys');
+        // not the rant pool: those entries feed failHit's multi-part playback
+        FDC.say('CHECK FIRE — THAT MARKING ROUND WAS ON THE FRIENDLIES. The FPF you just adjusted onto our own people is the FPF you will answer for when it fires, over.', { delay: 0.8 });
+      }
+  });
+}
+function handlePlanFPF(p) {
+  if (mission && !mission.done) {
+    FDC.say('MUSTANG 12, we are mid-mission. Plan your FPF when the net is quiet, over.', { delay: 1 });
+    return;
+  }
+  if (!p.digits || (p.digits.length !== 6 && p.digits.length !== 8)) {
+    FDC.say('SAY AGAIN THE FPF GRID — six or eight digits, over.', { delay: 1 });
+    return;
+  }
+  if (p.dirMils === null) {
+    FDC.say('AN FPF HAS AN ATTITUDE — SEND DIRECTION WITH IT ("PLAN FPF, GRID, DIRECTION"), OVER.', { delay: 1 });
+    return;
+  }
+  let w;
+  if (p.digits.length === 6) {
+    w = enToWorld(parseInt(p.digits.slice(0, 3), 10) * 100 + 50,
+                  parseInt(p.digits.slice(3), 10) * 100 + 50);
+  } else {
+    w = enToWorld(parseInt(p.digits.slice(0, 4), 10) * 10 + 5,
+                  parseInt(p.digits.slice(4), 10) * 10 + 5);
+  }
+  // an FPF exists to be danger close — the proword discipline holds while planning
+  let minF = Infinity;
+  for (const f of friendlyPositions()) minF = Math.min(minF, dist2(w.x, w.z, f.x, f.z));
+  if (minF <= dangerCloseRadius() && !saidDangerClose(p.raw)) {
+    FDC.say(pick(QUIPS.dangerClose), { delay: 1.2 });
+    return;
+  }
+  const az = (p.dirMils % 6400) / MILS_PER_RAD;
+  const lx = Math.sin(az), lz = -Math.cos(az);        // along the attitude
+  FPF = { pts: [-60, -20, 20, 60].map(o => ({ x: w.x + lx * o, z: w.z + lz * o })),
+          az, adj: [false, false, false, false], frat: false,
+          rng: mulberry32((CONFIG.SEED.mission * 2246822519 + 13) >>> 0) };
+  FDC.say(`FPF ESTABLISHED — FOUR GUNS ON A 180 METER LINE, ATTITUDE ${fmtMils(p.dirMils % 6400)}, ` +
+          `CENTER GRID ${p.digits}${minF <= dangerCloseRadius() ? ', DANGER CLOSE' : ''}. ` +
+          'ADJUST EACH PIECE — NUMBER 1 IS UP, OVER.', { delay: 1.2 });
+  log('', 'Adjust each gun onto the line: "NUMBER 1, RIGHT 20, DROP 25" moves it (a marking round follows); ' +
+    '"NUMBER 2, REPEAT" re-fires a piece unmoved. When the assault crosses the line: "FIRE THE FPF".', 'sys');
+  fpfMarkRound(0);
+}
+function handleFPFAdjust(p) {
+  if (!FPF) {
+    FDC.say('NEGATIVE — no FPF is planned on this net. "PLAN FPF, GRID, DIRECTION" first, over.', { delay: 1 });
+    return;
+  }
+  if (p.gun < 1 || p.gun > 4) {
+    FDC.say(`I HAVE FOUR GUNS, MUSTANG, NOT ${p.gun}. NUMBER 1 THROUGH 4, OVER.`, { delay: 1 });
+    return;
+  }
+  const g = p.gun - 1;
+  if (!p.repeat) {
+    // per-piece OT-frame move — the same frame every correction uses
+    const pt = FPF.pts[g];
+    const ot = azTo(OP.x, OP.z, pt.x, pt.z);
+    const fx = Math.sin(ot), fz = -Math.cos(ot), rx = Math.cos(ot), rz = Math.sin(ot);
+    pt.x += fx * p.add + rx * p.right;
+    pt.z += fz * p.add + rz * p.right;
+    FPF.adj[g] = true;
+  }
+  FDC.say(`NUMBER ${p.gun}${p.repeat ? ', REPEAT' : (p.right ? `, ${p.right > 0 ? 'RIGHT' : 'LEFT'} ${Math.abs(p.right)}` : '') +
+          (p.add ? `, ${p.add > 0 ? 'ADD' : 'DROP'} ${Math.abs(p.add)}` : '')}, OUT.`, { delay: 0.8 });
+  fpfMarkRound(g);
+}
+function handleFireFPF(p) {
+  if (!FPF) {
+    FDC.say('NEGATIVE — no FPF is planned on this net. Plan it before you need it, over.', { delay: 1 });
+    return;
+  }
+  if (mission && !mission.done) {
+    FDC.say('MUSTANG 12, we are mid-mission. End it or let it ride — the FPF fires clean, over.', { delay: 1 });
+    return;
+  }
+  FDC.say('FIRING THE FPF — ALL GUNS, MAXIMUM RATE, OUT.', { delay: 0.5 });
+  setState('MISSION SENT');
+  fireMission({ x: (FPF.pts[1].x + FPF.pts[2].x) / 2, z: (FPF.pts[1].z + FPF.pts[2].z) / 2 },
+    'ffe', { desc: 'FINAL PROTECTIVE FIRE', gridStr: 'THE FPF', method: 'grid',
+             intent: 'suppress', fpf: true });
 }
 function handleSuppressTarget(p) {
   if (mission && !mission.done) {
@@ -506,15 +613,27 @@ function fireForEffect() {
      the column currently is, not a constant; line paths return the same
      dx/dz they always did. */
   const linDir = lin ? pathDir(Scenario.path, convoyHeadD()) : null;
+  /* SUGG1 — the FPF volley is the four ADJUSTED gun points, each fired twice,
+     at maximum rate (a third of the normal stagger). Each round is still
+     impact = its gun's point + error — the line is aimpoint geometry, exactly
+     like the linear sheaf above. A marking-round fratricide recorded during
+     adjustment fails this mission on execution: the round that landed on
+     friendlies was this mission's round, fired early. */
+  const fpfRun = mission.fpf && FPF;
+  if (fpfRun && FPF.frat) mission.failReason = 'fratricide';
+  const nRounds = fpfRun ? 8 : B.ffeRounds;
   let off = 0, tLast = 0;
-  for (let i = 0; i < B.ffeRounds; i++) {
+  for (let i = 0; i < nRounds; i++) {
     const err = followUpError(mission.rng, otAz);
     const lo = lin ? (i - (B.ffeRounds - 1) / 2) * 35 : 0;
-    const impact = { x: mission.aim.x + base.x + err.x + (lin ? linDir.dx * lo : 0),
-                     z: mission.aim.z + base.z + err.z + (lin ? linDir.dz * lo : 0) };
+    const gun = fpfRun ? FPF.pts[i % 4] : null;
+    const impact = fpfRun
+      ? { x: gun.x + err.x, z: gun.z + err.z }
+      : { x: mission.aim.x + base.x + err.x + (lin ? linDir.dx * lo : 0),
+          z: mission.aim.z + base.z + err.z + (lin ? linDir.dz * lo : 0) };
     tLast = tShot + tof + off;
     schedule(tLast, () => resolveImpact(impact, true));
-    off += lerp(B.ffeStagger[0], B.ffeStagger[1], mission.rng());
+    off += lerp(B.ffeStagger[0], B.ffeStagger[1], mission.rng()) * (fpfRun ? 0.33 : 1);
   }
   schedule(tLast + 2.2, () => {
     if (mission.done) return;
