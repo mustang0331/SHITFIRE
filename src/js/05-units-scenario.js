@@ -96,11 +96,33 @@ function genScenario(type, seed) {
     alerted: 0, dispersed: 0 };
   const OPT = (activeChapter && activeChapter.scn) || {};
 
+  /* WORLD1 — skirmish targets disperse across the whole island instead of the
+     1500-3200 m annulus around the OP (user: "targets are mostly at the ends of
+     the island"). Skirmish ONLY: with a chapter active the draw below is the
+     classic annulus, untouched, so every fixed-seed chapter's rng sequence —
+     and therefore its authored target position and par — stays identical.
+     The spread draw is area-uniform over the island disc (sqrt radius), then
+     clamped to CONFIG.MISSION.skirmishRange from the OP. Height, LOS and
+     village-exclusion checks are shared by both draws. */
+  const spread = !activeChapter;
   function findSpot(rMin, rMax, hMin, hMax, needLOS) {
-    for (let tries = 0; tries < 300; tries++) {
-      const az = rng() * Math.PI * 2;
-      const range = lerp(rMin, rMax, rng());
-      const x = OP.x + Math.sin(az) * range, z = OP.z - Math.cos(az) * range;
+    /* The disc draw's acceptance rate is inherently lower than the annulus's —
+       it also samples water and masked far coast — so spread mode gets more
+       tries before the fixed fallback point. Runs once per mission; cheap. */
+    const tryMax = spread ? 1500 : 300;
+    for (let tries = 0; tries < tryMax; tries++) {
+      let x, z;
+      if (spread) {
+        const az = rng() * Math.PI * 2;
+        const r = CONFIG.TERRAIN.islandRadius * Math.sqrt(rng());
+        x = Math.sin(az) * r; z = -Math.cos(az) * r;
+        const d = dist2(x, z, OP.x, OP.z);
+        if (d < M.skirmishRange[0] || d > M.skirmishRange[1]) continue;
+      } else {
+        const az = rng() * Math.PI * 2;
+        const range = lerp(rMin, rMax, rng());
+        x = OP.x + Math.sin(az) * range; z = OP.z - Math.cos(az) * range;
+      }
       const h = H(x, z);
       if (h < hMin || h > hMax) continue;
       if (needLOS && !hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) continue;
@@ -150,7 +172,11 @@ function genScenario(type, seed) {
                 { x: OP.x + 2000, z: OP.z };
       S.brief = `Enemy infantry assembling IN DEFILADE near grid ${gridOf(S.enemy.x, S.enemy.z)} — you will not see them or your bursts from the tower. Fight it on the map: plot, fire, listen, adjust off the smoke over the crest.`;
     } else {
-      S.enemy = findSpot(M.targetRange[0], M.targetRange[1], 2, 14, true) ||
+      /* WORLD1 — the 14 m elevation ceiling was the second half of "targets at
+         the ends of the island": on a 95 m-ridge island it admits only the
+         coastal fringe. Skirmish troops may now stand anywhere on the island;
+         chapters keep the authored coastal placement. */
+      S.enemy = findSpot(M.targetRange[0], M.targetRange[1], 2, spread ? 999 : 14, true) ||
                 { x: OP.x + 2000, z: OP.z };
       S.brief = `Enemy infantry in the open, reported grid bearing ~${brgTo(S.enemy)} mils from your OP. A gift. Do not waste it.`;
     }

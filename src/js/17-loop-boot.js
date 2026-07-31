@@ -173,6 +173,11 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   // states no keybind reaches; the replay rig re-classifies recorded traffic
   // through parseMessage without touching mission state.
   applyTOD, setVision, onPlayerMessage, parseMessage,
+  /* WORLD1 — placement QA. genScenario lets a harness sample target positions
+     across many seeds without driving the UI; read-only against world state
+     (it builds and returns an S, it does not install it). hasLOS rides along
+     so a harness can check sight lines the way the scenario generator does. */
+  genScenario, hasLOS,
   /* PERF1 — frame-budget QA. tools/perfprobe.js needs the renderer's own
      accounting (draw calls, triangles) and the live quality state to tell a
      fill-rate problem from a geometry one; neither is reachable from outside

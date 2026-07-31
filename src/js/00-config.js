@@ -59,6 +59,12 @@ const CONFIG = {
   MISSION: {
     fratricideRadius: 80,
     passMaxAdjustRounds: 4, targetRange: [1500, 3200], enemyOffset: [150, 250],
+    /* WORLD1 — skirmish-only OT range band. Skirmish targets sample the whole
+       island disc (area-uniform), clamped to this band from the OP: the floor
+       keeps a random target outside the battery's 600 m danger close of the
+       observer's own tower; the ceiling admits the far coast. Chapters ignore
+       this and keep the classic targetRange annulus draw (fixed seeds). */
+    skirmishRange: [800, 4200],
     /* F2 — danger-close distance per firing asset (BALLISTICS_RESEARCH.md §6:
        JFIRE's tables put mortars at roughly a third to half of the 155's
        figure; the flat single-band gate itself is a correct simplification). */
