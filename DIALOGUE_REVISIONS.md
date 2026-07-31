@@ -479,3 +479,56 @@ See ROADMAP.md Track F rows F5–F7 for the fix specs.
 ---
 
 **Next step, if wanted:** apply §3's array replacements to `SHITFIRE.html:1487-1628` and the four `story`/`outro` edits in §4 (both include the God's-name scrub from §2a), then a manual playtest of a mission that hits `corrSnark` and `rantFrat`/`rantCiv` to confirm nothing broke pacing or `pick()`'s no-immediate-repeat logic with the larger arrays. LIBERTY FIRES (§8) is separate — it's stage-11 scoped, not a drop-in edit to the current build. §9's F5–F7 are separate again — parser fixes, not dialogue text, owned by whoever takes Track F.
+
+---
+
+## 10. Night-run transcript review (2026-07-31) — the 18-05 / 18-34 / 20-01 exports, against post-14a code
+
+Reviewed by an agent against the CURRENT `src/js/` — every candidate traced to live code, because most
+of what these transcripts show broken (F5/F6/F7, G14/G26/G27, the 14a pool depths, the God's-name
+lines) was fixed in the hours *after* they were exported. Full working notes lived in the session
+scratchpad; the durable findings are here. Fix specs went to ROADMAP rows `NET3`/`NET4`.
+
+### 10.1 Two parser misses still live
+
+- **Polar with "RANGE" for "DISTANCE", or a filler word between proword and number, never parses as a
+  polar attempt.** The worst single player experience on record: ~17 minutes of retries at the top of
+  the 20-01 session (t=924 → t=1453), the player sending honest polar shapes — `"...POLAR DIRECTION
+  4500 RANGE TO 600 TROOPS IN THE OPEN DANGER CLOSE OVER"` — and drawing `noMission`/`unknown` mockery
+  every time. Cause ([src/js/11-parser.js:227](src/js/11-parser.js#L227)): the polar branch requires
+  the literal word `distance` with the number IMMEDIATELY after; `range` is not a synonym anywhere in
+  the file and "distance TO 600" breaks the match. A human FDC hears "direction 4500, range 600" and
+  knows exactly what is being attempted.
+- **"FIRE FOR AFFECT" is not FIRE FOR EFFECT.** 20-01 t=2111.8: `"RIGHT 20, FIRE FOR AFFECT"` fired a
+  single adjust round with no error surfaced; the player had to notice and resend. Cause:
+  [src/js/11-parser.js:145](src/js/11-parser.js#L145) exact substring, and `STT_FIX` (which exists for
+  exactly this class) has no `affect→effect` entry. Same failure shape as the fixed F5 bugs.
+
+### 10.2 `noMission` and `unknown` are thin, and bursts prove it
+
+Both pools escaped 14a's expansion (4 and 5 entries today) because they fire rarely in a *clean*
+playthrough — but they fire in BURSTS in exactly the sessions where the player is already stuck and
+already frustrated. Evidence from the same 20-01 stall: `noMission` fired 6 times in ~14 minutes,
+one line 4 of those 6 times. Same expansion treatment as `corrSnark` (6–8+ entries).
+
+### 10.3 Missing: the in-mission repeat callback
+
+"Continuity is the punchline" is implemented cross-mission (`careerFrat`/`careerVet`) but HELLHOUND
+never registers a third consecutive unparseable transmission *within* one mission. One escalation
+pool (fires on the 3rd+ consecutive `unknown`/`noMission`) closes it — needs a small counter, not
+just a text drop-in.
+
+### 10.4 Proposed lines (tone: Generation Kill / WARFARE per the user's 2026-07-30 direction)
+
+For `noMission`: "MUSTANG 12, HELLHOUND. There is no mission running. The radio will not start
+talking back until you send a call for fire. Over." · "Negative, MUSTANG. Nothing is plotted, nothing
+is airborne, nothing is happening on this net but you. Warning order, location, description. Over." ·
+"There is no fire mission open, MUSTANG. I cannot adjust a ghost. Send the call first, over."
+
+For `unknown`: "MUSTANG, that was words, technically. Say it again as an actual call for fire,
+over." · "I do not know what net you think you are on, but it is not this one. Say again, over."
+
+For the new escalation pool: "MUSTANG, that is the third time in a row I have had to say this. Stop
+transmitting and start reading. Warning order, location, description. In that order. Over." · "We are
+going in circles, MUSTANG, and only one of us finds it funny. Breathe. Look at the manual. Send it
+right this time, over."
