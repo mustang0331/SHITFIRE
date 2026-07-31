@@ -137,6 +137,7 @@ function fireMission(targetLocation, warno, meta) {
        suppressed-only outcome is the mission accomplished, not a shortfall. */
     intent: (meta && meta.intent) || 'destroy',
     imm: (meta && meta.imm) || null,   // TEMPO2 — 'suppress'/'smoke' when the call was an immediate
+    usedIllum: false,   // TEMPO4 — set when an illumination round deploys
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
@@ -616,6 +617,14 @@ function handleShell(p) {
     return;
   }
   mission.shell = p.kind;
+  /* TEMPO4 — the mission's PURPOSE follows the switch, the same rule 12h
+     applied at call time (intent follows the shell). Before this, a mission
+     opened as ILLUMINATION and switched to HE mid-mission still graded on
+     "light provided" — the coordinated-illumination sequence (illum up, then
+     HE under the flare) would have passed without a single effective round. */
+  mission.intent = p.kind === 'illum' ? 'illum'
+                 : p.kind === 'smoke' ? 'suppress'
+                 : (mission.imm ? 'suppress' : 'destroy');
   FDC.say(`SHELL ${p.kind === 'illum' ? 'ILLUMINATION' : p.kind.toUpperCase()}, OUT.`, { delay: 0.9 });
 }
 
@@ -670,6 +679,7 @@ function resolveImpact(impact, isFFE) {
      alerts, convoy attrition) simply does not happen. It is light, not fires. */
   if (shell === 'illum') {
     igniteIllum(impact.x, impact.z);
+    mission.usedIllum = true;   // TEMPO4 — reqIllum chapters grade on this
     mission.rounds.push(impact);
     if (isFFE) mission.ffeRounds.push(impact);
     TLOG.add('impact', '', 'illumination round', { shell: 'illum' });

@@ -229,6 +229,13 @@ function showAAR() {
   if (!m) return;
   const M = CONFIG.MISSION;
   const S = Scenario;
+  /* TEMPO4 — the reqIllum shortfall can only be known at the end (the illum
+     might legally have come at any point in the mission), so the note lands
+     here, once, before grading reads m.notes. */
+  if (activeChapter && activeChapter.reqIllum && !m.usedIllum && !m.reqIllumNoted) {
+    m.reqIllumNoted = true;
+    m.notes.push('This chapter demanded COORDINATED ILLUMINATION — you fought it dark. Effective, maybe, but the skill under test was the light (chapter capped at 2★).');
+  }
   const isConvoy = S.type === 'convoy';
   if (isConvoy) m.hits = S.veh.filter(v => v.dead).length;
   /* G13 — the verdict comes off the graded effect, and it distinguishes the

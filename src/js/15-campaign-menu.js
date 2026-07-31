@@ -77,6 +77,18 @@ const CAMPAIGN = [
     { id: '2.4', title: 'THE PERIMETER', blurb: 'your choice of method, under pressure', impl: true, type: 'strongpoint', seed: 204, par: 330,
       story: 'Another strongpoint, worse ground, less time. Nobody is telling you which location method to use — that is the point. Pick the right tool, first try, while the perimeter shrinks.',
       outro: 'Right method, right rounds. The ridge line is yours now.' },
+    /* TEMPO4 — the coordinated-illumination chapter (JFIRE Table 14 / JFO 0103
+       §5.d, researched in RESEARCH_NIGHT_RUN.md §2): illum up, walk the light,
+       then HE under the flare, re-illuminating as it dies. The first chapter
+       deliberately built around a SEQUENCE of fire missions. reqIllum mirrors
+       reqImmediate: fighting it dark (thermal is a real tool) still completes,
+       capped at 2★ — the chapter's skill is the light. */
+    { id: '2.5', title: 'FLARES OUT', blurb: 'night defense — light first, then steel', impl: true, type: 'strongpoint', seed: 205, par: 540, tod: 'night', reqIllum: true,
+      story: 'The perimeter again, except somebody turned the island off. A friendly strongpoint is taking fire in the dark and the assault is close enough to hear over the net. You cannot adjust what you cannot see: get ILLUMINATION up — send the call with SHELL ILLUMINATION and walk the light over the attackers, big corrections, the flare does not need ten-meter precision. When they are lit, switch to steel: "SHELL HE, OVER", and fight it like any adjust mission, under your own light. The flare burns about a minute. When it dies, buy another. Registration won the dark for the guns in 2.2 — tonight, light wins it for you.',
+      outro: 'The flare settles into the sea and the shooting stops. The strongpoint counts heads twice and comes up even both times. Nobody out there knows the light had a callsign.',
+      coach: [
+        'Light FIRST, killer. Send a normal call with ILLUMINATION in it. Adjust the flare in big steps — hundreds, not tens — until the attackers are lit.',
+        'When you can SEE them: "SHELL HE, OVER" — same mission, new nature — then walk steel onto them under the light. If the flare dies mid-adjust, send SHELL ILLUMINATION again and buy more. Doctrine calls the whole dance COORDINATED ILLUMINATION.' ] },
   ]},
   { id: 'V3', tab: 'III', name: 'VOLUME III — THUNDER RUN', need: 14, tseed: 5150, chapters: [
     { id: '3.1', title: 'ROLLING STOCK', blurb: 'convoy — lead it, or catch the pit stop', impl: true, type: 'convoy', seed: 301, par: 420,
@@ -254,6 +266,11 @@ function gradeMission(m) {
   // TEMPO2 — a reqImmediate chapter grades the one-transmission call. Same cap
   // shape as the method requirement: deliberate still completes, at 2★ most.
   if (activeChapter && activeChapter.reqImmediate && !m.imm) stars = Math.min(stars, 2);
+  // TEMPO4 — a reqIllum chapter demands light before (or during) the HE work.
+  // Fighting it dark on thermal still completes the mission — the E3 kit is a
+  // real tool — but the chapter's skill is coordinated illumination, so no
+  // illum means 2★ at most.
+  if (activeChapter && activeChapter.reqIllum && !m.usedIllum) stars = Math.min(stars, 2);
   return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
 }
 

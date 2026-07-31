@@ -5124,6 +5124,7 @@ function fireMission(targetLocation, warno, meta) {
        suppressed-only outcome is the mission accomplished, not a shortfall. */
     intent: (meta && meta.intent) || 'destroy',
     imm: (meta && meta.imm) || null,   // TEMPO2 — 'suppress'/'smoke' when the call was an immediate
+    usedIllum: false,   // TEMPO4 — set when an illumination round deploys
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
@@ -5603,6 +5604,14 @@ function handleShell(p) {
     return;
   }
   mission.shell = p.kind;
+  /* TEMPO4 — the mission's PURPOSE follows the switch, the same rule 12h
+     applied at call time (intent follows the shell). Before this, a mission
+     opened as ILLUMINATION and switched to HE mid-mission still graded on
+     "light provided" — the coordinated-illumination sequence (illum up, then
+     HE under the flare) would have passed without a single effective round. */
+  mission.intent = p.kind === 'illum' ? 'illum'
+                 : p.kind === 'smoke' ? 'suppress'
+                 : (mission.imm ? 'suppress' : 'destroy');
   FDC.say(`SHELL ${p.kind === 'illum' ? 'ILLUMINATION' : p.kind.toUpperCase()}, OUT.`, { delay: 0.9 });
 }
 
@@ -5657,6 +5666,7 @@ function resolveImpact(impact, isFFE) {
      alerts, convoy attrition) simply does not happen. It is light, not fires. */
   if (shell === 'illum') {
     igniteIllum(impact.x, impact.z);
+    mission.usedIllum = true;   // TEMPO4 — reqIllum chapters grade on this
     mission.rounds.push(impact);
     if (isFFE) mission.ffeRounds.push(impact);
     TLOG.add('impact', '', 'illumination round', { shell: 'illum' });
@@ -7292,6 +7302,13 @@ function showAAR() {
   if (!m) return;
   const M = CONFIG.MISSION;
   const S = Scenario;
+  /* TEMPO4 — the reqIllum shortfall can only be known at the end (the illum
+     might legally have come at any point in the mission), so the note lands
+     here, once, before grading reads m.notes. */
+  if (activeChapter && activeChapter.reqIllum && !m.usedIllum && !m.reqIllumNoted) {
+    m.reqIllumNoted = true;
+    m.notes.push('This chapter demanded COORDINATED ILLUMINATION — you fought it dark. Effective, maybe, but the skill under test was the light (chapter capped at 2★).');
+  }
   const isConvoy = S.type === 'convoy';
   if (isConvoy) m.hits = S.veh.filter(v => v.dead).length;
   /* G13 — the verdict comes off the graded effect, and it distinguishes the
@@ -8332,6 +8349,18 @@ const CAMPAIGN = [
     { id: '2.4', title: 'THE PERIMETER', blurb: 'your choice of method, under pressure', impl: true, type: 'strongpoint', seed: 204, par: 330,
       story: 'Another strongpoint, worse ground, less time. Nobody is telling you which location method to use — that is the point. Pick the right tool, first try, while the perimeter shrinks.',
       outro: 'Right method, right rounds. The ridge line is yours now.' },
+    /* TEMPO4 — the coordinated-illumination chapter (JFIRE Table 14 / JFO 0103
+       §5.d, researched in RESEARCH_NIGHT_RUN.md §2): illum up, walk the light,
+       then HE under the flare, re-illuminating as it dies. The first chapter
+       deliberately built around a SEQUENCE of fire missions. reqIllum mirrors
+       reqImmediate: fighting it dark (thermal is a real tool) still completes,
+       capped at 2★ — the chapter's skill is the light. */
+    { id: '2.5', title: 'FLARES OUT', blurb: 'night defense — light first, then steel', impl: true, type: 'strongpoint', seed: 205, par: 540, tod: 'night', reqIllum: true,
+      story: 'The perimeter again, except somebody turned the island off. A friendly strongpoint is taking fire in the dark and the assault is close enough to hear over the net. You cannot adjust what you cannot see: get ILLUMINATION up — send the call with SHELL ILLUMINATION and walk the light over the attackers, big corrections, the flare does not need ten-meter precision. When they are lit, switch to steel: "SHELL HE, OVER", and fight it like any adjust mission, under your own light. The flare burns about a minute. When it dies, buy another. Registration won the dark for the guns in 2.2 — tonight, light wins it for you.',
+      outro: 'The flare settles into the sea and the shooting stops. The strongpoint counts heads twice and comes up even both times. Nobody out there knows the light had a callsign.',
+      coach: [
+        'Light FIRST, killer. Send a normal call with ILLUMINATION in it. Adjust the flare in big steps — hundreds, not tens — until the attackers are lit.',
+        'When you can SEE them: "SHELL HE, OVER" — same mission, new nature — then walk steel onto them under the light. If the flare dies mid-adjust, send SHELL ILLUMINATION again and buy more. Doctrine calls the whole dance COORDINATED ILLUMINATION.' ] },
   ]},
   { id: 'V3', tab: 'III', name: 'VOLUME III — THUNDER RUN', need: 14, tseed: 5150, chapters: [
     { id: '3.1', title: 'ROLLING STOCK', blurb: 'convoy — lead it, or catch the pit stop', impl: true, type: 'convoy', seed: 301, par: 420,
@@ -8509,6 +8538,11 @@ function gradeMission(m) {
   // TEMPO2 — a reqImmediate chapter grades the one-transmission call. Same cap
   // shape as the method requirement: deliberate still completes, at 2★ most.
   if (activeChapter && activeChapter.reqImmediate && !m.imm) stars = Math.min(stars, 2);
+  // TEMPO4 — a reqIllum chapter demands light before (or during) the HE work.
+  // Fighting it dark on thermal still completes the mission — the E3 kit is a
+  // real tool — but the chapter's skill is coordinated illumination, so no
+  // illum means 2★ at most.
+  if (activeChapter && activeChapter.reqIllum && !m.usedIllum) stars = Math.min(stars, 2);
   return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
 }
 
