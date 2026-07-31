@@ -397,7 +397,7 @@ function liftCheckFire() {
 // a grid mission, so the FDC can orient the observer's left/right.
 function handleDirection(p) {
   if (!mission || mission.done) {
-    FDC.say(pick(QUIPS.noMission), { delay: 1 });
+    noMissionReply();   // NET4
     return;
   }
   mission.otDirSent = true;
@@ -442,7 +442,7 @@ function handleDirection(p) {
 
 function handleAdjust(p) {
   if (!mission || mission.done) {
-    FDC.say(pick(QUIPS.noMission), { delay: 1 });
+    noMissionReply();   // NET4
     sysHint();
     return;
   }
@@ -620,7 +620,7 @@ function handleAdjust(p) {
 }
 
 function handleEOM(p) {
-  if (!mission) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  if (!mission) { noMissionReply(); return; }   // NET4
   // strict net: end of mission carries surveillance (RREMS terms)
   if (activeChapter && activeChapter.strict && !mission.done && !mission.eomChallenged &&
       mission.intent !== 'illum' &&   // 12h — there is no BDA for light
@@ -698,6 +698,22 @@ function expectedHint() {
 function sysHint() { log('', 'HINT: ' + expectedHint(), 'sys'); }
 
 let unknownStreak = 0;
+/* NET4 — the no-mission streak. The gibberish streak above already escalates
+   to a rant on the third consecutive `unknown`; this is the same courtesy for
+   a player repeatedly adjusting/directing/EOM-ing with no mission open —
+   transcript evidence shows those replies fire in bursts of six while a stuck
+   player cycles a malformed call. Reset when a mission actually opens
+   (fireMission), because that is the moment the player got unstuck. */
+let noMissionStreak = 0;
+function noMissionReply() {
+  noMissionStreak++;
+  if (noMissionStreak >= 3) {
+    noMissionStreak = 0;
+    FDC.say(pick(QUIPS.rantLost), { delay: 1 });
+  } else {
+    FDC.say(pick(QUIPS.noMission), { delay: 1 });
+  }
+}
 function onPlayerMessage(raw) {
   squelch();
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
@@ -804,7 +820,7 @@ function onPlayerMessage(raw) {
         } else {
           FDC.say('REPEAT, OUT.', { delay: 1 }); fireForEffect();
         }
-      } else { FDC.say(pick(QUIPS.noMission), { delay: 1 }); sysHint(); }
+      } else { noMissionReply(); sysHint(); }   // NET4
       break;
     case 'eom': handleEOM(p); break;
     default:

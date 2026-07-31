@@ -111,6 +111,7 @@ function tofFor(aim) {
 
 // Public interface: start a mission at a world-space target location.
 function fireMission(targetLocation, warno, meta) {
+  noMissionStreak = 0;   // NET4 — a mission opening is the player getting unstuck
   mission = {
     aim: { x: targetLocation.x, z: targetLocation.z },
     // the location as transmitted, kept for the AAR shot plot
@@ -323,7 +324,7 @@ function armAtMyCommand(fn) {
   return true;
 }
 function handleFire() {
-  if (!mission || mission.done) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  if (!mission || mission.done) { noMissionReply(); return; }   // NET4
   if (!mission.pendingFire) {
     FDC.say(mission.amc
       ? 'NOTHING IS LAID AND WAITING, MUSTANG. Send your correction first, over.'
@@ -368,14 +369,14 @@ function handleDoNotLoad() {
   log('', 'DO NOT LOAD — the guns stay empty. Send a correction or FIRE FOR EFFECT to resume.', 'sys');
 }
 function handleCannotObserve() {
-  if (!mission || mission.done) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  if (!mission || mission.done) { noMissionReply(); return; }   // NET4
   mission.cannotObserve = true;
   mission.notes.push('Declared CANNOT OBSERVE — the FDC stops expecting spotting corrections.');
   FDC.say('CANNOT OBSERVE, OUT. We will fire the mission blind on your last data. ' +
           'Send END OF MISSION when you are done, over.', { delay: 1.0 });
 }
 function handleTimeOnTarget(sec) {
-  if (!mission || mission.done) { FDC.say(pick(QUIPS.noMission), { delay: 1 }); return; }
+  if (!mission || mission.done) { noMissionReply(); return; }   // NET4
   mission.tot = sec;
   FDC.say(`TIME ON TARGET ${sec}, OUT.`, { delay: 0.8 });
   /* Honest about the model, in the same spirit as DOCTRINE.md §76's note on sheaf

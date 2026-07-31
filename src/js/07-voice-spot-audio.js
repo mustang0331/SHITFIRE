@@ -110,11 +110,17 @@ const QUIPS = {
     'Copy. Naval gunfire it is. Bold fucking choice.',
     'Congratulations, you have drawn first blood in the war against plankton. Firing.',
   ],
+  /* NET4 — expanded from 4: this pool fires in BURSTS when a player is stuck
+     (transcript evidence: 6 times in 14 minutes, one line 4 of them), so it
+     needs the same depth as the every-mission pools. */
   noMission: [
     'MUSTANG 12, there is no mission on this net. You are adjusting fire that exists only in your heart. Send a call for fire, over.',
     'MUSTANG 12, you are correcting rounds we never fired. I admire the confidence. Send a call for fire first, over.',
     'There is no mission, MUSTANG. There is only you, me, and this dead air you keep filling. Call for fire, over.',
     'Adjusting a mission that does not exist is a special kind of stupid I have not logged before, and I have logged a lot. Call for fire, over.',
+    'MUSTANG 12, HELLHOUND. There is no mission running. The radio will not start talking back until you send a call for fire. Over.',
+    'Negative, MUSTANG. Nothing is plotted, nothing is airborne, nothing is happening on this net but you. Warning order, location, description. Over.',
+    'There is no fire mission open, MUSTANG. I cannot adjust a ghost. Send the call first, over.',
   ],
   inFlight: [
     'Rounds are in the air, MUSTANG. Physics is doing its part. Do yours — wait for splash, over.',
@@ -128,6 +134,9 @@ const QUIPS = {
     'MUSTANG, I have heard clearer traffic from a dying radio at the bottom of a well. Say again, over.',
     'Say again, over. And this time pretend the radio is graded — because it is. By me.',
     'That transmission needs a priest, not a readback. Say again, over.',
+    // NET4 — same burst-depth reasoning as noMission above
+    'MUSTANG, that was words, technically. Say it again as an actual call for fire, over.',
+    'I do not know what net you think you are on, but it is not this one. Say again, over.',
   ],
   /* 14a — mission-start callbacks to the career record (NARRATIVE.md humor
      rule #3: continuity is the punchline). Fired from newMission when the
@@ -176,6 +185,10 @@ const QUIPS = {
     'STOP. Just — stop. MUSTANG, I have drunk deep of your transmissions and found NOTHING. No grid. No direction. No sense. You are a forward observer. So OBSERVE something, and then TELL ME ABOUT IT in the format the field manual and forty years of hard-won doctrine intended. Warning order. Location. Description. OVER.',
     'MUSTANG, listen to me very carefully, because I will say this once. I do not know what you are doing on that hill, but it is not calling for fire. Take a breath. Look at your map. Send: warning order, target location, description. In that order. Like a professional. Over.',
     'I have half a mind to have the guns fire on YOUR position out of pure professional mercy. Instead: breathe. Look at the map. Warning order, location, description. In that order. Do not make me say it a third time, over.',
+    // NET4 — the rant pool now also serves the no-mission streak (three
+    // consecutive replies to traffic with no mission open)
+    'MUSTANG, that is the third time in a row I have had to say this. Stop transmitting and start reading. Warning order, location, description. In that order. Over.',
+    'We are going in circles, MUSTANG, and only one of us finds it funny. Breathe. Look at the manual. Send it right this time, over.',
   ],
   // Doctrinal coaching — HELLHOUND teaches adjustment instead of only
   // mocking it. Easy/Normal only; on Hard you are expected to know.
