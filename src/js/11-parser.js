@@ -204,6 +204,9 @@ function parseMessage(raw) {
     return { type: 'planfpf', digits: d2, dirMils: mDir ? parseInt(mDir[1], 10) : null,
              raw: t, toks };
   }
+  /* SUGG6 — "SAY TIME OF FLIGHT": the intercept sequence's one query. */
+  if (/\b(?:say|request|send)\s+(?:your\s+|the\s+)?time\s+of\s+flight\b/.test(t))
+    return { type: 'tofquery', raw: t, toks };
   const mGun = t.match(/\bnumber\s+(\d)\b/);
   if (mGun) {
     const gR = t.match(/\bright\s+(\d+)\b/), gL = t.match(/\bleft\s+(\d+)\b/);

@@ -477,7 +477,31 @@ function armAtMyCommand(fn) {
   mission.pendingFire = fn;
   setState('AT MY COMMAND');
   FDC.say('READY, OVER.', { delay: 1.0 });
+  /* SUGG6 — the intercept drill (ATP 3-09.30 §5-115–5-136), coached exactly
+     where doctrine uses it: guns laid AT MY COMMAND on a moving target. The
+     coach teaches the METHOD with the real TOF; the speed estimate stays the
+     observer's job (the band is what a map-recon would give, not the answer).
+     Easy/Normal only, once per mission, like every other coach line. */
+  if (Scenario && Scenario.type === 'convoy' && coachOn() && !mission.coached.intercept) {
+    mission.coached.intercept = true;
+    const tof = Math.round(tofFor(mission.aim));
+    const lead = tof + Math.round(CONFIG.FDC.shotDelay);
+    log('', `Intercept drill: guns are laid on your point and waiting. Time of flight ~${tof} s, ` +
+      `FIRE-to-shot ~${Math.round(CONFIG.FDC.shotDelay)} s — call it ${lead} s from your FIRE to splash. ` +
+      `Estimate the column's speed (trucks on this road make roughly 3-4 m/s), multiply by ${lead}, ` +
+      `and mark the TRIGGER POINT that far up the road BEFORE your intercept point. ` +
+      `The lead vehicle touches it — you say FIRE. Not before, not after.`, 'sys');
+  }
   return true;
+}
+/* SUGG6 — the observer may request time of flight; the intercept sequence
+   needs it and doctrine provides it on request. */
+function handleTofQuery() {
+  if (!mission || mission.done) {
+    FDC.say('NO MISSION ON THE NET — time of flight to where, exactly? Over.', { delay: 0.9 });
+    return;
+  }
+  FDC.say(`TIME OF FLIGHT ${Math.round(tofFor(mission.aim))} SECONDS, OVER.`, { delay: 0.9 });
 }
 function handleFire() {
   if (!mission || mission.done) { noMissionReply(); return; }   // NET4
@@ -870,6 +894,18 @@ function resolveImpact(impact, isFFE) {
       ...(shell !== 'he' ? { shell } : {}) });
   // convoy attrition — any HE round can kill vehicles (smoke cannot; 12h)
   if (S.type === 'convoy' && shell === 'he') {
+    /* SUGG6 — the intercept verdict, measured at the moment it can be: the
+       FIRST effect round against the live column head. Positive = the volley
+       arrived up the road AHEAD of the column (a lead), negative = behind it
+       (the classic miss the trigger-point math exists to prevent). */
+    if (isFFE && mission.convoyLead === undefined) {
+      const head = S.veh.find(v => !v.dead);
+      if (head) {
+        const hd = pathDir(S.path, head.d || 0);
+        mission.convoyLead = Math.round(
+          (impact.x - head.x) * hd.dx + (impact.z - head.z) * hd.dz);
+      }
+    }
     S.veh.forEach((v, i) => {
       if (!v.dead && dist2(impact.x, impact.z, v.x, v.z) < 40) {
         v.dead = true;

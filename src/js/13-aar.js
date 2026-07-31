@@ -391,7 +391,14 @@ function showAAR() {
     `<tr><td>First-round miss</td><td>${m.firstMiss === null ? '—' : Math.round(m.firstMiss) + ' m'}</td></tr>` +
     `<tr><td>Initial location error</td><td>${m.aimErr0 === null ? '—' : Math.round(m.aimErr0) + ' m (JFO standard ≤ 200 m)'}</td></tr>` +
     (isConvoy
-      ? `<tr><td>Vehicles destroyed</td><td>${m.hits}/4</td></tr>`
+      ? `<tr><td>Vehicles destroyed</td><td>${m.hits}/4</td></tr>` +
+        /* SUGG6 — the intercept verdict: where the first effect round landed
+           relative to the live column head, signed along the road. */
+        (m.convoyLead !== undefined
+          ? `<tr><td>Intercept lead</td><td>${m.convoyLead >= 0
+              ? m.convoyLead + ' m AHEAD of the lead vehicle — ' + (m.convoyLead <= 120 ? 'a working trigger point' : 'over-led; the column drove through the smoke, not the steel')
+              : Math.abs(m.convoyLead) + ' m BEHIND the lead vehicle — fired late; work the trigger-point math (speed × time of flight)'}</td></tr>`
+          : '')
       : `<tr><td>Assessed effect</td><td>${a.pct}% ${S.tgtClass === 'point' ? 'structural damage' : 'casualties'} — ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()} (neutralize ≥${bands.neutralizePct}%, destroy ≥${bands.destroyPct}%${S.posture === 'prone' ? '; target went prone — per-round effect ×' + CONFIG.EFFECTS.posture.prone : ''})</td></tr>` +
         `<tr><td>Effect rounds in the outer band</td><td>${m.hits}/${m.ffeRounds.length} within ${Math.round(bands.rSupp)} m</td></tr>`) +
     (m.bdaClaim ? `<tr><td>Surveillance sent</td><td>${m.bdaClaim.toUpperCase()}${m.bdaClaim === a.outcome ? ' — matches the assessment' : ` — assessed: ${a.outcome === 'none' ? 'NO EFFECT' : a.outcome.toUpperCase()}`}</td></tr>` : '') +
