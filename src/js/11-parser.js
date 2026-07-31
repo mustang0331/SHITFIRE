@@ -204,6 +204,19 @@ function parseMessage(raw) {
     return { type: 'planfpf', digits: d2, dirMils: mDir ? parseInt(mDir[1], 10) : null,
              raw: t, toks };
   }
+  /* SUGG4 — series of targets (ATP 3-09.30 §1-42): a NAMED, ORDERED sequence
+     of recorded targets. "PLAN SERIES MAX, TARGETS AB7101, AB7102" files it;
+     "FIRE SERIES MAX" brings it down in order. Names are doctrine-style
+     nicknames — one word. */
+  const mSer = t.match(/\b(?:plan|establish)\s+series\s+([a-z]+)\b/);
+  if (mSer) {
+    const tgts = [...t.matchAll(/\b([a-z]{2})\s*(\d{4})\b/g)]
+      .map(m2 => (m2[1] + m2[2]).toUpperCase());
+    return { type: 'planseries', name: mSer[1].toUpperCase(), tgts, raw: t, toks };
+  }
+  const mSerF = t.match(/\bfire\s+series\s+([a-z]+)\b/);
+  if (mSerF)
+    return { type: 'fireseries', name: mSerF[1].toUpperCase(), raw: t, toks };
   /* SUGG6 — "SAY TIME OF FLIGHT": the intercept sequence's one query. */
   if (/\b(?:say|request|send)\s+(?:your\s+|the\s+)?time\s+of\s+flight\b/.test(t))
     return { type: 'tofquery', raw: t, toks };

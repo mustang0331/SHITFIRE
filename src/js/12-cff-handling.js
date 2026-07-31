@@ -825,6 +825,8 @@ function onPlayerMessage(raw) {
     case 'fpfadj': handleFPFAdjust(p); break;             // SUGG1
     case 'firefpf': handleFireFPF(p); break;              // SUGG1
     case 'tofquery': handleTofQuery(); break;             // SUGG6
+    case 'planseries': handlePlanSeries(p); break;        // SUGG4
+    case 'fireseries': handleFireSeries(p); break;        // SUGG4
     case 'sheaf': handleSheaf(p); break;
     case 'fuze': handleFuze(p); break;
     case 'shell': handleShell(p); break;

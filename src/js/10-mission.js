@@ -158,6 +158,7 @@ function fireMission(targetLocation, warno, meta) {
     rng: mulberry32((CONFIG.SEED.mission * 1046527 + 7) >>> 0),
     shotExtra: (meta && meta.shotExtra) || 0,   // SUGG2 — re-lay delay before SHOT
     fpf: !!(meta && meta.fpf),                  // SUGG1 — this FFE is the planned line
+    series: (meta && meta.series) || null,      // SUGG4 — ordered recorded targets
   };
   if (warno === 'ffe') fireForEffect();
   else fireAdjustRound();
@@ -405,6 +406,46 @@ function handleFireFPF(p) {
     'ffe', { desc: 'FINAL PROTECTIVE FIRE', gridStr: 'THE FPF', method: 'grid',
              intent: 'suppress', fpf: true });
 }
+/* SUGG4 — series of targets (ATP 3-09.30 §1-42): a named, ordered sequence
+   of RECORDED targets, fired one after another — pre-mission target planning
+   as a first-class skill instead of reactive adjust-fire. Rides RECTGT the
+   same way the priority target does; wiped with it on an island change. */
+const SERIES = {};
+function handlePlanSeries(p) {
+  if (!p.tgts.length) {
+    FDC.say('A SERIES IS TARGETS, MUSTANG — "PLAN SERIES MAX, TARGETS AB7101, AB7102", OVER.', { delay: 1 });
+    return;
+  }
+  const missing = p.tgts.filter(n => !RECTGT[n]);
+  if (missing.length) {
+    const known = Object.keys(RECTGT);
+    FDC.say(`NEGATIVE — ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on file. ` +
+      (known.length ? `I hold ${known.join(', ')}. ` : 'Record targets before you plan with them. ') + 'Over.', { delay: 1 });
+    return;
+  }
+  SERIES[p.name] = p.tgts.slice();
+  FDC.say(`SERIES ${p.name} ESTABLISHED — ${p.tgts.length} TARGETS, IN ORDER: ${p.tgts.join(', ')}. ` +
+          `CALL FOR IT BY NAME, OUT.`, { delay: 1 });
+}
+function handleFireSeries(p) {
+  const s = SERIES[p.name];
+  if (!s) {
+    const known = Object.keys(SERIES);
+    FDC.say(`NEGATIVE — no series ${p.name} on this net. ` +
+      (known.length ? `I hold ${known.join(', ')}. ` : 'Plan one first. ') + 'Over.', { delay: 1 });
+    return;
+  }
+  if (mission && !mission.done) {
+    FDC.say('MUSTANG 12, we are mid-mission. Finish this one, over.', { delay: 1 });
+    return;
+  }
+  FDC.say(`FIRING SERIES ${p.name} — ${s.length} TARGETS IN SEQUENCE, OUT.`, { delay: 0.7 });
+  setState('MISSION SENT');
+  const first = RECTGT[s[0]];
+  fireMission({ x: first.x, z: first.z }, 'ffe',
+    { desc: `SERIES ${p.name}`, gridStr: `SERIES ${p.name}`, method: 'grid',
+      intent: 'destroy', series: s.slice() });
+}
 function handleSuppressTarget(p) {
   if (mission && !mission.done) {
     FDC.say('MUSTANG 12, we are mid-mission. Finish this one, over.', { delay: 1 });
@@ -645,19 +686,30 @@ function fireForEffect() {
      friendlies was this mission's round, fired early. */
   const fpfRun = mission.fpf && FPF;
   if (fpfRun && FPF.frat) mission.failReason = 'fratricide';
-  const nRounds = fpfRun ? 8 : B.ffeRounds;
+  /* SUGG4 — a series volley is 4 rounds per RECORDED target, targets taken in
+     their planned ORDER with a shift gap between them (the guns re-lay from
+     one filed point to the next). Recorded points carry no transmit error —
+     that is what recording bought — so rounds are point + follow-up error,
+     the same rule the FPF's adjusted line uses. */
+  const serRun = mission.series && mission.series.every(n => RECTGT[n]) ? mission.series : null;
+  const nRounds = fpfRun ? 8 : serRun ? serRun.length * 4 : B.ffeRounds;
   let off = 0, tLast = 0;
   for (let i = 0; i < nRounds; i++) {
     const err = followUpError(mission.rng, otAz);
     const lo = lin ? (i - (B.ffeRounds - 1) / 2) * 35 : 0;
     const gun = fpfRun ? FPF.pts[i % 4] : null;
+    const ser = serRun ? RECTGT[serRun[(i / 4) | 0]] : null;
     const impact = fpfRun
       ? { x: gun.x + err.x, z: gun.z + err.z }
+      : ser
+      ? { x: ser.x + err.x, z: ser.z + err.z }
       : { x: mission.aim.x + base.x + err.x + (lin ? linDir.dx * lo : 0),
           z: mission.aim.z + base.z + err.z + (lin ? linDir.dz * lo : 0) };
     tLast = tShot + tof + off;
     schedule(tLast, () => resolveImpact(impact, true));
-    off += lerp(B.ffeStagger[0], B.ffeStagger[1], mission.rng()) * (fpfRun ? 0.33 : 1);
+    // series: a re-lay pause between targets, max rate within one
+    const gap = serRun && i % 4 === 3 ? 9 : 0;
+    off += lerp(B.ffeStagger[0], B.ffeStagger[1], mission.rng()) * (fpfRun ? 0.33 : 1) + gap;
   }
   schedule(tLast + 2.2, () => {
     if (mission.done) return;

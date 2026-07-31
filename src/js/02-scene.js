@@ -489,6 +489,7 @@ function wipeRecordedTargets() {
   let n = 0;
   for (const k in RECTGT) { delete RECTGT[k]; n++; }
   PRIORITY = null;   // SUGG2 — a priority target is a recorded target; same wipe
+  for (const k in SERIES) delete SERIES[k];   // SUGG4 — series are recorded targets too
   if (n) log('', `Recorded target list wiped (${n}) — target numbers do not transfer between islands.`, 'sys');
 }
 function loadDEMFile(file) {
