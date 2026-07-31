@@ -1106,9 +1106,9 @@ function vegMissionCull() {
                 z: S.fStart.z + (S.enemy.z - S.fStart.z) * t, r: 55 });
     }
   }
-  if (S.path)       // convoy runs low ground that is not necessarily a road
+  if (S.path)       // convoy route (WORLD3: road polyline or legacy line)
     for (let d = 0; d <= S.path.len; d += 80)
-      ex.push({ x: S.path.sx + S.path.dx * d, z: S.path.sz + S.path.dz * d, r: 40 });
+      ex.push({ ...pathPoint(S.path, d), r: 40 });
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
   const G = CONFIG.GFX;
   for (const p of VEG.placements) {

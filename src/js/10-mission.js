@@ -454,12 +454,16 @@ function fireForEffect() {
      geometry, not a trajectory — each round is still impact = aimpoint + error. */
   const lin = mission.sheaf && mission.sheaf.kind === 'linear' &&
               Scenario.type === 'convoy' && Scenario.path;
+  /* WORLD3 — on a road polyline the column axis is the road's direction where
+     the column currently is, not a constant; line paths return the same
+     dx/dz they always did. */
+  const linDir = lin ? pathDir(Scenario.path, convoyHeadD()) : null;
   let off = 0, tLast = 0;
   for (let i = 0; i < B.ffeRounds; i++) {
     const err = followUpError(mission.rng, otAz);
     const lo = lin ? (i - (B.ffeRounds - 1) / 2) * 35 : 0;
-    const impact = { x: mission.aim.x + base.x + err.x + (lin ? Scenario.path.dx * lo : 0),
-                     z: mission.aim.z + base.z + err.z + (lin ? Scenario.path.dz * lo : 0) };
+    const impact = { x: mission.aim.x + base.x + err.x + (lin ? linDir.dx * lo : 0),
+                     z: mission.aim.z + base.z + err.z + (lin ? linDir.dz * lo : 0) };
     tLast = tShot + tof + off;
     schedule(tLast, () => resolveImpact(impact, true));
     off += lerp(B.ffeStagger[0], B.ffeStagger[1], mission.rng());

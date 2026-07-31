@@ -81,6 +81,93 @@ let enemyAlive = true;
 let Scenario = null;
 let scenarioT0 = 0;   // sim time the current scenario began (time-to-initiate)
 
+/* WORLD3 — path helpers. A scenario path is either the legacy straight line
+   { sx, sz, dx, dz, len } or a road polyline { pts, cum, len }. The line
+   branch reproduces the legacy expressions exactly, so fixed-seed chapters
+   (3.1's authored fallback line, E.2's wade) keep byte-identical geometry. */
+function pathPoint(p, d) {
+  if (!p.pts) return { x: p.sx + p.dx * d, z: p.sz + p.dz * d };
+  let i = 1;
+  while (i < p.cum.length - 1 && p.cum[i] < d) i++;
+  const seg = p.cum[i] - p.cum[i - 1] || 1;
+  const t = clamp((d - p.cum[i - 1]) / seg, 0, 1);
+  return { x: lerp(p.pts[i - 1].x, p.pts[i].x, t),
+           z: lerp(p.pts[i - 1].z, p.pts[i].z, t) };
+}
+function pathDir(p, d) {
+  if (!p.pts) return { dx: p.dx, dz: p.dz };
+  let i = 1;
+  while (i < p.cum.length - 1 && p.cum[i] < d) i++;
+  const vx = p.pts[i].x - p.pts[i - 1].x, vz = p.pts[i].z - p.pts[i - 1].z;
+  const l = Math.hypot(vx, vz) || 1;
+  return { dx: vx / l, dz: vz / l };
+}
+// current head-of-column arc distance; read-only twin of updateScenario's
+// piecewise time->distance (state transitions/logs stay in updateScenario)
+function convoyHeadD() {
+  const S = Scenario;
+  const raw = S.speed * (sim.now - S.t0);
+  if (raw < S.stop.d || S.stop.tArr === null) return clamp(raw, 0, S.path.len);
+  const halted = sim.now - S.stop.tArr;
+  if (halted < S.stop.dur) return S.stop.d;
+  return clamp(S.stop.d + S.speed * (halted - S.stop.dur), 0, S.path.len);
+}
+
+/* WORLD3 — a skirmish convoy route is a seeded window of a real road. The
+   legacy corridor search (13 steps of 150 m, all at 0.5-16 m elevation, >=8
+   visible) is unsatisfiable on this island — measured ~0.07% per attempt,
+   0/9000 in a tolerance sweep — so every skirmish convoy since the type
+   shipped drove the identical fallback line. Roads traverse drivable ground
+   by construction and are spread across the island; the coast loop alone is
+   several km, so seeded windows give visibly different routes. */
+function roadConvoyRoute(rng) {
+  const L = 1800, cands = [];
+  for (const r of WORLD.roads) {
+    if (r.length < 2) continue;
+    const cum = [0];
+    for (let i = 1; i < r.length; i++)
+      cum.push(cum[i - 1] + Math.hypot(r[i].x - r[i - 1].x, r[i].z - r[i - 1].z));
+    const total = cum[cum.length - 1];
+    if (total < L * 0.75) continue;         // too short to string a column on
+    const closed = r[0].x === r[r.length - 1].x && r[0].z === r[r.length - 1].z;
+    cands.push({ r, cum, total, closed });
+  }
+  if (!cands.length) return null;
+  const wsum = cands.reduce((s, c) => s + c.total, 0);
+  const at = (c, d) => {                     // point at arc distance d on cand c
+    let i = 1;
+    while (i < c.cum.length - 1 && c.cum[i] < d) i++;
+    const seg = c.cum[i] - c.cum[i - 1] || 1;
+    const t = clamp((d - c.cum[i - 1]) / seg, 0, 1);
+    return { x: lerp(c.r[i - 1].x, c.r[i].x, t), z: lerp(c.r[i - 1].z, c.r[i].z, t) };
+  };
+  let best = null;
+  for (let tries = 0; tries < 40; tries++) {
+    // length-weighted road pick, then a seeded start offset along it
+    let w = rng() * wsum, c = cands[cands.length - 1];
+    for (const cc of cands) { if (w < cc.total) { c = cc; break; } w -= cc.total; }
+    const span = Math.min(L, c.closed ? c.total * 0.9 : c.total);
+    const d0 = rng() * (c.closed ? c.total : Math.max(c.total - span, 1));
+    const pts = [];
+    for (let d = 0; d <= span; d += 30)
+      pts.push(at(c, c.closed ? (d0 + d) % c.total : Math.min(d0 + d, c.total)));
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++)
+      cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z));
+    const route = { pts, cum, len: cum[cum.length - 1] };
+    // the old workability standard, kept: >=8 of 13 column samples visible
+    let vis = 0, n = 0;
+    for (let d = 0; d <= route.len; d += 150) {
+      const q = pathPoint(route, d);
+      n++;
+      if (hasLOS(eye.x, eye.y, eye.z, q.x, H(q.x, q.z) + 2, q.z)) vis++;
+    }
+    if (vis >= Math.ceil(n * 8 / 13)) return route;
+    if (!best || vis > best.vis) best = { route, vis };
+  }
+  return best.route;                         // most-visible window found
+}
+
 function genScenario(type, seed) {
   const rng = mulberry32((seed * 2654435761 ^ CONFIG.SEED.terrain) >>> 0);
   const M = CONFIG.MISSION;
@@ -221,26 +308,34 @@ function genScenario(type, seed) {
     S.brief = `Dug-in bunker reported on high ground, grid bearing ~${brgTo(S.enemy)} mils. The effect bands are tight — put it on the roof.`;
   } else if (type === 'convoy') {
     let path = null;
-    for (let tries = 0; tries < 400 && !path; tries++) {
-      const s0 = findSpot(1400, 3200, 1, 10, false);
-      if (!s0) break;
-      const paz = rng() * Math.PI * 2;
-      const dx = Math.sin(paz), dz = -Math.cos(paz);
-      let ok = true, visible = 0;
-      for (let d = 0; d <= 1800; d += 150) {
-        const x = s0.x + dx * d, z = s0.z + dz * d;
-        const h = H(x, z);
-        if (h < 0.5 || h > 16) { ok = false; break; }
-        if (hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) visible++;
+    if (spread) {
+      /* WORLD3 — skirmish convoys drive the built roads (see roadConvoyRoute).
+         Chapters keep the legacy draw below untouched, so 3.1's rng sequence
+         and authored fallback-line path stay identical. */
+      path = roadConvoyRoute(rng);
+    } else {
+      for (let tries = 0; tries < 400 && !path; tries++) {
+        const s0 = findSpot(1400, 3200, 1, 10, false);
+        if (!s0) break;
+        const paz = rng() * Math.PI * 2;
+        const dx = Math.sin(paz), dz = -Math.cos(paz);
+        let ok = true, visible = 0;
+        for (let d = 0; d <= 1800; d += 150) {
+          const x = s0.x + dx * d, z = s0.z + dz * d;
+          const h = H(x, z);
+          if (h < 0.5 || h > 16) { ok = false; break; }
+          if (hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) visible++;
+        }
+        if (ok && visible >= 8) path = { sx: s0.x, sz: s0.z, dx, dz, len: 1800 };
       }
-      if (ok && visible >= 8) path = { sx: s0.x, sz: s0.z, dx, dz, len: 1800 };
     }
     if (!path) path = { sx: OP.x + 1500, sz: OP.z, dx: 0, dz: -1, len: 1800 };
     S.path = path;
+    const p0 = pathPoint(path, 0);
     S.speed = 3.5;
-    S.veh = [0, 1, 2, 3].map(i => ({ off: i * 40, dead: false, x: path.sx, z: path.sz }));
+    S.veh = [0, 1, 2, 3].map(i => ({ off: i * 40, dead: false, d: 0, x: p0.x, z: p0.z }));
     S.t0 = sim.now - 220 / S.speed;  // column already strung out on the road
-    S.enemy = { x: path.sx, z: path.sz };
+    S.enemy = { x: p0.x, z: p0.z };
     S.escaped = false;
     // pit stop: halt at the facility nearest the route (fuel/ammo/airfield),
     // else a plain crew halt at a seeded point. 1-3 minutes, seeded.
@@ -248,14 +343,24 @@ function genScenario(type, seed) {
     let bestFD = 320;
     for (const f of WORLD.facilities) {
       if (f.kind !== 'fuel' && f.kind !== 'ammo' && f.kind !== 'airfield') continue;
-      const t = clamp((f.x - path.sx) * path.dx + (f.z - path.sz) * path.dz, 300, path.len - 300);
-      const fd = dist2(f.x, f.z, path.sx + path.dx * t, path.sz + path.dz * t);
-      if (fd < bestFD) { bestFD = fd; stopD = t; stopName = 'the ' + f.name.toLowerCase(); }
+      if (path.pts) {
+        // polyline: nearest sampled point on the route (roads run to the
+        // facilities by construction, so real pit stops finally happen)
+        for (let t = 300; t <= path.len - 300; t += 40) {
+          const q = pathPoint(path, t);
+          const fd = dist2(f.x, f.z, q.x, q.z);
+          if (fd < bestFD) { bestFD = fd; stopD = t; stopName = 'the ' + f.name.toLowerCase(); }
+        }
+      } else {
+        const t = clamp((f.x - path.sx) * path.dx + (f.z - path.sz) * path.dz, 300, path.len - 300);
+        const fd = dist2(f.x, f.z, path.sx + path.dx * t, path.sz + path.dz * t);
+        if (fd < bestFD) { bestFD = fd; stopD = t; stopName = 'the ' + f.name.toLowerCase(); }
+      }
     }
     const [sLo, sHi] = CONFIG.WORLD.convoyStopDur;
     S.stop = { d: Math.max(stopD, 320), dur: lerp(sLo, sHi, rng()), tArr: null,
                resumed: false, name: stopName };
-    S.brief = `Enemy convoy, four vehicles, moving on the low ground near grid ${gridOf(path.sx, path.sz)}. Lead the column and time your fire for effect — or catch them when they pull in somewhere. If the head of the column runs off the end of the road, they are gone.`;
+    S.brief = `Enemy convoy, four vehicles, moving on the ${path.pts ? 'road' : 'low ground'} near grid ${gridOf(p0.x, p0.z)}. Lead the column and time your fire for effect — or catch them when they pull in somewhere. If the head of the column runs off the end of the road, they are gone.`;
   } else if (type === 'chow') {
     /* 11a — Epilogue E.1. The war is won; the flock is not aware. A seagull
        flock (personnel-class target — FM 6-30 has no column for wingspan)
@@ -398,13 +503,14 @@ function updateScenario() {
       const v = S.veh[i];
       if (!v.dead) {
         const d = clamp(dHead - v.off, 0, S.path.len);
-        v.x = S.path.sx + S.path.dx * d;
-        v.z = S.path.sz + S.path.dz * d;
+        const q = pathPoint(S.path, d);
+        v.x = q.x; v.z = q.z; v.d = d;   // d kept so a dead hull holds its heading
         cxSum += v.x; czSum += v.z; alive++;
       }
       const m = units.vehicles[i];
+      const dir = pathDir(S.path, v.d || 0);   // WORLD3: heading follows the road
       m.position.set(v.x, H(v.x, v.z) + 1.05, v.z);
-      m.rotation.y = Math.atan2(S.path.dx, S.path.dz) + Math.PI / 2;
+      m.rotation.y = Math.atan2(dir.dx, dir.dz) + Math.PI / 2;
       const fl = units.flames[i];
       fl.visible = v.dead && ((sim.now * 7 + i) % 1) < 0.6;
       if (v.dead) fl.position.set(v.x, H(v.x, v.z) + 2.6, v.z);
@@ -428,11 +534,13 @@ function updateScenario() {
       m.position.y = Math.max(H(S.enemy.x, S.enemy.z), 0) + 2.2;
     } else {
       const d = clamp(S.speed * (sim.now - S.t0), 0, S.path.len);
-      S.enemy.x = S.path.sx + S.path.dx * d;
-      S.enemy.z = S.path.sz + S.path.dz * d;
+      const q = pathPoint(S.path, d);                  // line form: legacy math exactly
+      S.enemy.x = q.x;
+      S.enemy.z = q.z;
       const bob = Math.sin(sim.now * 1.6) * 0.9;       // the gait of a determined crab
+      const kd = pathDir(S.path, d);
       m.position.set(S.enemy.x, Math.max(H(S.enemy.x, S.enemy.z), 0) + 4.4 + bob, S.enemy.z);
-      m.rotation.y = Math.atan2(S.path.dx, S.path.dz);
+      m.rotation.y = Math.atan2(kd.dx, kd.dz);
       if (d >= S.path.len && !S.ashore) {
         S.ashore = true;
         log('', 'LANDFALL. The crab is in the village. There is no doctrinal term for what happens next, and the mission is over.', 'sys');
