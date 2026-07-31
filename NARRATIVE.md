@@ -127,6 +127,94 @@ Close air support: 9-line briefs, talk-ons, attack geometry. Appears on the shel
 
 ---
 
+## Callers & guest voices
+
+This is the character and voice authority for **ROADMAP.md `NET1`** — friendly ground units who call MUSTANG 12 direct, asking for fire. Everything below is new infrastructure for future chapters. It does not touch a single line of the Foreword-through-Epilogue campaign above, which stays exactly as built.
+
+### The concept
+
+Every mission so far hands the observer a clean brief: a target already identified, a location already known. `NET1` breaks that. A friendly unit in a fight — a **rock eater**, the user's word for the grunts on the ground, and the one this doc keeps — keys up on a second net and asks for help the way a scared or bored soldier actually would. No grid. No warning order. No prowords. Something like:
+
+> "There's a machine gun in the treeline messing us up, can you drop something on it."
+
+That's the whole call. No six elements, no three transmissions, nothing MUSTANG 12 could forward to the FDC as-is. The observer's job is the real skill this trainer has been building toward all along: take that plain-language report, work it against the map and the terrain in front of them — which treeline, which direction, how far — and *build* a proper call for fire from it. Only then does the observer key up to HELLHOUND (or HACKSAW, or whichever FDC owns the net that chapter) and send the doctrinal call. **The caller leg is never doctrinal. The FDC leg always is. The readback stays sacred either way** — this doesn't loosen anything downstream of the observer's own transmission.
+
+Two nets, two registers. The rock eater talks like a person with a problem. The FDC talks like a fire direction center. The observer is the translator standing between them, and translating badly is exactly the failure this teaches.
+
+### The wrongness mechanic
+
+A caller can be wrong, and the sim should let them be. Fire support has always run on secondhand reports from scared, moving, imperfectly-oriented people, and catching a bad report is as much the job as reading a map. Three failure shapes to build toward:
+
+- **Misidentified landmark.** The caller says "the barn" and means the shed, or calls a treeline a wood line when it's a hedgerow, or names a terrain feature that doesn't match anything on the observer's own sheet.
+- **Bad cardinal direction.** "They're firing from the east side" when the caller is turned around and it's actually west — panic and unfamiliar ground do this to real people.
+- **Distance wildly off.** "Fifty meters out" when the OP's own optics make it closer to four hundred. Under fire, distance estimation is often the first thing to go.
+
+None of this is the caller lying — it's the caller being a scared or rushed human on a radio, which is the entire point. The observer is expected to **weigh the caller's report against what their own eyes, binos, and map actually show**, not transcribe it uncritically into a grid. A caller's report is a lead, not a target location.
+
+### Caller archetypes
+
+Four voices, distinct enough to be recognizable a line in. None of them know CFF format. None of them are trying to sound military-manual — they sound like people who have a radio and a problem.
+
+**RAZOR 3 — team leader, in contact.** Young, scared, talking fast because slowing down means thinking about what's happening. Fixates on some small stupid detail mid-firefight, the way people actually do when their brain needs somewhere else to go.
+- "RAZOR 3, we are getting FUCKED UP by a machine gun in the treeline, I need you to do something about that right now."
+- "It's — okay it's in the trees, the trees past the field, I don't know how far, it's far, just make it stop."
+- "Doc's working on Guerrero, he's gonna be pissed he missed this, he already called dibs on the good rack back at the FOB —"
+- "Did it move? I don't — wait, yeah, it's still firing, same spot, same spot, GO."
+- "I don't know what a grid is, man, I just need the trees to stop shooting at us."
+- "Copy — wait, copy what? Just shoot it, over, or whatever you say, OVER."
+
+**GATOR 6 — convoy escort NCO.** Staff sergeant, bored out of his skull most days, unbothered even when it's not boring. Talks like he's ordering a sandwich. Dry, deadpan, gallows humor as a resting state rather than a reaction.
+- "GATOR 6. We got a truck full of very angry people shooting at us from that ridge on our nine o'clock. Whenever's convenient."
+- "Nobody's dead yet, so no rush, but I'd appreciate it before that changes."
+- "Ridge with the dead tree on it. Not the other ridge. The one with the tree."
+- "Funny thing, I was just telling the driver this route never has any trouble. Universe has a sense of humor."
+- "We can keep driving through it if your guys are busy. Just checking in. Would prefer not to, is all."
+- "Copy whatever you're about to say. Just make the ridge quiet, I've got a schedule to keep."
+
+**Second Lieutenant PURDY, callsign IRON 2 — over-formal, clueless, trying so hard.** Fresh out of the schoolhouse, uses the biggest words he half-remembers, gets the vocabulary confidently wrong. Eager in a way that's almost worse than useless.
+- "IRON 2, be advised, we are experiencing significant enemy contact from a, ah, fortified emplacement, over."
+- "Requesting immediate — is it immediate? I want it to be immediate — requesting fire support on the, uh, the structure. The one with the roof."
+- "Copy your last, I think. Say again what a grid is, over. No, belay that, don't say again, just proceed."
+- "This is IRON 2, danger close, I mean — is it danger close? My guys are close to it. Use your judgment, over."
+- "The enemy element is approximately, uh — a significant distance. I'll get back to you on the exact figure."
+- "Solid copy, HELLHOUND — sorry, MUSTANG — solid copy either way, out. Out. Over and out."
+
+**Sergeant TRAN, callsign SPADE 4 — laconic, answers in fragments.** Says the minimum, means all of it. No wasted words, no wasted feeling, and somehow the calmest voice on either net.
+- "SPADE 4. Gun. Treeline. Ours are pinned."
+- "Negative on grid. Don't have one. You got eyes, I don't."
+- "Two hundred out. Maybe less."
+- "Wrong tree line. Try the next one over."
+- "Good hit."
+- "Still there. Do it again."
+
+### Tone
+
+Reference points: **WARFARE (2025, Mendoza/Garland)** and **Generation Kill** — a movie and a miniseries both about ground troops on the radio, not war movies with quips. Crude, unpolished, and funny the way real grunts are funny: dark, deadpan, a guy noting the weirdest detail in the room three seconds after almost dying. **Not sitcom banter, not one-liners traded back and forth** — the humor is a coping reflex, not a script.
+
+Profanity is expected and welcome inside the standing content boundary: **nobody on this net takes God's name in vain** ("goddamn," "God help," and the like are out, same rule that governs HELLHOUND — see CLAUDE.md and DIALOGUE_REVISIONS.md §2a). Ordinary profanity — hell, damn, fuck, shit — is fine and should sound native to these characters, not bolted on.
+
+### Humor placement
+
+The existing rules (see **Humor rules** below) govern the callers exactly as they govern everyone else on the net: sprinkle, don't soak — a caller earns one dark or absurd beat per exchange, not a routine. **A joke never costs the caller's tactical information.** RAZOR 3 can rant about Guerrero's rack while still delivering "machine gun, treeline, far" somewhere in the transmission — the humor rides alongside the report, the same way HELLHOUND's quips ride alongside the readback, never in place of the thing the observer actually needs to extract.
+
+### Guest voices — the umbrella
+
+"Callers" are one category under a wider umbrella: any voice on the net that isn't MUSTANG 12 or that chapter's FDC. The rock eaters above are the first and only guest voices this section defines. The umbrella exists so the *next* one has a named home instead of landing as an orphan character with nowhere documented to live — which is exactly the problem that parked `14c`.
+
+**Reserved slot: LIBERTY FIRES**, the guest FDC character proposed in DIALOGUE_REVISIONS.md §8 (a rear-echelon volunteer battery covering the net for one Epilogue chapter while HELLHOUND's crew is elsewhere). That character is **not** written here and stays parked exactly as ROADMAP.md has it — this section only names the slot so that when the user unparks `14c`, it has a place to go without another blocked row.
+
+### What the sim implements — the contract
+
+For whoever picks up `NET1` in `src/`:
+
+1. **Caller traffic is a distinct message class, never fed to the CFF parser.** A rock eater's transmission never produces an MTO, a readback, or a strict-mode challenge — it's a plain-language report that triggers a target-location task for the observer, full stop.
+2. **The wrongness mechanic is a real, gradeable condition**, not flavor text: a caller report can carry a misidentified landmark, a flipped cardinal direction, or a distance off by a wide margin (see above), and the mission must be checkable against what the observer's own optics/map/terrain association actually show — a caller being wrong is not the observer being told the answer is wrong first.
+3. **A mission born from a caller request still grades on the existing star rubric** (rounds-to-effect, first-round accuracy, format, time vs. par) — the caller doesn't create a second grading system, it just adds a location-resolution step before the CFF the observer already knows how to build. Blindly copying a wrong caller report into a grid is graded the same as any other bad grid: on what the observer actually sent.
+4. **The FDC leg is untouched.** Whatever chapter this lands in, HELLHOUND/HACKSAW/whoever is on that net keeps full doctrine enforcement, full readback, full rant-vs-snide behavior — this row only adds a second, non-doctrinal voice in front of the existing one.
+5. **Fratricide and collateral-damage rules are unchanged and apply regardless of caller error** — a caller sending the observer toward a bad grid does not excuse the observer for firing on it; the auto-fail rules in CLAUDE.md govern the round that lands, not the report that preceded it.
+
+---
+
 ## Humor rules
 
 1. **The readback is sacred.** Jokes ride alongside doctrinal traffic, never replace it. (Existing CLAUDE.md rule; the campaign inherits it.)
