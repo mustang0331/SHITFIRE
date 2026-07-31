@@ -300,6 +300,7 @@ const SCN_META = {
   battery:     { name: 'COUNTERBATTERY — GUNS IN ACTION' },   // ENEMY1
   defense:     { name: 'DEFEND THE OP — DANGER CLOSE' },      // ENEMY2
   callin:      { name: 'CALL FOR SUPPORT — ROCK EATERS' },    // NET1
+  occupied:    { name: 'OCCUPIED SETTLEMENT — NO-STRIKE ADJACENT' },  // WORLD2
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);

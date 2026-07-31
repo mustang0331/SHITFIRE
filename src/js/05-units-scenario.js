@@ -499,6 +499,53 @@ function genScenario(type, seed) {
     S.caller = { i: Math.floor(rng() * 4), wrong, repAz, repDist,
                  saidThanks: false, saidDead: false };
     S.brief = `A friendly team is up on your net asking for fire — no grid, no format, just a problem. Get their position, weigh their report against your own glass, and build the call yourself. The FDC still expects doctrine from YOU.`;
+  } else if (type === 'occupied') {
+    /* WORLD2 — an enemy element HOLDS a settlement (or a facility). The
+       no-strike civilian structures stay no-strike and the civilians stay in
+       the collateral model (indoors — hidden, not removed), interleaved with
+       legitimate targets: the enemy positions ring the settlement edge with
+       a mandatory standoff from every hut, so precision kills it and
+       carelessness fails it. The [M] map plots the settlement as the neutral
+       permanent structure it always was — enemy positions are never plotted
+       (CLAUDE.md); the map's job here is terrain association: the cue names
+       the place, the sheet holds the name, the glass confirms the holding. */
+    const facMode = rng() < 0.3 && WORLD.facilities.length > 0;
+    if (facMode) {
+      const f = WORLD.facilities[Math.floor(rng() * WORLD.facilities.length)];
+      let spot = null;
+      for (let tries = 0; tries < 200 && !spot; tries++) {
+        const az = rng() * Math.PI * 2, r = 20 + rng() * 40;
+        const x = f.x + Math.sin(az) * r, z = f.z - Math.cos(az) * r;
+        if (H(x, z) < 1) continue;
+        spot = { x, z };
+      }
+      S.enemy = spot || { x: f.x + 30, z: f.z };
+      S.occupied = { kind: 'facility', name: f.name, x: f.x, z: f.z };
+      S.brief = `Enemy element has occupied ${f.name} — it is on your map sheet by name. Confirm the holding through the glass and take it back with steel.`;
+    } else {
+      // settlement mode: pick a village/town, enemy ring at the edge with a
+      // hard standoff from every hut (winnable by precision, failed by haste)
+      const vil = WORLD.villages[Math.floor(rng() * WORLD.villages.length)] ||
+                  { x: OP.x + 2000, z: OP.z, r: 70, huts: [], name: 'NOWHERE' };
+      const ring = [];
+      for (let tries = 0; tries < 600 && ring.length < 3; tries++) {
+        const az = rng() * Math.PI * 2, r = vil.r * (0.9 + rng() * 0.5);
+        const x = vil.x + Math.sin(az) * r, z = vil.z - Math.cos(az) * r;
+        if (H(x, z) < 1.5) continue;
+        if (vil.huts.some(hh => dist2(x, z, hh.x, hh.z) < 42)) continue;
+        ring.push({ x, z });
+      }
+      while (ring.length < 3) ring.push({ x: vil.x + vil.r + 40 + ring.length * 15, z: vil.z });
+      S.enemy = { x: (ring[0].x + ring[1].x + ring[2].x) / 3,
+                  z: (ring[0].z + ring[1].z + ring[2].z) / 3 };
+      S.occupied = { kind: 'village', name: vil.name, x: vil.x, z: vil.z, ring };
+      S.village = vil;
+      // villagers go indoors at INSTALL time (placeUnits) — genScenario stays
+      // read-only against world state, per its own exposed QA contract
+      S.brief = `Enemy element has occupied the ${vil.town ? 'town' : 'village'} of ${vil.name} — find it on your sheet by name. The huts are NO-STRIKE and the villagers are still in them: one round inside the settlement fails the mission, full stop. The occupiers hold the edge. Cut them off it.`;
+    }
+    S.tgtClass = 'personnel';
+    S.posture = 'dug-in';
   } else if (type === 'chow') {
     /* 11a — Epilogue E.1. The war is won; the flock is not aware. A seagull
        flock (personnel-class target — FM 6-30 has no column for wingspan)
@@ -803,6 +850,7 @@ function placeUnits() {
   visSetColor(units.bunker, 0x6E665C);
   units.flames.forEach(s => s.visible = false);
   units.smokePuffs.forEach(p => { p.on = false; p.m.visible = false; });
+  WORLD.civs.forEach(c => { c.hidden = false; });   // WORLD2 — occupation ends with the mission
   enemyAlive = true;
 
   function troopCluster(cx, cz, n, spread) {
@@ -845,6 +893,35 @@ function placeUnits() {
     });
   } else if (S.type === 'troops') {
     troopCluster(S.enemy.x, S.enemy.z, 8, 26);
+  } else if (S.type === 'occupied') {
+    /* WORLD2 — the holding force: three fire positions on the settlement edge
+       (or spread at the facility), figures split across them, two vehicles
+       standing off. Vehicles are the 2000 m distinguisher: a civilian village
+       has no trucks parked on its perimeter with troops around them. */
+    // the villagers are indoors — hidden from view, kept in the collateral model
+    if (S.occupied.kind === 'village' && S.village)
+      for (const c of WORLD.civs)
+        if (dist2(c.bx, c.bz, S.village.x, S.village.z) < S.village.r + 80) c.hidden = true;
+    const spots = (S.occupied.ring || [S.enemy,
+      { x: S.enemy.x + 25, z: S.enemy.z + 15 }, { x: S.enemy.x - 20, z: S.enemy.z + 20 }]);
+    units.troops.forEach((m, i) => {
+      const s = spots[i % spots.length];
+      const a = rng() * Math.PI * 2, r = 3 + rng() * 7;
+      const x = s.x + Math.sin(a) * r, z = s.z + Math.cos(a) * r;
+      m.visible = true;
+      m.position.set(x, H(x, z), z);
+      m.rotation.set(0, rng() * Math.PI * 2, 0);
+      if (i < units.flashes.length)
+        units.flashes[i].s.position.set(x, H(x, z) + 1.6, z);
+    });
+    for (let i = 0; i < 2; i++) {
+      const m = units.vehicles[i], s = spots[i % spots.length];
+      const a = rng() * Math.PI * 2, r = 14 + rng() * 10;
+      const x = s.x + Math.sin(a) * r, z = s.z + Math.cos(a) * r;
+      m.visible = true;
+      m.position.set(x, H(x, z) + 1.05, z);
+      m.rotation.set(0, rng() * Math.PI * 2, 0);
+    }
   } else if (S.type === 'callin') {
     // NET1 — the enemy element, and the pinned team as friendly figures
     troopCluster(S.enemy.x, S.enemy.z, 8, 20);

@@ -1134,6 +1134,10 @@ buildWorldFeatures();
 // per-frame: civilians wander their village; positions kept for collateral checks
 function updateCivilians(t) {
   for (const c of WORLD.civs) {
+    /* WORLD2 — an occupied settlement's civilians are indoors, not gone: the
+       mesh hides but the position keeps updating, so the collateral check
+       still counts them. Hiding the people must never hide the rule. */
+    c.m.visible = !c.hidden;
     c.x = c.bx + Math.sin(t * 0.14 + c.phase) * c.wr;
     c.z = c.bz + Math.cos(t * 0.11 + c.phase * 1.7) * c.wr;
     c.m.position.set(c.x, Math.max(H(c.x, c.z), 0), c.z);   // origin is at the feet
