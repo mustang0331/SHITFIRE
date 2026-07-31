@@ -80,6 +80,28 @@ tool loses, not the file.
 - Don't break the stable interfaces above.
 - Don't mark anything done from memory. Grep the code or run it.
 
+## Reporting to the user — applies to every agent, main thread or subagent
+The user is a fire-support expert, not a career developer. The gap is vocabulary and
+state-tracking, not judgment. Five rules, and dispatched agents inherit all five:
+1. **Plain English.** Every technical term gets a half-sentence gloss the first time it
+   appears — "vendored (a copy of the library kept in the repo instead of downloaded)".
+   Build, tooling, and graphics vocabulary especially. No filler jargon.
+2. **Numbered in, numbered out.** A prompt with several asks gets a numbered checklist of
+   every ask up front, and the same numbers at the end marked done / not done / needs a
+   call. Never drop an item silently — say which one you skipped and why.
+3. **Questions come batched and numbered**, four maximum, each with your recommended
+   default so a single "gtg" resolves them all.
+4. **"continue" / "go" / "carry on" = run the whole loop** to completion — build, verify,
+   commit, next. Stop only for something unsafe or genuinely ambiguous.
+5. **Mark judgment calls `[YOUR CALL]`.** Taste, palette, difficulty feel, "does the
+   island look right" — flag them so they're scannable. Never claim a feature is built
+   from memory; grep and cite `file:line` (this is rule 6 of *Don't*, restated because it
+   is the single most common failure).
+
+Prebuilt subagents live in `.claude/agents/` (`docs`, `research`) with these rules and an
+enforced file allowlist already in their system prompts — prefer them over an ad-hoc
+`general-purpose` dispatch.
+
 ## Workflow — one work order at a time
 The build-out phase is complete (2026-07-30); the project is in its **play → feedback → triage →
 small rows** era. New rows are born from `user_feedback.md` triage and TLOG transcript review, not
