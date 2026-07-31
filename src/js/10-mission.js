@@ -319,6 +319,7 @@ function fpfMarkRound(g) {
   const err = followUpError(FPF.rng, azTo(OP.x, OP.z, p0.x, p0.z));
   const ix = p0.x + err.x, iz = p0.z + err.z;
   schedule(sim.now + CONFIG.FDC.shotDelay + tofFor(p0) - 2, () => {
+    ammoSpend('he');   // SUGG7 — marking rounds are real rounds
     spawnBurst(ix, Math.max(H(ix, iz), 0), iz);
     for (const f of friendlyPositions())
       if (dist2(ix, iz, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius)) {
@@ -526,17 +527,47 @@ function handleSuppressTarget(p) {
    written HELLHOUND and G17's delivery-time swap renames it on a mortar
    chapter; the CONTENT differs per asset here because the unit itself does. */
 let unitStatusSent = false;
-function handleUnitStatus() {
-  if (unitStatusSent) {
-    FDC.say('MUSTANG 12, my status has not changed since my last, and it will not change until you send me some work, over.', { delay: 1.0 });
-    return;
+/* SUGG7 — live stocks. AMMO holds the SESSION's remaining rounds per asset;
+   ammoPool() picks the pool the current net draws from. ammoSpend is the one
+   place a round leaves the books; ammoCheck answers "can this shell fire".
+   The amber advisory fires once per shell type when a pool crosses 20%. */
+const AMMO = { b155: { ...CONFIG.AMMO.b155 }, m60: { ...CONFIG.AMMO.m60 } };
+const AMMO_WARNED = {};
+function ammoPool() {
+  return (activeChapter && activeChapter.asset === 'mortar60') ? AMMO.m60 : AMMO.b155;
+}
+function ammoFull() {
+  // chapters replenish on launch: fixed-seed grading must not depend on how
+  // long the session ran before the chapter opened
+  AMMO.b155 = { ...CONFIG.AMMO.b155 };
+  AMMO.m60 = { ...CONFIG.AMMO.m60 };
+  for (const k in AMMO_WARNED) delete AMMO_WARNED[k];
+}
+function ammoSpend(shell) {
+  const pool = ammoPool(), full = (activeChapter && activeChapter.asset === 'mortar60')
+    ? CONFIG.AMMO.m60 : CONFIG.AMMO.b155;
+  if (pool[shell] > 0) pool[shell]--;
+  const key = shell + (pool === AMMO.m60 ? '60' : '155');
+  if (!AMMO_WARNED[key] && full[shell] > 0 && pool[shell] > 0 &&
+      pool[shell] <= full[shell] * 0.2) {
+    AMMO_WARNED[key] = true;
+    FDC.say(`BE ADVISED — AMBER ON ${shell.toUpperCase()}, ${pool[shell]} ROUNDS REMAIN ON THE GUN LINE. Make them count, over.`, { delay: 1.5 });
   }
-  unitStatusSent = true;
+}
+function ammoLeft(shell) { return ammoPool()[shell] || 0; }
+function handleUnitStatus() {
   const m60 = activeChapter && activeChapter.asset === 'mortar60';
   const gs = gridOf(BATTERY.x, BATTERY.z);
-  FDC.say(m60
-    ? `MUSTANG 12, HELLHOUND FIRES — FIRE UNIT STATUS: TWO TUBES, 60 MIKE MIKE, GRID ${gs}. HE 96 ROUNDS, WHISKEY PAPA 24, MULTI-OPTION FUZE ON HAND. ON STATION AND READY FOR CALL FOR FIRE, OVER.`
-    : `MUSTANG 12, HELLHOUND FIRES — FIRE UNIT STATUS: SIX GUNS, 155, GRID ${gs}. HE 240 ROUNDS, SMOKE 48, ILLUM 36; FUZE PD, VT AND DELAY ON HAND. ON STATION AND READY FOR CALL FOR FIRE, OVER.`,
+  const a = ammoPool();
+  const repeat = unitStatusSent;
+  unitStatusSent = true;
+  /* SUGG7 — the report reads the LIVE books now, so a repeat request is
+     legitimate once rounds have moved; the snark stays for asking twice
+     before firing anything. */
+  FDC.say((repeat ? 'MUSTANG 12, again, since apparently my word is not enough — ' : `MUSTANG 12, HELLHOUND FIRES — `) +
+    (m60
+    ? `FIRE UNIT STATUS: TWO TUBES, 60 MIKE MIKE, GRID ${gs}. HE ${a.he} ROUNDS, WHISKEY PAPA ${a.smoke}, ILLUM ${a.illum}, MULTI-OPTION FUZE ON HAND. ON STATION AND READY FOR CALL FOR FIRE, OVER.`
+    : `FIRE UNIT STATUS: SIX GUNS, 155, GRID ${gs}. HE ${a.he} ROUNDS, SMOKE ${a.smoke}, ILLUM ${a.illum}; FUZE PD, VT AND DELAY ON HAND. ON STATION AND READY FOR CALL FOR FIRE, OVER.`),
     { delay: 1.2 });
 }
 
@@ -669,6 +700,13 @@ function fireAdjustRound() {
             { delay: 0.8 });
     return;
   }
+  /* SUGG7 — the last gate is also where the books are checked: a shell type
+     at zero refuses here, whatever path asked for the round. The mission
+     stays open — the observer can switch shell or close it out. */
+  if (ammoLeft(mission.shell) <= 0) {
+    FDC.say(`NEGATIVE — BLACK ON ${mission.shell.toUpperCase()}. The gun line has nothing left to send. Over.`, { delay: 0.8 });
+    return;
+  }
   // G24 — lay the gun and wait for FIRE. Before markDispersion and the round
   // counter, so a held round is not counted or logged until it actually goes.
   if (armAtMyCommand(fireAdjustRound)) return;
@@ -692,6 +730,10 @@ function fireForEffect() {
   if (mission && mission.checkFire) {          // G25 — same last-gate enforcement
     FDC.say('NEGATIVE — WE ARE CHECK FIRING. CANCEL CHECK FIRING BEFORE I PUT ANYTHING ELSE UP, OVER.',
             { delay: 0.8 });
+    return;
+  }
+  if (ammoLeft(mission.shell) <= 0) {          // SUGG7 — black is black
+    FDC.say(`NEGATIVE — BLACK ON ${mission.shell.toUpperCase()}. The gun line has nothing left to send. Over.`, { delay: 0.8 });
     return;
   }
   if (armAtMyCommand(fireForEffect)) return;   // G24
@@ -735,7 +777,13 @@ function fireForEffect() {
      i % n): everything lands in one continuous window, together — that
      simultaneity is the entire difference from a series. 3 rounds per target. */
   const grpRun = !serRun && mission.group && mission.group.every(n => RECTGT[n]) ? mission.group : null;
-  const nRounds = fpfRun ? 8 : serRun ? serRun.length * 4 : grpRun ? grpRun.length * 3 : B.ffeRounds;
+  let nRounds = fpfRun ? 8 : serRun ? serRun.length * 4 : grpRun ? grpRun.length * 3 : B.ffeRounds;
+  /* SUGG7 — a volley bigger than the stock fires what is left and says so. */
+  const avail = ammoLeft(mission.shell);
+  if (nRounds > avail) {
+    nRounds = avail;
+    FDC.say(`BE ADVISED — PARTIAL VOLLEY, ${avail} ROUND${avail === 1 ? '' : 'S'} REMAINING ON ${mission.shell.toUpperCase()}, THEN WE ARE BLACK. Over.`, { delay: 2.0 });
+  }
   let off = 0, tLast = 0;
   for (let i = 0; i < nRounds; i++) {
     const err = followUpError(mission.rng, otAz);
@@ -985,6 +1033,7 @@ function resolveImpact(impact, isFFE) {
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
   const S = Scenario;
+  ammoSpend(shell);   // SUGG7 — the round that just landed came off the books
   // 12h — smoke builds a screen, not a casualty count; only HE feeds the model
   if (shell === 'he') addRoundEffect(impact, isFFE);
   TLOG.add('impact', '', isFFE ? 'FFE round' : `adjust round ${mission.adjustRounds}`,

@@ -494,6 +494,7 @@ function newMission(first, type, chapter) {
   tutStop();
   if (chapter) {
     // campaign chapter: fixed seed, fixed scenario, difficulty restrictions
+    ammoFull();   // SUGG7 — fixed-seed grading must not vary with session history
     CONFIG.SEED.mission = chapter.seed;
     currentType = chapter.type;
     if (chapter.diffs && !chapter.diffs.includes(DIFFICULTY)) {

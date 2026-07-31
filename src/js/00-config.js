@@ -287,6 +287,15 @@ function gfxPal(hex) {
   c.getHSL(hsl);
   return c.setHSL(hsl.h, Math.min(1, hsl.s * CONFIG.GFX.satComp), hsl.l);
 }
+/* SUGG7 — the ammunition budget (ATP 3-09.30 Ch.6). G10's status-report
+   figures stop being flavor: these are the session stocks, decremented per
+   round that actually fires. Chapters replenish on launch (fixed-seed grading
+   must not vary with how long the session ran); skirmish carries the running
+   stock — resource discipline is the skill. */
+CONFIG.AMMO = {
+  b155: { he: 240, smoke: 48, illum: 36 },
+  m60:  { he: 96,  smoke: 24, illum: 24 },
+};
 let DIFFICULTY = 'normal';
 let currentType = 'strongpoint';
 const SCN_META = {
