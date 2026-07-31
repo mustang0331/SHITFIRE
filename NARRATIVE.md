@@ -59,6 +59,7 @@ Coral ridges and defilade — an island that hides things. Polar and shift-from-
 | 2.2 | **Old Friends** | Shift from known point; registered KPs with campaign names (KP BREWERY, KP LATRINE). *Named KPs shipped (BREWERY, LATRINE, SAWMILL, CHAPEL, DERBY, ICEBOX); shown on maps/logs, and the parser accepts "shift BREWERY" as well as "shift known point 1001."* |
 | 2.3 | **Defilade Blues** | Crest-masked target — burst heard, not seen; adjust off the map and sound. *Implemented (stage 10): crest-masked from the OP, no LOS, fought off the map.* |
 | 2.4 | **The Perimeter** | Position under attack, harder: pick the right location method under pressure. |
+| 2.5 | **Flares Out** | Night defense — **coordinated illumination** (JFIRE Table 14): get an illumination mission up, walk the light over the attackers in coarse steps, then "SHELL HE, OVER" and adjust steel under your own flare, re-illuminating as it dies. The first chapter deliberately built around a *sequence* of fire missions. Fighting it dark on thermal completes but caps at 2★ — the skill under test is the light. *Implemented 2026-07-31 (`TEMPO4`).* |
 
 *A future chapter teaching mil-relation range estimation and the OT-factor correction workflow (see SPEC.md's COACHING & TRAINING FIDELITY) would belong here, alongside the volume's other measurement-off-the-reticle skills.*
 
@@ -73,6 +74,7 @@ The big push. Everything on the island is moving, and half of it is friendly.
 | 3.3 | **Uninvited Guests** | Raiders hitting a civilian village at first light; fire on the raiders without putting a round in the huts. Collateral damage is a fail, same as fratricide, no matter whose side of the fence it lands on. Applies 3.2's creeping fire against a discrimination problem instead of a friendly perimeter. *Implemented (stage 10): raiders placed 130–200 m off a real civilian village, huts no-strike; falls back to a masked-village variant if the OP has no line of sight.* |
 | 3.4 | **Everyone's Moving** | Combined-arms assault; shifting target, friendlies advancing. |
 | 3.5 | **The Wrong Kind of Famous** | Fratricide-avoidance stress mission — friendlies interleaved with targets. The chapter title is the threat. *Implemented (stage 10): friendlies start inside 520 m and advance through the mission.* |
+| 3.6 | **Send It Now** | Immediate suppression — the one-transmission call ("IMMEDIATE SUPPRESSION, grid, DANGER CLOSE, OUT"): a strongpoint minutes from being overrun, no time for the three-transmission minuet. A deliberate call still completes but caps at 2★ — speed is the skill under test. *Implemented 2026-07-31 (`TEMPO2`).* |
 
 ## VOLUME IV — BLACK SAND *(mastery · strict mode · 60mm precision · final exam)*
 
