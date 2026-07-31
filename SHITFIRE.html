@@ -8966,17 +8966,65 @@ canvas.addEventListener('touchend', () => { lastTouch = null; });
 /* ============================================================ MAIN LOOP */
 const headingEl = document.getElementById('heading');
 const binoHdgEl = document.getElementById('binohdg');
-// adaptive quality: frame-time EMA steps pixel ratio down before anything else
-const QUALITY = { tiers: [1.75, 1.4, 1.1, 0.85], tier: 0, ema: 0.016, lastChange: 0 };
-// Binoculars pin the renderer to tier 0. A 2 m figure at 3000 m subtends ~0.67 mrad, which
-// through the 9° bino FOV is ~4 px tall at full resolution and ~2 px at the bottom tier — so a
-// step-down taken while glassing can make a target unresolvable exactly when the observer is
-// trying to resolve it. That is a training-fidelity bug, not a performance trade. The stepped
-// tier is retained, not reset, and re-applies on exit.
+/* Adaptive quality: a frame-time EMA steps pixel ratio down before anything else.
+   The renderer is FILL-RATE bound — measured at `frame_ms = 5.57 * MPix + 1.46`
+   (tools/perfsweep.js), i.e. 95% of the frame is resolution-dependent against only
+   57 draw calls and 283k triangles. Pixel ratio is therefore the single effective
+   performance lever in this app; geometry is not worth optimising.
+
+   PERF1 — binoculars set a quality FLOOR, they no longer PIN to tier 0.
+
+   13a/§G0.4 originally pinned tier 0 while glassing, and disabled the stepper
+   outright, to stop a step-down making a target unresolvable. The reasoning was
+   sound when it shipped and its premise has since been superseded: E1 added the
+   angular-size floor (CONFIG.GFX.legFloorMil 1.8), which scales a figure until it
+   subtends at least 1.8 mils AT ANY RANGE — about 12.2 CSS px at 1080p. Figure
+   legibility no longer degrades with range the way 13a assumed, so it no longer
+   needs the top tier to defend it; it needs a floor under it.
+
+   What the pin cost: on a high-DPI display `Math.min(devicePixelRatio, 1.75)`
+   resolves to 1.75, so raising binos took the drawing buffer from 4.06 to
+   6.35 MPix (+56% fill) AND switched off the only relief valve — measured
+   49 fps -> 26 fps, every frame over budget. That is the reported lag, and
+   looking around is simply when a 38 ms frame becomes impossible to miss.
+
+   binoFloor is a TIER INDEX, and lower index = higher quality, so the floor is a
+   Math.min ceiling on the index. Tier 3 (0.85) stays unreachable while glassing —
+   that is the tier 13a's own comment warned about. At the floor, tier 2 (1.1), a
+   figure is ~13.4 device px tall: comfortably countable, versus the ~2 px that
+   motivated the pin. On an ordinary devicePixelRatio-1 display the whole thing is
+   inert, since min(1, anything >= 1) is 1 — this only ever engages where it is
+   actually needed. The stepped tier is retained, not reset, and re-applies on exit. */
+const QUALITY = { tiers: [1.75, 1.4, 1.1, 0.85], tier: 0, ema: 0.016, lastChange: 0,
+                  binoFloor: 2, frozen: false };   // frozen: QA only, see window.SHITFIRE.perf
+function qTierNow() { return binos ? Math.min(QUALITY.tier, QUALITY.binoFloor) : QUALITY.tier; }
+/* The ratio a tier ACTUALLY renders at. The clamp against devicePixelRatio is
+   what makes tiers collapse into each other — see qStep. */
+function qRatio(tier) { return Math.min(devicePixelRatio, QUALITY.tiers[tier]); }
+/* PERF1 — step to the next tier that CHANGES SOMETHING, skipping degenerate ones.
+   The tier list is authored as absolute pixel ratios but every one is clamped by
+   devicePixelRatio, so on real displays whole runs of tiers render identically:
+
+     dPR 1.0   -> 1.00 1.00 1.00 0.85   tiers 0,1,2 identical: 2 real levels
+     dPR 1.25  -> 1.25 1.25 1.10 0.85   tiers 0,1 identical:   3 real levels
+     dPR 2.0   -> 1.75 1.40 1.10 0.85   all distinct:          4 real levels
+
+   Without this, a step-down on a 1.25 display moves tier 0 -> 1 and changes the
+   resolution by NOTHING, while still paying a full drawing-buffer reallocation
+   (three's setPixelRatio calls setSize) plus another 2.5 s cooldown before the
+   controller is allowed to try again. On a plain 1.0 display it burns two such
+   no-op steps before reaching the only tier that does anything. That is the
+   adaptive system failing to adapt on the two most common DPI settings there
+   are, which is most of why it never visibly helped. */
+function qStep(from, dir, worst) {
+  const r0 = qRatio(from);
+  for (let n = from + dir; n >= 0 && n <= worst; n += dir)
+    if (dir > 0 ? qRatio(n) < r0 : qRatio(n) > r0) return n;
+  return from;   // nothing distinct in that direction — leave the tier alone
+}
 function applyQuality(t) {
   QUALITY.lastChange = t;
-  const tier = binos ? 0 : QUALITY.tier;
-  renderer.setPixelRatio(Math.min(devicePixelRatio, QUALITY.tiers[tier]));
+  renderer.setPixelRatio(qRatio(qTierNow()));
 }
 let lastFrame = 0, lastHdg = -1;
 function animate(tMs) {
@@ -8994,13 +9042,24 @@ function animate(tMs) {
   runEvents();
   pollGamepad(dt);
   QUALITY.ema = QUALITY.ema * 0.94 + dt * 0.06;
-  // frozen while glassing — see applyQuality; the tier resumes stepping once binos come down
-  if (!binos && t - QUALITY.lastChange > 2.5) {
-    if (QUALITY.ema > 0.024 && QUALITY.tier < QUALITY.tiers.length - 1) {
-      QUALITY.tier++; applyQuality(t);
-    } else if (QUALITY.ema < 0.013 && QUALITY.tier > 0) {
-      QUALITY.tier--; applyQuality(t);
-    }
+  /* PERF1 — the stepper now runs while glassing too, bounded by binoFloor. It
+     used to be gated on `!binos`, which meant the observer spent the most
+     expensive state in the app with no way out of it.
+
+     It steps from qTierNow(), the tier actually being RENDERED, not from the
+     stored one. Those two diverge while glassing (stored 0, rendered 2), and
+     stepping the stored tier off a frame time earned at the rendered tier makes
+     the controller oscillate: good frame time -> raise stored tier -> the floor
+     stops hiding it -> bad frame time -> lower it -> repeat. Measured, that cost
+     a 117 ms hitch every cycle, because three's setPixelRatio() calls setSize()
+     and reallocates the drawing buffer. Deriving from the rendered tier keeps
+     the controller measuring and adjusting the same quantity. */
+  if (!QUALITY.frozen && t - QUALITY.lastChange > 2.5) {
+    const worst = binos ? QUALITY.binoFloor : QUALITY.tiers.length - 1;
+    const cur = qTierNow();
+    const next = QUALITY.ema > 0.024 ? qStep(cur, 1, worst)
+               : QUALITY.ema < 0.013 ? qStep(cur, -1, worst) : cur;
+    if (next !== cur) { QUALITY.tier = next; applyQuality(t); }
   }
   // idle coaching: nudge once if the net has gone quiet mid-mission
   if (!stateHinted) {
@@ -9079,6 +9138,26 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   // states no keybind reaches; the replay rig re-classifies recorded traffic
   // through parseMessage without touching mission state.
   applyTOD, setVision, onPlayerMessage, parseMessage,
+  /* PERF1 — frame-budget QA. tools/perfprobe.js needs the renderer's own
+     accounting (draw calls, triangles) and the live quality state to tell a
+     fill-rate problem from a geometry one; neither is reachable from outside
+     the module. Read-only facts plus one setter the probe uses to sweep the
+     tier curve — nothing here is wired to gameplay. */
+  perf: {
+    info: () => ({ calls: renderer.info.render.calls,
+                   tris: renderer.info.render.triangles,
+                   ratio: renderer.getPixelRatio(),
+                   tier: QUALITY.tier, binos, ema: +QUALITY.ema.toFixed(4) }),
+    /* Freeze the adaptive stepper. Required for any sweep: since PERF1 the
+       controller runs while glassing, so it will happily re-tier the renderer
+       in the middle of a measurement window and the sample comes back attached
+       to the wrong resolution. (It did — the first post-fix sweep reported
+       ratio 1.4 at 4.06 MPix and ratio 1.75 at 2.51, which is impossible, and
+       that impossibility is the only reason the bad data was caught.) */
+    freeze: on => { QUALITY.frozen = !!on; },
+    // forces a ratio for measurement only; pointless unless frozen first
+    setRatio: r => renderer.setPixelRatio(r),
+  },
   // 13e — terrain QA: patch/base geometry facts + a way to time a re-focus
   setTerrainFocus, terrainInfo: () => ({
     baseIdx: terrainMesh.geometry.getIndex().count,
