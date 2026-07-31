@@ -17,6 +17,11 @@
     letter-spacing: .08em; color: #dfe8c8; pointer-events: none;
     text-shadow: 0 1px 2px rgba(0,0,0,.8); }
   #heading { font-size: 15px; }
+  /* TEMPO3 — the mission clock: present only when the scenario has a real,
+     already-coded deadline (convoy escape, E.2 landfall). Amber so it reads
+     as a warning instrument, not a score; red inside the final minute. */
+  #msnclock { color: #e8c869; font-size: 15px; letter-spacing: .12em; }
+  #msnclock.warn { color: #ff6b57; }
 
   #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px;
     margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.85);
@@ -253,6 +258,7 @@
 
 <div id="topbar">
   <div id="status">STATE OBSERVING</div>
+  <div id="msnclock"></div>
   <div id="heading">AZ 0000</div>
   <div id="tool">EYES</div>
 </div>

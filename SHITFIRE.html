@@ -17,6 +17,11 @@
     letter-spacing: .08em; color: #dfe8c8; pointer-events: none;
     text-shadow: 0 1px 2px rgba(0,0,0,.8); }
   #heading { font-size: 15px; }
+  /* TEMPO3 — the mission clock: present only when the scenario has a real,
+     already-coded deadline (convoy escape, E.2 landfall). Amber so it reads
+     as a warning instrument, not a score; red inside the final minute. */
+  #msnclock { color: #e8c869; font-size: 15px; letter-spacing: .12em; }
+  #msnclock.warn { color: #ff6b57; }
 
   #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px;
     margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.85);
@@ -253,6 +258,7 @@
 
 <div id="topbar">
   <div id="status">STATE OBSERVING</div>
+  <div id="msnclock"></div>
   <div id="heading">AZ 0000</div>
   <div id="tool">EYES</div>
 </div>
@@ -2817,6 +2823,31 @@ function convoyHeadD() {
   const halted = sim.now - S.stop.tArr;
   if (halted < S.stop.dur) return S.stop.d;
   return clamp(S.stop.d + S.speed * (halted - S.stop.dur), 0, S.path.len);
+}
+
+/* TEMPO3 — the diegetic mission clock. Returns { t, label } for scenarios
+   that really have a deadline, else null. Both deadlines below already
+   existed in code (3.1 convoy escape, E.2 landfall) and were invisible until
+   already missed; this reads them out, it does not move them. Read-only:
+   derived every call from the same state updateScenario advances, so the
+   surfaced number and the actual fail trigger cannot drift apart. */
+function scenarioDeadline() {
+  const S = Scenario;
+  if (!S || !S.path) return null;
+  if (S.type === 'convoy' && S.veh && !S.escaped &&
+      S.veh.filter(v => !v.dead).length > 1) {
+    const dHead = convoyHeadD();
+    let t = (S.path.len - dHead) / S.speed;
+    // a pit stop still ahead (or in progress) extends the window
+    if (S.stop.tArr === null) { if (S.stop.d > dHead) t += S.stop.dur; }
+    else if (!S.stop.resumed) t += Math.max(0, S.stop.dur - (sim.now - S.stop.tArr));
+    return { t, label: 'CONVOY' };
+  }
+  if (S.type === 'kaiju' && !S.ashore && enemyAlive) {
+    const d = clamp(S.speed * (sim.now - S.t0), 0, S.path.len);
+    return { t: (S.path.len - d) / S.speed, label: 'LANDFALL' };
+  }
+  return null;
 }
 
 /* WORLD3 — a skirmish convoy route is a seeded window of a real road. The
@@ -9228,6 +9259,8 @@ canvas.addEventListener('touchend', () => { lastTouch = null; });
 
 /* ============================================================ MAIN LOOP */
 const headingEl = document.getElementById('heading');
+const msnclockEl = document.getElementById('msnclock');   // TEMPO3
+let lastClockTxt = '';
 const binoHdgEl = document.getElementById('binohdg');
 /* Adaptive quality: a frame-time EMA steps pixel ratio down before anything else.
    The renderer is FILL-RATE bound — measured at `frame_ms = 5.57 * MPix + 1.46`
@@ -9347,6 +9380,19 @@ function animate(tMs) {
     const s = `MAG ${fmtMils(gridToMag(hdg))}`;
     headingEl.textContent = s;
     binoHdgEl.textContent = s;
+  }
+  // TEMPO3 — mission clock: only scenarios with a real coded deadline return
+  // one (convoy escape, E.2 landfall); everything else keeps an empty slot.
+  // Same change-gated write pattern as the heading readout above.
+  {
+    const dl = scenarioDeadline();
+    const s = dl ? Math.max(0, Math.ceil(dl.t)) : 0;
+    const txt = dl ? `${dl.label} ${(s / 60) | 0}:${String(s % 60).padStart(2, '0')}` : '';
+    if (txt !== lastClockTxt) {
+      lastClockTxt = txt;
+      msnclockEl.textContent = txt;
+      msnclockEl.classList.toggle('warn', !!dl && s <= 60);
+    }
   }
   // tutorial look-around tracking
   if (TUT.steps) {

@@ -1,5 +1,7 @@
 /* ============================================================ MAIN LOOP */
 const headingEl = document.getElementById('heading');
+const msnclockEl = document.getElementById('msnclock');   // TEMPO3
+let lastClockTxt = '';
 const binoHdgEl = document.getElementById('binohdg');
 /* Adaptive quality: a frame-time EMA steps pixel ratio down before anything else.
    The renderer is FILL-RATE bound — measured at `frame_ms = 5.57 * MPix + 1.46`
@@ -119,6 +121,19 @@ function animate(tMs) {
     const s = `MAG ${fmtMils(gridToMag(hdg))}`;
     headingEl.textContent = s;
     binoHdgEl.textContent = s;
+  }
+  // TEMPO3 — mission clock: only scenarios with a real coded deadline return
+  // one (convoy escape, E.2 landfall); everything else keeps an empty slot.
+  // Same change-gated write pattern as the heading readout above.
+  {
+    const dl = scenarioDeadline();
+    const s = dl ? Math.max(0, Math.ceil(dl.t)) : 0;
+    const txt = dl ? `${dl.label} ${(s / 60) | 0}:${String(s % 60).padStart(2, '0')}` : '';
+    if (txt !== lastClockTxt) {
+      lastClockTxt = txt;
+      msnclockEl.textContent = txt;
+      msnclockEl.classList.toggle('warn', !!dl && s <= 60);
+    }
   }
   // tutorial look-around tracking
   if (TUT.steps) {

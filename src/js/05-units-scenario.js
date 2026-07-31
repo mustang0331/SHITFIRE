@@ -113,6 +113,31 @@ function convoyHeadD() {
   return clamp(S.stop.d + S.speed * (halted - S.stop.dur), 0, S.path.len);
 }
 
+/* TEMPO3 — the diegetic mission clock. Returns { t, label } for scenarios
+   that really have a deadline, else null. Both deadlines below already
+   existed in code (3.1 convoy escape, E.2 landfall) and were invisible until
+   already missed; this reads them out, it does not move them. Read-only:
+   derived every call from the same state updateScenario advances, so the
+   surfaced number and the actual fail trigger cannot drift apart. */
+function scenarioDeadline() {
+  const S = Scenario;
+  if (!S || !S.path) return null;
+  if (S.type === 'convoy' && S.veh && !S.escaped &&
+      S.veh.filter(v => !v.dead).length > 1) {
+    const dHead = convoyHeadD();
+    let t = (S.path.len - dHead) / S.speed;
+    // a pit stop still ahead (or in progress) extends the window
+    if (S.stop.tArr === null) { if (S.stop.d > dHead) t += S.stop.dur; }
+    else if (!S.stop.resumed) t += Math.max(0, S.stop.dur - (sim.now - S.stop.tArr));
+    return { t, label: 'CONVOY' };
+  }
+  if (S.type === 'kaiju' && !S.ashore && enemyAlive) {
+    const d = clamp(S.speed * (sim.now - S.t0), 0, S.path.len);
+    return { t: (S.path.len - d) / S.speed, label: 'LANDFALL' };
+  }
+  return null;
+}
+
 /* WORLD3 — a skirmish convoy route is a seeded window of a real road. The
    legacy corridor search (13 steps of 150 m, all at 0.5-16 m elevation, >=8
    visible) is unsatisfiable on this island — measured ~0.07% per attempt,
