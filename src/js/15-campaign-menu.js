@@ -64,9 +64,13 @@ const CAMPAIGN = [
     { id: '2.1', title: 'NUMBERS ON A COMPASS', blurb: 'polar — dead laser, estimate by mil relation', impl: true, type: 'troops', seed: 201, par: 330, method: 'polar', noLaser: true,
       story: 'A new island — coral ridges, dead ground, terrain that hides things. The map is in a crate somewhere and the rangefinder battery died in the surf, so today YOU are the instrument: POLAR, off your own position. Direction from the compass. Distance by MIL RELATION — measure a known object in the reticle, size over mils times a thousand. [R] for the card.',
       outro: 'Direction and distance out of a reticle and a memory. That is the oldest trick in the trade.' },
-    { id: '2.2', title: 'OLD FRIENDS', blurb: 'shift from a known point required', impl: true, type: 'bunker', seed: 202, par: 360, method: 'shift',
-      story: 'The registration points on this island have names — the kind of names positions earn. The guns already know them cold. SHIFT from a known point: direction, lateral, range. Ride on data somebody already paid for.',
-      outro: 'The known points hold. That is why we register them before we need them.' },
+    /* TEMPO1 — night: shift-from-known-point IS the night mission. Registration
+       exists so the guns can shoot accurately in the dark; the observer flies
+       it on NVG/thermal [O], the E3 kit's first campaign home. No friendlies
+       in this scenario (user rule: night + friendlies waits for TEMPO4). */
+    { id: '2.2', title: 'OLD FRIENDS', blurb: 'shift from a known point — after dark', impl: true, type: 'bunker', seed: 202, par: 360, method: 'shift', tod: 'night',
+      story: 'The registration points on this island have names — the kind of names positions earn. The guns already know them cold, which matters tonight, because it is DARK out there and the map does not glow. SHIFT from a known point: direction, lateral, range. Ride on data somebody already paid for. Optics [O] — the island looks different through tubes.',
+      outro: 'The known points hold, even in the dark. Especially in the dark. That is why we register them before we need them.' },
     { id: '2.3', title: 'DEFILADE BLUES', blurb: 'crest-masked target — fire on what you cannot see', impl: true, type: 'troops', seed: 203, par: 420, scn: { mask: true },
       story: 'Enemy infantry assembling in defilade behind the ridge. You will not see them, and you will not see your bursts — just smoke drifting over the crest and the sound arriving late. Fight this one on the map. The map does not blink. It also does not care that you are scared. Fight it anyway.',
       outro: 'You never saw them. They never saw it coming. Fair trade.' },
@@ -81,7 +85,8 @@ const CAMPAIGN = [
     { id: '3.2', title: 'CLOSE ENOUGH TO SMELL IT', blurb: 'danger close — say it, creep it', impl: true, type: 'assault', seed: 302, par: 420,
       story: 'Friendlies assaulting an objective with the enemy inside six hundred meters of them. That is DANGER CLOSE — say the proword like you mean it, and creep the fire in from the safe side. A hundred meters at a time. No heroes, no funerals, no phone calls to a general at 0300.',
       outro: 'The assault element walks the objective. Every one of them upright. That was the mission.' },
-    { id: '3.3', title: 'UNINVITED GUESTS', blurb: 'raiders in the village — huts are no-strike', impl: true, type: 'raid', seed: 303, par: 390,
+    /* TEMPO1 — the brief already said "First light."; now the sky agrees. */
+    { id: '3.3', title: 'UNINVITED GUESTS', blurb: 'raiders in the village — huts are no-strike', impl: true, type: 'raid', seed: 303, par: 390, tod: 'dawn',
       story: 'First light. Raiders are hitting the fishing village — and the village is full of people whose war this is not. Fire on the raiders. The huts are no-strike. If discrimination were easy, they would not need an observer.',
       outro: 'The raiders are gone. The village still stands. Nobody there will ever know your callsign, which is exactly right.' },
     { id: '3.4', title: "EVERYONE'S MOVING", blurb: 'combined arms, friendlies advancing', impl: true, type: 'assault', seed: 304, par: 390,
@@ -91,7 +96,10 @@ const CAMPAIGN = [
       story: 'The lines have collapsed into each other and the map looks like spilled paint. Friendlies are INSIDE your sheaf distances. The chapter title is the threat: observers who guess wrong here get famous in the worst way: a name read aloud at a service nobody wanted to attend.',
       outro: 'Nobody wrote your name in any report today. Stay unfamous.' },
   ]},
-  { id: 'V4', tab: 'IV', name: 'VOLUME IV — BLACK SAND', need: 24, tseed: 66600, palette: 'black', chapters: [
+  /* TEMPO1 — the whole volume runs under an overcast: black sand, grey light.
+     Overcast is full diffuse daylight (elev 40), so the strict/danger-close
+     chapters keep their target discrimination; only the mood changes. */
+  { id: 'V4', tab: 'IV', name: 'VOLUME IV — BLACK SAND', need: 24, tseed: 66600, palette: 'black', tod: 'overcast', chapters: [
     { id: '4.1', title: 'STRICT NET', blurb: 'doctrine enforced — full format or silence', impl: true, type: 'strongpoint', seed: 401, par: 360, strict: true,
       story: 'A black-sand fortress island, and a new FDC posture: STRICT NET. Full format or the net stays silent — callsigns, warning order, location, description, OVER, correct rounding, real surveillance. The book, verbatim, under fire.',
       outro: 'The net stayed clean. Doctrine is just courtesy under fire.' },
@@ -112,17 +120,20 @@ const CAMPAIGN = [
     /* 11a — the Epilogue opens. Humor dial at 11, readback sacred: the FDC
        runs the mission absolutely deadpan; the jokes live in the briefing,
        the coach lines and the fiction — never in place of doctrine. */
-    { id: 'E.1', title: 'THE GREAT CHOW RAID', blurb: 'fire mission on a seagull flock. no, really.', impl: true, type: 'chow', seed: 501, par: 300,
+    /* TEMPO1 — Epilogue light: the barbecue at golden hour, the crab at first
+       light (its own story clock starts at 0400), the space cannon against a
+       sunset it will briefly outshine. */
+    { id: 'E.1', title: 'THE GREAT CHOW RAID', blurb: 'fire mission on a seagull flock. no, really.', impl: true, type: 'chow', seed: 501, par: 300, tod: 'dusk',
       story: 'The war is won. The paperwork is not. The general is grilling on the beach, and nine hundred seagulls have chosen violence. The flock is assaulting the barbecue pit from the tideline, and the only tubes in range are yours. The cooks are a NO-FIRE line: Private Dombrowski and his potato salad WILL survive this. Fire mission, by the book — the book does not care how stupid the war has become.',
       outro: 'The flock is broken. The potato salad is intact. The general pins nothing on you, because officially none of this happened.',
       coach: ['Birds are TROOPS IN THE OPEN, killer. The field manual does not have a column for wingspan and I am not going to be the one to write it.',
               'Dombrowski is at the grill. If a correction walks one round onto that man or his salad, it is FRATRICIDE, it goes in the report, and I will read the report AT you.'] },
-    { id: 'E.2', title: 'CLAWS OUT', blurb: 'a moving target. it is also a crab.', impl: true, type: 'kaiju', seed: 502, par: 420,
+    { id: 'E.2', title: 'CLAWS OUT', blurb: 'a moving target. it is also a crab.', impl: true, type: 'kaiju', seed: 502, par: 420, tod: 'dawn',
       story: 'At 0400 the radar picket reported a contact wading through the surf line. At 0406 the picket stopped filing reports and started filing retirement paperwork. A crab the size of a church is making for the village, and battalion has ruled — in writing — that it is a surface target and therefore yours. It is moving. Lead it. HELLHOUND has been briefed and has elected not to react.',
       outro: 'The crab settles into the shallows. The village never knew. The after-action report lists one (1) hard structure, mobile, destroyed, and no further questions were taken.',
       coach: ['It is a MOVING TARGET, killer. Lead it like the convoy: fire where it is GOING to be, not where it makes you feel things.',
               'Big does not mean soft. That shell is a hard structure — FUZE DELAY pays, and you will need sustained effect. Volley, correct, REPEAT.'] },
-    { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'a call for fire to a space cannon. same book.', impl: true, type: 'bunker', seed: 503, par: 300, asset: 'sunlamp',
+    { id: 'E.3', title: 'SUNLAMP ACTUAL', blurb: 'a call for fire to a space cannon. same book.', impl: true, type: 'bunker', seed: 503, par: 300, asset: 'sunlamp', tod: 'dusk',
       story: 'The last thing the war left behind is a bunker complex nobody can reach, so battalion has borrowed something from "a partner force": SUNLAMP, an intergalactic directed-energy space cannon satellite of mass destruction, now holding your net and PLEASED to be here. Same six elements. Same readback. Same corrections in the OT frame. The time of flight is a charging whine from everywhere at once, SHOT is DISCHARGE, SPLASH is SOLAR EVENT, and HELLHOUND — patched in to observe — has never sounded more tired. Send the call.',
       outro: 'END OF MISSION. The bunker is a smooth glass bowl. SUNLAMP thanks you for your business and hopes you will consider orbital fires for your future fire support needs. HELLHOUND says nothing at all, which from HELLHOUND is a standing ovation. The book closes.',
       coach: ['It is a SPACE CANNON, killer, and it still wants the six elements in three transmissions. Doctrine does not care where the tube is parked.',

@@ -178,6 +178,15 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
      (it builds and returns an S, it does not install it). hasLOS rides along
      so a harness can check sight lines the way the scenario generator does. */
   genScenario, hasLOS,
+  /* TEMPO1 — TOD legibility QA: point the view at a world point so a harness
+     can screenshot the target area at any time of day. Sets the same yaw/pitch
+     state the mouse input does; presentation (sway) rides on top as always. */
+  qaLookAt(x, z) {
+    yaw = azTo(OP.x, OP.z, x, z);
+    const d = dist2(OP.x, OP.z, x, z);
+    pitch = clamp(Math.atan2(H(x, z) + 2 - eye.y, d),
+                  -CONFIG.CAMERA.pitchClamp, CONFIG.CAMERA.pitchClamp);
+  },
   /* PERF1 — frame-budget QA. tools/perfprobe.js needs the renderer's own
      accounting (draw calls, triangles) and the live quality state to tell a
      fill-rate problem from a geometry one; neither is reachable from outside
