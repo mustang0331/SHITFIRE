@@ -135,6 +135,7 @@ function fireMission(targetLocation, warno, meta) {
        suppression and suppress-target missions set 'suppress', where a
        suppressed-only outcome is the mission accomplished, not a shortfall. */
     intent: (meta && meta.intent) || 'destroy',
+    imm: (meta && meta.imm) || null,   // TEMPO2 — 'suppress'/'smoke' when the call was an immediate
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}

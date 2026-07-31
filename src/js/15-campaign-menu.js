@@ -95,6 +95,17 @@ const CAMPAIGN = [
     { id: '3.5', title: 'THE WRONG KIND OF FAMOUS', blurb: 'friendlies interleaved — do not make the news', impl: true, type: 'assault', seed: 305, par: 390, scn: { fClose: true },
       story: 'The lines have collapsed into each other and the map looks like spilled paint. Friendlies are INSIDE your sheaf distances. The chapter title is the threat: observers who guess wrong here get famous in the worst way: a name read aloud at a service nobody wanted to attend.',
       outro: 'Nobody wrote your name in any report today. Stay unfamous.' },
+    /* TEMPO2 — the one-transmission chapter. reqImmediate mirrors the method
+       requirement: a deliberate three-transmission call still completes the
+       mission (the forgiving path is untouched), it just caps at 2★, because
+       the skill under test is SPEED — the doctrinal answer to friendlies
+       taking effective fire is IMMEDIATE SUPPRESSION, grid, out. */
+    { id: '3.6', title: 'SEND IT NOW', blurb: 'immediate suppression — one transmission, rounds now', impl: true, type: 'strongpoint', seed: 306, par: 180, reqImmediate: true,
+      story: 'The strongpoint on the low ridge is two minutes from being overrun and their radio is doing that thing where every voice on it is too calm. There is no time for three transmissions and a readback minuet. IMMEDIATE SUPPRESSION, a grid, OUT — rounds now, paperwork later. The book has a page for exactly this day. It is a short page.',
+      outro: 'The attack stalls under the fire and breaks. Nobody at the strongpoint knows the format you used. That was the point of the format.',
+      coach: [
+        'This is the ONE-TRANSMISSION call, killer: "IMMEDIATE SUPPRESSION, GRID, DANGER CLOSE, OUT." No warning order, no description, no MTO. Rounds first, paperwork after.',
+        'The attackers are inside six hundred meters of the wire, so DANGER CLOSE rides in the call — even the fast page of the book keeps that word. Lase, send, and keep fire coming: SUPPRESSION only lasts while rounds are landing.' ] },
   ]},
   /* TEMPO1 — the whole volume runs under an overcast: black sand, grey light.
      Overcast is full diffuse daylight (elev 40), so the strict/danger-close
@@ -240,6 +251,9 @@ function gradeMission(m) {
   if (eff !== null && eff < 0.25 && m.adjustRounds >= 3) stars = Math.min(stars, 3);
   if (activeChapter && activeChapter.method && m.method &&
       m.method !== activeChapter.method) stars = Math.min(stars, 2);
+  // TEMPO2 — a reqImmediate chapter grades the one-transmission call. Same cap
+  // shape as the method requirement: deliberate still completes, at 2★ most.
+  if (activeChapter && activeChapter.reqImmediate && !m.imm) stars = Math.min(stars, 2);
   return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
 }
 

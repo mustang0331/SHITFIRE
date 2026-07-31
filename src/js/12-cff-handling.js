@@ -200,7 +200,12 @@ function handleCFF(p) {
     return;
   }
   if (dcSent) locStr += ', DANGER CLOSE';
-  const notes = formatNotes(p);
+  /* TEMPO2 — an immediate mission is EXEMPT from deliberate-call format notes:
+     DOCTRINE.md §42's own example is "IMMEDIATE SUPPRESSION 253535 OUT" — no
+     callsigns, no description, ends in OUT. Grading an immediate call against
+     the three-transmission format would teach the wrong lesson about the one
+     call whose entire point is brevity. */
+  const notes = p.imm ? [] : formatNotes(p);
   /* G23 — the vertical is doctrinally conditional, not optional: DOCTRINE.md §27
      and §28 send up/down ONLY when the height difference from the reference point
      to the target is 35 m or more. The heightfield knows that difference exactly,
@@ -228,6 +233,13 @@ function handleCFF(p) {
   }
   if (activeChapter && activeChapter.method && p.method !== activeChapter.method)
     notes.push(`This chapter required a ${activeChapter.method.toUpperCase()} target location — you sent ${p.method.toUpperCase()} (chapter capped at 2★).`);
+  /* TEMPO2 — a chapter can demand the one-transmission immediate call. Same
+     shape as the method requirement above: the deliberate path still WORKS
+     (forgiving path unchanged), it just costs the stars — speed was the skill
+     under test, and a three-transmission call spent seconds the friendlies
+     did not have. */
+  if (activeChapter && activeChapter.reqImmediate && !p.imm)
+    notes.push('This chapter demanded IMMEDIATE SUPPRESSION — one transmission, rounds NOW. The deliberate call works, but it cost time the pinned squad did not have (chapter capped at 2★).');
   const warno = p.warno === 'none' ? 'adjust' : p.warno;
   const warnoText = warno === 'ffe' ? 'FIRE FOR EFFECT' : 'ADJUST FIRE';
   /* G22 — read back what was actually just said. On the staged path the warning
@@ -322,6 +334,7 @@ function handleCFF(p) {
                                          method: p.method, mto: mtoSpec,
                                          amc: p.raw.includes('at my command'),
                                          sheaf, fuze, shell,
+                                         imm: p.imm || null,   // TEMPO2 — grading reads it
                                          // G13/12h — the goal follows the mission type:
                                          // immediates and screens want silence, illum wants light
                                          intent: p.imm || shell === 'smoke' ? 'suppress'

@@ -327,7 +327,9 @@
   <b>MTO</b> ("Message to observer: one gun in adjust, battery in effect&hellip; target AA7001") — <b>read the whole thing back, target number included.</b>
   Then SHOT &middot; SPLASH (~5 s out) &middot; ROUNDS COMPLETE.
   <h3>PROWORDS</h3>
-  Over &middot; Out &middot; Say again &middot; Correction &middot; Repeat (= fire again, same data) &middot; At my command / Fire / Cancel at my command &middot; <b>Check firing</b> &middot; Cease loading &middot; Immediate suppression / smoke (one transmission) &middot; Suppress target AB#### &middot; Record as target
+  Over &middot; Out &middot; Say again &middot; Correction &middot; Repeat (= fire again, same data) &middot; At my command / Fire / Cancel at my command &middot; <b>Check firing</b> &middot; Cease loading &middot; Suppress target AB#### &middot; Record as target
+  <h3>IMMEDIATE MISSIONS — ONE TRANSMISSION</h3>
+  Friendlies taking effective fire, speed over precision: "<b>Immediate suppression, grid 245 523, over.</b>" (or <b>immediate smoke</b>) &mdash; rounds NOW, no MTO, refine after. Suppression lasts only while fires land.
   <h3>PARS (this sim)</h3>
   CFF within <b>2 min</b> of target ID &middot; initial location within <b>200 m</b> &middot; pass at <b>&le;4</b> adjusting rounds, bonus at &le;2 &middot; fratricide or civilian hit = <b>0&#9733; fail</b> (mission still must be finished).
   <div class="dim" style="margin-top:8px">[H] or [ESC] closes. Full doctrine: DOCTRINE.md &middot; this card: CHEATSHEET.md.</div>
@@ -5107,6 +5109,7 @@ function fireMission(targetLocation, warno, meta) {
        suppression and suppress-target missions set 'suppress', where a
        suppressed-only outcome is the mission accomplished, not a shortfall. */
     intent: (meta && meta.intent) || 'destroy',
+    imm: (meta && meta.imm) || null,   // TEMPO2 — 'suppress'/'smoke' when the call was an immediate
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
@@ -6395,7 +6398,12 @@ function handleCFF(p) {
     return;
   }
   if (dcSent) locStr += ', DANGER CLOSE';
-  const notes = formatNotes(p);
+  /* TEMPO2 — an immediate mission is EXEMPT from deliberate-call format notes:
+     DOCTRINE.md §42's own example is "IMMEDIATE SUPPRESSION 253535 OUT" — no
+     callsigns, no description, ends in OUT. Grading an immediate call against
+     the three-transmission format would teach the wrong lesson about the one
+     call whose entire point is brevity. */
+  const notes = p.imm ? [] : formatNotes(p);
   /* G23 — the vertical is doctrinally conditional, not optional: DOCTRINE.md §27
      and §28 send up/down ONLY when the height difference from the reference point
      to the target is 35 m or more. The heightfield knows that difference exactly,
@@ -6423,6 +6431,13 @@ function handleCFF(p) {
   }
   if (activeChapter && activeChapter.method && p.method !== activeChapter.method)
     notes.push(`This chapter required a ${activeChapter.method.toUpperCase()} target location — you sent ${p.method.toUpperCase()} (chapter capped at 2★).`);
+  /* TEMPO2 — a chapter can demand the one-transmission immediate call. Same
+     shape as the method requirement above: the deliberate path still WORKS
+     (forgiving path unchanged), it just costs the stars — speed was the skill
+     under test, and a three-transmission call spent seconds the friendlies
+     did not have. */
+  if (activeChapter && activeChapter.reqImmediate && !p.imm)
+    notes.push('This chapter demanded IMMEDIATE SUPPRESSION — one transmission, rounds NOW. The deliberate call works, but it cost time the pinned squad did not have (chapter capped at 2★).');
   const warno = p.warno === 'none' ? 'adjust' : p.warno;
   const warnoText = warno === 'ffe' ? 'FIRE FOR EFFECT' : 'ADJUST FIRE';
   /* G22 — read back what was actually just said. On the staged path the warning
@@ -6517,6 +6532,7 @@ function handleCFF(p) {
                                          method: p.method, mto: mtoSpec,
                                          amc: p.raw.includes('at my command'),
                                          sheaf, fuze, shell,
+                                         imm: p.imm || null,   // TEMPO2 — grading reads it
                                          // G13/12h — the goal follows the mission type:
                                          // immediates and screens want silence, illum wants light
                                          intent: p.imm || shell === 'smoke' ? 'suppress'
@@ -8290,6 +8306,17 @@ const CAMPAIGN = [
     { id: '3.5', title: 'THE WRONG KIND OF FAMOUS', blurb: 'friendlies interleaved — do not make the news', impl: true, type: 'assault', seed: 305, par: 390, scn: { fClose: true },
       story: 'The lines have collapsed into each other and the map looks like spilled paint. Friendlies are INSIDE your sheaf distances. The chapter title is the threat: observers who guess wrong here get famous in the worst way: a name read aloud at a service nobody wanted to attend.',
       outro: 'Nobody wrote your name in any report today. Stay unfamous.' },
+    /* TEMPO2 — the one-transmission chapter. reqImmediate mirrors the method
+       requirement: a deliberate three-transmission call still completes the
+       mission (the forgiving path is untouched), it just caps at 2★, because
+       the skill under test is SPEED — the doctrinal answer to friendlies
+       taking effective fire is IMMEDIATE SUPPRESSION, grid, out. */
+    { id: '3.6', title: 'SEND IT NOW', blurb: 'immediate suppression — one transmission, rounds now', impl: true, type: 'strongpoint', seed: 306, par: 180, reqImmediate: true,
+      story: 'The strongpoint on the low ridge is two minutes from being overrun and their radio is doing that thing where every voice on it is too calm. There is no time for three transmissions and a readback minuet. IMMEDIATE SUPPRESSION, a grid, OUT — rounds now, paperwork later. The book has a page for exactly this day. It is a short page.',
+      outro: 'The attack stalls under the fire and breaks. Nobody at the strongpoint knows the format you used. That was the point of the format.',
+      coach: [
+        'This is the ONE-TRANSMISSION call, killer: "IMMEDIATE SUPPRESSION, GRID, DANGER CLOSE, OUT." No warning order, no description, no MTO. Rounds first, paperwork after.',
+        'The attackers are inside six hundred meters of the wire, so DANGER CLOSE rides in the call — even the fast page of the book keeps that word. Lase, send, and keep fire coming: SUPPRESSION only lasts while rounds are landing.' ] },
   ]},
   /* TEMPO1 — the whole volume runs under an overcast: black sand, grey light.
      Overcast is full diffuse daylight (elev 40), so the strict/danger-close
@@ -8435,6 +8462,9 @@ function gradeMission(m) {
   if (eff !== null && eff < 0.25 && m.adjustRounds >= 3) stars = Math.min(stars, 3);
   if (activeChapter && activeChapter.method && m.method &&
       m.method !== activeChapter.method) stars = Math.min(stars, 2);
+  // TEMPO2 — a reqImmediate chapter grades the one-transmission call. Same cap
+  // shape as the method requirement: deliberate still completes, at 2★ most.
+  if (activeChapter && activeChapter.reqImmediate && !m.imm) stars = Math.min(stars, 2);
   return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
 }
 
