@@ -827,6 +827,8 @@ function onPlayerMessage(raw) {
     case 'tofquery': handleTofQuery(); break;             // SUGG6
     case 'planseries': handlePlanSeries(p); break;        // SUGG4
     case 'fireseries': handleFireSeries(p); break;        // SUGG4
+    case 'plangroup': handlePlanGroup(p); break;          // SUGG3
+    case 'firegroup': handleFireGroup(p); break;          // SUGG3
     case 'sheaf': handleSheaf(p); break;
     case 'fuze': handleFuze(p); break;
     case 'shell': handleShell(p); break;

@@ -159,6 +159,7 @@ function fireMission(targetLocation, warno, meta) {
     shotExtra: (meta && meta.shotExtra) || 0,   // SUGG2 — re-lay delay before SHOT
     fpf: !!(meta && meta.fpf),                  // SUGG1 — this FFE is the planned line
     series: (meta && meta.series) || null,      // SUGG4 — ordered recorded targets
+    group: (meta && meta.group) || null,        // SUGG3 — recorded targets, together
   };
   if (warno === 'ffe') fireForEffect();
   else fireAdjustRound();
@@ -446,6 +447,44 @@ function handleFireSeries(p) {
     { desc: `SERIES ${p.name}`, gridStr: `SERIES ${p.name}`, method: 'grid',
       intent: 'destroy', series: s.slice() });
 }
+/* SUGG3 — group of targets (ATP 3-09.30 §1-41): recorded targets fired
+   TOGETHER under one designator. Shares the series' plumbing; the volley
+   difference (interleaved, no re-lay gap) is what "simultaneous" means. */
+const GROUPS = {};
+function handlePlanGroup(p) {
+  if (p.tgts.length < 2) {
+    FDC.say('A GROUP IS TWO OR MORE, MUSTANG — "PLAN GROUP A2B, TARGETS AB7101, AB7102", OVER.', { delay: 1 });
+    return;
+  }
+  const missing = p.tgts.filter(n => !RECTGT[n]);
+  if (missing.length) {
+    const known = Object.keys(RECTGT);
+    FDC.say(`NEGATIVE — ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on file. ` +
+      (known.length ? `I hold ${known.join(', ')}. ` : 'Record targets before you plan with them. ') + 'Over.', { delay: 1 });
+    return;
+  }
+  GROUPS[p.name] = p.tgts.slice();
+  FDC.say(`GROUP ${p.name} ESTABLISHED — ${p.tgts.length} TARGETS, FIRED TOGETHER: ${p.tgts.join(', ')}, OUT.`, { delay: 1 });
+}
+function handleFireGroup(p) {
+  const g = GROUPS[p.name];
+  if (!g) {
+    const known = Object.keys(GROUPS);
+    FDC.say(`NEGATIVE — no group ${p.name} on this net. ` +
+      (known.length ? `I hold ${known.join(', ')}. ` : 'Plan one first. ') + 'Over.', { delay: 1 });
+    return;
+  }
+  if (mission && !mission.done) {
+    FDC.say('MUSTANG 12, we are mid-mission. Finish this one, over.', { delay: 1 });
+    return;
+  }
+  FDC.say(`FIRING GROUP ${p.name} — ALL TARGETS TOGETHER, OUT.`, { delay: 0.7 });
+  setState('MISSION SENT');
+  const first = RECTGT[g[0]];
+  fireMission({ x: first.x, z: first.z }, 'ffe',
+    { desc: `GROUP ${p.name}`, gridStr: `GROUP ${p.name}`, method: 'grid',
+      intent: 'destroy', group: g.slice() });
+}
 function handleSuppressTarget(p) {
   if (mission && !mission.done) {
     FDC.say('MUSTANG 12, we are mid-mission. Finish this one, over.', { delay: 1 });
@@ -692,17 +731,24 @@ function fireForEffect() {
      that is what recording bought — so rounds are point + follow-up error,
      the same rule the FPF's adjusted line uses. */
   const serRun = mission.series && mission.series.every(n => RECTGT[n]) ? mission.series : null;
-  const nRounds = fpfRun ? 8 : serRun ? serRun.length * 4 : B.ffeRounds;
+  /* SUGG3 — a group volley INTERLEAVES its targets (round i goes to target
+     i % n): everything lands in one continuous window, together — that
+     simultaneity is the entire difference from a series. 3 rounds per target. */
+  const grpRun = !serRun && mission.group && mission.group.every(n => RECTGT[n]) ? mission.group : null;
+  const nRounds = fpfRun ? 8 : serRun ? serRun.length * 4 : grpRun ? grpRun.length * 3 : B.ffeRounds;
   let off = 0, tLast = 0;
   for (let i = 0; i < nRounds; i++) {
     const err = followUpError(mission.rng, otAz);
     const lo = lin ? (i - (B.ffeRounds - 1) / 2) * 35 : 0;
     const gun = fpfRun ? FPF.pts[i % 4] : null;
     const ser = serRun ? RECTGT[serRun[(i / 4) | 0]] : null;
+    const grp = grpRun ? RECTGT[grpRun[i % grpRun.length]] : null;
     const impact = fpfRun
       ? { x: gun.x + err.x, z: gun.z + err.z }
       : ser
       ? { x: ser.x + err.x, z: ser.z + err.z }
+      : grp
+      ? { x: grp.x + err.x, z: grp.z + err.z }
       : { x: mission.aim.x + base.x + err.x + (lin ? linDir.dx * lo : 0),
           z: mission.aim.z + base.z + err.z + (lin ? linDir.dz * lo : 0) };
     tLast = tShot + tof + off;

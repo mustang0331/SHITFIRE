@@ -217,6 +217,18 @@ function parseMessage(raw) {
   const mSerF = t.match(/\bfire\s+series\s+([a-z]+)\b/);
   if (mSerF)
     return { type: 'fireseries', name: mSerF[1].toUpperCase(), raw: t, toks };
+  /* SUGG3 — group of targets (ATP 3-09.30 §1-41): 2+ recorded targets fired
+     TOGETHER under one designator. Same grammar as a series; the difference
+     is simultaneity, and that difference is the lesson. */
+  const mGrp = t.match(/\b(?:plan|establish)\s+group\s+([a-z0-9]+)\b/);
+  if (mGrp) {
+    const tgts = [...t.matchAll(/\b([a-z]{2})\s*(\d{4})\b/g)]
+      .map(m2 => (m2[1] + m2[2]).toUpperCase());
+    return { type: 'plangroup', name: mGrp[1].toUpperCase(), tgts, raw: t, toks };
+  }
+  const mGrpF = t.match(/\bfire\s+group\s+([a-z0-9]+)\b/);
+  if (mGrpF)
+    return { type: 'firegroup', name: mGrpF[1].toUpperCase(), raw: t, toks };
   /* SUGG6 — "SAY TIME OF FLIGHT": the intercept sequence's one query. */
   if (/\b(?:say|request|send)\s+(?:your\s+|the\s+)?time\s+of\s+flight\b/.test(t))
     return { type: 'tofquery', raw: t, toks };
