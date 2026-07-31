@@ -271,6 +271,12 @@ function gradeMission(m) {
   // real tool — but the chapter's skill is coordinated illumination, so no
   // illum means 2★ at most.
   if (activeChapter && activeChapter.reqIllum && !m.usedIllum) stars = Math.min(stars, 2);
+  /* ENEMY1 — friendly casualties from ENEMY fire COST the observer, they never
+     auto-fail (user decision, 2026-07-30; fratricide/collateral by our own
+     rounds remain the only auto-fails). Every two casualty rounds the battery
+     put inside the friendly position costs a star, floor 1 — the honest read
+     of "score/time": time was already paid hunting the gun, this is the score. */
+  if (S.btyCas) stars = Math.max(1, stars - Math.floor(S.btyCas / 2));
   return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
 }
 

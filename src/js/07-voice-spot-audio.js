@@ -422,6 +422,9 @@ const SPOT_SCN = {
   raid:        { size: 'EIGHT OR MORE DISMOUNTS AND ONE VEHICLE',
                  act: 'RAIDING A CIVILIAN VILLAGE',
                  eq: 'SMALL ARMS AND ONE ARMED PICKUP' },
+  battery:     { size: 'ONE GUN, SECTION-STRENGTH CREW',            // ENEMY1
+                 act: 'DELIVERING INDIRECT FIRE ON A FRIENDLY POSITION. THEY ARE IN ACTION NOW',
+                 eq: 'ONE MEDIUM MORTAR, EMPLACED, WITH A TRUCK STANDING OFF' },
 };
 const SPOT_UNIT = [
   'UNKNOWN. NO MARKINGS, NO INSIGNIA',

@@ -726,6 +726,7 @@ const SCN_META = {
   assault:     { name: 'COMBINED ARMS ASSAULT — DANGER CLOSE' },
   raid:        { name: 'VILLAGE RAID — NO-STRIKE ADJACENT' },
   wreck:       { name: 'DERELICT WRECK (TRAINING)' },
+  battery:     { name: 'COUNTERBATTERY — GUNS IN ACTION' },   // ENEMY1
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);
@@ -2833,7 +2834,13 @@ function convoyHeadD() {
    surfaced number and the actual fail trigger cannot drift apart. */
 function scenarioDeadline() {
   const S = Scenario;
-  if (!S || !S.path) return null;
+  if (!S) return null;   // ENEMY1 — battery has no S.path; the guard is per-branch now
+  if (S.type === 'battery' && S.bty && enemyAlive) {
+    /* ENEMY1 — the next volley is the deadline TEMPO3's row named in advance.
+       Suppression visibly pushes it out; a dead battery clears the clock. */
+    return { t: Math.max(0, S.bty.next - (sim.now - scenarioT0)), label: 'VOLLEY' };
+  }
+  if (!S.path) return null;
   if (S.type === 'convoy' && S.veh && !S.escaped &&
       S.veh.filter(v => !v.dead).length > 1) {
     const dHead = convoyHeadD();
@@ -3098,6 +3105,41 @@ function genScenario(type, seed) {
     S.stop = { d: Math.max(stopD, 320), dur: lerp(sLo, sHi, rng()), tArr: null,
                resumed: false, name: stopName };
     S.brief = `Enemy convoy, four vehicles, moving on the ${path.pts ? 'road' : 'low ground'} near grid ${gridOf(p0.x, p0.z)}. Lead the column and time your fire for effect — or catch them when they pull in somewhere. If the head of the column runs off the end of the road, they are gone.`;
+  } else if (type === 'battery') {
+    /* ENEMY1 — counterbattery. An enemy mortar section is firing on a friendly
+       position WHILE the observer works: the first target with a real reason
+       to hurry. The gun does not need LOS from the tower — the graded skill is
+       locating it from its effects (muzzle signature at the firing point, the
+       impacts around the friendly position). Enemy rounds obey the same law
+       ours do: impact = their aimpoint + error. No trajectory on either side.
+       Grading (user decision 2026-07-30): friendly casualties from enemy fire
+       COST score/time — they never auto-fail. Fratricide/collateral by OUR
+       rounds stay the only auto-fails, unchanged. */
+    let fb = null;
+    for (let tries = 0; tries < 300 && !fb; tries++)
+      fb = findSpot(M.targetRange[0], M.targetRange[1], 3, 999, true);
+    fb = fb || { x: OP.x + 1600, z: OP.z };
+    let gun = null;
+    for (let tries = 0; tries < 600 && !gun; tries++) {
+      const az = rng() * Math.PI * 2, r = lerp(1500, 3000, rng());
+      const x = fb.x + Math.sin(az) * r, z = fb.z - Math.cos(az) * r;
+      if (H(x, z) < 2) continue;
+      const dOP = dist2(x, z, OP.x, OP.z);
+      // the gun must be engageable: inside the skirmish band from the OP
+      if (dOP < M.skirmishRange[0] || dOP > M.skirmishRange[1]) continue;
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+      gun = { x, z };
+    }
+    gun = gun || { x: OP.x + 2400, z: OP.z + 600 };
+    S.enemy = gun;
+    S.fireBase = fb;
+    S.friendlies = [{ x: fb.x, z: fb.z, r: M.fratricideRadius }];
+    S.tgtClass = 'point';          // a gun position: tight bands, dug-in crew
+    S.posture = 'dug-in';
+    S.btyCas = 0;                  // rounds landed inside the friendly position
+    // first volley soon after the brief lands; period is seeded per scenario
+    S.bty = { next: 12 + rng() * 8, period: lerp(24, 38, rng()), tof: lerp(9, 14, rng()) };
+    S.brief = `Friendly position at grid ${gridOf(fb.x, fb.z)} is taking sustained indirect fire. The gun is somewhere out there — find it by its signature and its fall of shot, and silence it. Every volley that lands while you work is friendly casualties on your clock.`;
   } else if (type === 'chow') {
     /* 11a — Epilogue E.1. The war is won; the flock is not aware. A seagull
        flock (personnel-class target — FM 6-30 has no column for wingspan)
@@ -3287,6 +3329,21 @@ function updateScenario() {
         }
       }
     }
+  } else if (S.type === 'battery' && S.bty) {
+    /* ENEMY1 — the volley loop. Fires only while the crew is alive and not
+       suppressed, so silencing the battery VISIBLY stops the shelling:
+       suppression pauses it (and the pause is watchable), neutralized or
+       destroyed ends it. bty.next counts seconds since scenario start. */
+    const tS = sim.now - scenarioT0;
+    if (enemyAlive && tS >= S.bty.next) {
+      if (sim.now < (S.suppressedUntil || 0)) {
+        // heads down: the crew waits out the suppression, then relays
+        S.bty.next = (S.suppressedUntil - scenarioT0) + 6;
+      } else {
+        S.bty.next = tS + S.bty.period;
+        enemyVolley(S);
+      }
+    }
   } else if (S.type === 'assault') {
     const adv = Math.min(S.fSpeed * (sim.now - S.ft0), S.fAdvMax);
     const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
@@ -3297,6 +3354,28 @@ function updateScenario() {
       const z = S.fStart.z + fz * adv + rz * l;
       units.fSquad[i].position.set(x, H(x, z), z);   // figure origin is at the feet
     }
+  }
+}
+
+/* ENEMY1 — one enemy volley: muzzle signature at the gun, three rounds around
+   the friendly position after a seeded presentation delay (a pacing constant,
+   like our own tofFor — nothing is computed from physics). Enemy aimpoint is
+   the friendly position; error is drawn from the scenario stream. A round
+   inside the position radius is casualties — a COST at grading, never a fail. */
+function enemyVolley(S) {
+  const fb = S.fireBase;
+  spawnBurst(S.enemy.x, H(S.enemy.x, S.enemy.z), S.enemy.z, true);   // signature
+  for (let i = 0; i < 3; i++) {
+    const ix = fb.x + gauss(S.rng) * 55, iz = fb.z + gauss(S.rng) * 55;
+    schedule(sim.now + S.bty.tof + i * 0.8, () => {
+      if (Scenario !== S) return;              // mission changed while in flight
+      spawnBurst(ix, Math.max(H(ix, iz), 0), iz);
+      if (dist2(ix, iz, fb.x, fb.z) < S.friendlies[0].r) {
+        S.btyCas++;
+        if (S.btyCas === 1)
+          log('', 'Rounds inside the friendly position. They are taking casualties down there — kill that gun.', 'sys');
+      }
+    });
   }
 }
 
@@ -3380,6 +3459,33 @@ function placeUnits() {
     m.rotation.set(0, rng() * Math.PI, 0.35);
     m.scale.set(2.2, 1.3, 1.6);
     visSetMat(m, units.vehMatDead);
+  } else if (S.type === 'battery') {
+    /* ENEMY1 — the gun position: bunker mesh as the emplacement, crew of
+       three, one truck standing off. The friendly position gets the huts and
+       the flag — a marked, map-plotted friendly location, same courtesy the
+       strongpoint compound gets. */
+    const e = S.enemy;
+    units.bunker.visible = true;
+    units.bunker.position.set(e.x, H(e.x, e.z) + 1.3, e.z);
+    troopCluster(e.x + 12, e.z + 8, 3, 8);
+    const vm = units.vehicles[0];
+    const va = rng() * Math.PI * 2;
+    const vx = e.x + Math.sin(va) * 26, vz = e.z + Math.cos(va) * 26;
+    vm.visible = true;
+    vm.position.set(vx, H(vx, vz) + 1.05, vz);
+    vm.rotation.set(0, rng() * Math.PI * 2, 0);
+    const c = S.fireBase;
+    const hutOff = [[0, 0], [10, 7], [-9, 8]];
+    units.huts.forEach((hm, i) => {
+      const x = c.x + hutOff[i][0], z = c.z + hutOff[i][1];
+      hm.visible = true;
+      hm.position.set(x, H(x, z) + 1.6, z);
+      hm.rotation.set(0, (i * 0.7) % Math.PI, 0);
+    });
+    units.flag.pole.visible = units.flag.banner.visible = true;
+    const fx = c.x + 4, fz = c.z - 5, fh = H(fx, fz);
+    units.flag.pole.position.set(fx, fh + 3.5, fz);
+    units.flag.banner.position.set(fx + 1.2, fh + 6.3, fz);
   } else if (S.type === 'kaiju') {
     // 11b — the crab is the bunker mesh, enormous and crimson; position is
     // driven per-frame by updateScenario as it wades
@@ -4096,6 +4202,9 @@ const SPOT_SCN = {
   raid:        { size: 'EIGHT OR MORE DISMOUNTS AND ONE VEHICLE',
                  act: 'RAIDING A CIVILIAN VILLAGE',
                  eq: 'SMALL ARMS AND ONE ARMED PICKUP' },
+  battery:     { size: 'ONE GUN, SECTION-STRENGTH CREW',            // ENEMY1
+                 act: 'DELIVERING INDIRECT FIRE ON A FRIENDLY POSITION. THEY ARE IN ACTION NOW',
+                 eq: 'ONE MEDIUM MORTAR, EMPLACED, WITH A TRUCK STANDING OFF' },
 };
 const SPOT_UNIT = [
   'UNKNOWN. NO MARKINGS, NO INSIGNIA',
@@ -4840,25 +4949,31 @@ function visSetColor(obj, hex) {
       visDegrade(TOD_LIGHT(), CONFIG.OPTICS.nvgBloomAt),
       visDegrade(TOD_LIGHT(), CONFIG.OPTICS.thermalWashAt));
 }
-function spawnBurst(x, y, z) {
+function spawnBurst(x, y, z, sig) {
+  /* ENEMY1 — sig mode: a MUZZLE SIGNATURE, not an impact. No crater (nothing
+     exploded on the ground), no debris, no shock ring; a pale smoke column
+     borrowing the 13h water-column shape, tall enough to show over a crest —
+     which is exactly how a defiladed gun is found — plus the marker wisp,
+     and the report delayed by distance like every other boom. */
   const seen = hasLOS(eye.x, eye.y, eye.z, x, y + 2, z);
   let b = bursts.find(b => !b.active) || bursts[0];
   b.active = true; b.t0 = sim.now; b.seen = seen;
   b.group.visible = true;
   b.group.position.set(x, y, z);
-  const water = H(x, z) < 0;
-  b.water = water;   // 13h — the water case reshapes the column in updateBursts
-  if (!water) { addCrater(x, z); markWisp(x, y, z); }   // 13h — the sea keeps no scars
-  visSetColor(b.dust, water ? 0xDCE9E6 : 0xB9A98C);
-  for (const p of b.puffs) visSetColor(p, water ? 0xCFDEDD : 0x8A877E);
+  const water = !sig && H(x, z) < 0;
+  b.water = water || !!sig;  // 13h/ENEMY1 — both wear the tall narrow column
+  if (!water && !sig) { addCrater(x, z); markWisp(x, y, z); }  // 13h — the sea keeps no scars
+  if (sig) markWisp(x, y, z);          // the lingering smoke IS the cue
+  visSetColor(b.dust, sig ? 0xB8B4A6 : water ? 0xDCE9E6 : 0xB9A98C);
+  for (const p of b.puffs) visSetColor(p, sig ? 0xA6A296 : water ? 0xCFDEDD : 0x8A877E);
   b.debris.forEach(d => {
     const a = Math.random() * Math.PI * 2, sp = 8 + Math.random() * 22;
     d.vx = Math.sin(a) * sp; d.vz = Math.cos(a) * sp; d.vy = 14 + Math.random() * 18;
-    d.m.position.set(0, 1, 0); d.m.visible = seen;
+    d.m.position.set(0, 1, 0); d.m.visible = seen && !sig;
   });
-  b.flash.material.opacity = seen ? 1 : 0;
-  b.ring.material.opacity = seen ? 0.7 : 0;
-  boom(dist2(eye.x, eye.z, x, z) / 343, dist2(eye.x, eye.z, x, z));
+  b.flash.material.opacity = seen ? (sig ? 0.85 : 1) : 0;
+  b.ring.material.opacity = seen && !sig ? 0.7 : 0;
+  boom(dist2(eye.x, eye.z, x, z) / 343, dist2(eye.x, eye.z, x, z) * (sig ? 1.6 : 1));
 }
 function updateBursts(dt) {
   for (const b of bursts) {
@@ -7452,6 +7567,13 @@ function showAAR() {
     m.reqIllumNoted = true;
     m.notes.push('This chapter demanded COORDINATED ILLUMINATION — you fought it dark. Effective, maybe, but the skill under test was the light (chapter capped at 2★).');
   }
+  /* ENEMY1 — same shape as the reqIllum note: casualties are only countable at
+     the end, land once, before grading reads them. Cost, never a fail. */
+  if (S.btyCas && !m.btyCasNoted) {
+    m.btyCasNoted = true;
+    m.notes.push(`The battery put ${S.btyCas} round${S.btyCas === 1 ? '' : 's'} inside the friendly position while you worked. ` +
+      'Friendly casualties taken under enemy fire cost you a star per two rounds — silence the gun faster.');
+  }
   const isConvoy = S.type === 'convoy';
   if (isConvoy) m.hits = S.veh.filter(v => v.dead).length;
   /* G13 — the verdict comes off the graded effect, and it distinguishes the
@@ -8686,6 +8808,12 @@ function gradeMission(m) {
   // real tool — but the chapter's skill is coordinated illumination, so no
   // illum means 2★ at most.
   if (activeChapter && activeChapter.reqIllum && !m.usedIllum) stars = Math.min(stars, 2);
+  /* ENEMY1 — friendly casualties from ENEMY fire COST the observer, they never
+     auto-fail (user decision, 2026-07-30; fratricide/collateral by our own
+     rounds remain the only auto-fails). Every two casualty rounds the battery
+     put inside the friendly position costs a star, floor 1 — the honest read
+     of "score/time": time was already paid hunting the gun, this is the score. */
+  if (S.btyCas) stars = Math.max(1, stars - Math.floor(S.btyCas / 2));
   return Math.min(stars, { easy: 3, normal: 4, hard: 5 }[S.difficulty] || 5);
 }
 

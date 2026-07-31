@@ -598,25 +598,31 @@ function visSetColor(obj, hex) {
       visDegrade(TOD_LIGHT(), CONFIG.OPTICS.nvgBloomAt),
       visDegrade(TOD_LIGHT(), CONFIG.OPTICS.thermalWashAt));
 }
-function spawnBurst(x, y, z) {
+function spawnBurst(x, y, z, sig) {
+  /* ENEMY1 — sig mode: a MUZZLE SIGNATURE, not an impact. No crater (nothing
+     exploded on the ground), no debris, no shock ring; a pale smoke column
+     borrowing the 13h water-column shape, tall enough to show over a crest —
+     which is exactly how a defiladed gun is found — plus the marker wisp,
+     and the report delayed by distance like every other boom. */
   const seen = hasLOS(eye.x, eye.y, eye.z, x, y + 2, z);
   let b = bursts.find(b => !b.active) || bursts[0];
   b.active = true; b.t0 = sim.now; b.seen = seen;
   b.group.visible = true;
   b.group.position.set(x, y, z);
-  const water = H(x, z) < 0;
-  b.water = water;   // 13h — the water case reshapes the column in updateBursts
-  if (!water) { addCrater(x, z); markWisp(x, y, z); }   // 13h — the sea keeps no scars
-  visSetColor(b.dust, water ? 0xDCE9E6 : 0xB9A98C);
-  for (const p of b.puffs) visSetColor(p, water ? 0xCFDEDD : 0x8A877E);
+  const water = !sig && H(x, z) < 0;
+  b.water = water || !!sig;  // 13h/ENEMY1 — both wear the tall narrow column
+  if (!water && !sig) { addCrater(x, z); markWisp(x, y, z); }  // 13h — the sea keeps no scars
+  if (sig) markWisp(x, y, z);          // the lingering smoke IS the cue
+  visSetColor(b.dust, sig ? 0xB8B4A6 : water ? 0xDCE9E6 : 0xB9A98C);
+  for (const p of b.puffs) visSetColor(p, sig ? 0xA6A296 : water ? 0xCFDEDD : 0x8A877E);
   b.debris.forEach(d => {
     const a = Math.random() * Math.PI * 2, sp = 8 + Math.random() * 22;
     d.vx = Math.sin(a) * sp; d.vz = Math.cos(a) * sp; d.vy = 14 + Math.random() * 18;
-    d.m.position.set(0, 1, 0); d.m.visible = seen;
+    d.m.position.set(0, 1, 0); d.m.visible = seen && !sig;
   });
-  b.flash.material.opacity = seen ? 1 : 0;
-  b.ring.material.opacity = seen ? 0.7 : 0;
-  boom(dist2(eye.x, eye.z, x, z) / 343, dist2(eye.x, eye.z, x, z));
+  b.flash.material.opacity = seen ? (sig ? 0.85 : 1) : 0;
+  b.ring.material.opacity = seen && !sig ? 0.7 : 0;
+  boom(dist2(eye.x, eye.z, x, z) / 343, dist2(eye.x, eye.z, x, z) * (sig ? 1.6 : 1));
 }
 function updateBursts(dt) {
   for (const b of bursts) {

@@ -236,6 +236,13 @@ function showAAR() {
     m.reqIllumNoted = true;
     m.notes.push('This chapter demanded COORDINATED ILLUMINATION — you fought it dark. Effective, maybe, but the skill under test was the light (chapter capped at 2★).');
   }
+  /* ENEMY1 — same shape as the reqIllum note: casualties are only countable at
+     the end, land once, before grading reads them. Cost, never a fail. */
+  if (S.btyCas && !m.btyCasNoted) {
+    m.btyCasNoted = true;
+    m.notes.push(`The battery put ${S.btyCas} round${S.btyCas === 1 ? '' : 's'} inside the friendly position while you worked. ` +
+      'Friendly casualties taken under enemy fire cost you a star per two rounds — silence the gun faster.');
+  }
   const isConvoy = S.type === 'convoy';
   if (isConvoy) m.hits = S.veh.filter(v => v.dead).length;
   /* G13 — the verdict comes off the graded effect, and it distinguishes the

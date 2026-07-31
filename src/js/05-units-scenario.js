@@ -121,7 +121,13 @@ function convoyHeadD() {
    surfaced number and the actual fail trigger cannot drift apart. */
 function scenarioDeadline() {
   const S = Scenario;
-  if (!S || !S.path) return null;
+  if (!S) return null;   // ENEMY1 — battery has no S.path; the guard is per-branch now
+  if (S.type === 'battery' && S.bty && enemyAlive) {
+    /* ENEMY1 — the next volley is the deadline TEMPO3's row named in advance.
+       Suppression visibly pushes it out; a dead battery clears the clock. */
+    return { t: Math.max(0, S.bty.next - (sim.now - scenarioT0)), label: 'VOLLEY' };
+  }
+  if (!S.path) return null;
   if (S.type === 'convoy' && S.veh && !S.escaped &&
       S.veh.filter(v => !v.dead).length > 1) {
     const dHead = convoyHeadD();
@@ -386,6 +392,41 @@ function genScenario(type, seed) {
     S.stop = { d: Math.max(stopD, 320), dur: lerp(sLo, sHi, rng()), tArr: null,
                resumed: false, name: stopName };
     S.brief = `Enemy convoy, four vehicles, moving on the ${path.pts ? 'road' : 'low ground'} near grid ${gridOf(p0.x, p0.z)}. Lead the column and time your fire for effect — or catch them when they pull in somewhere. If the head of the column runs off the end of the road, they are gone.`;
+  } else if (type === 'battery') {
+    /* ENEMY1 — counterbattery. An enemy mortar section is firing on a friendly
+       position WHILE the observer works: the first target with a real reason
+       to hurry. The gun does not need LOS from the tower — the graded skill is
+       locating it from its effects (muzzle signature at the firing point, the
+       impacts around the friendly position). Enemy rounds obey the same law
+       ours do: impact = their aimpoint + error. No trajectory on either side.
+       Grading (user decision 2026-07-30): friendly casualties from enemy fire
+       COST score/time — they never auto-fail. Fratricide/collateral by OUR
+       rounds stay the only auto-fails, unchanged. */
+    let fb = null;
+    for (let tries = 0; tries < 300 && !fb; tries++)
+      fb = findSpot(M.targetRange[0], M.targetRange[1], 3, 999, true);
+    fb = fb || { x: OP.x + 1600, z: OP.z };
+    let gun = null;
+    for (let tries = 0; tries < 600 && !gun; tries++) {
+      const az = rng() * Math.PI * 2, r = lerp(1500, 3000, rng());
+      const x = fb.x + Math.sin(az) * r, z = fb.z - Math.cos(az) * r;
+      if (H(x, z) < 2) continue;
+      const dOP = dist2(x, z, OP.x, OP.z);
+      // the gun must be engageable: inside the skirmish band from the OP
+      if (dOP < M.skirmishRange[0] || dOP > M.skirmishRange[1]) continue;
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+      gun = { x, z };
+    }
+    gun = gun || { x: OP.x + 2400, z: OP.z + 600 };
+    S.enemy = gun;
+    S.fireBase = fb;
+    S.friendlies = [{ x: fb.x, z: fb.z, r: M.fratricideRadius }];
+    S.tgtClass = 'point';          // a gun position: tight bands, dug-in crew
+    S.posture = 'dug-in';
+    S.btyCas = 0;                  // rounds landed inside the friendly position
+    // first volley soon after the brief lands; period is seeded per scenario
+    S.bty = { next: 12 + rng() * 8, period: lerp(24, 38, rng()), tof: lerp(9, 14, rng()) };
+    S.brief = `Friendly position at grid ${gridOf(fb.x, fb.z)} is taking sustained indirect fire. The gun is somewhere out there — find it by its signature and its fall of shot, and silence it. Every volley that lands while you work is friendly casualties on your clock.`;
   } else if (type === 'chow') {
     /* 11a — Epilogue E.1. The war is won; the flock is not aware. A seagull
        flock (personnel-class target — FM 6-30 has no column for wingspan)
@@ -575,6 +616,21 @@ function updateScenario() {
         }
       }
     }
+  } else if (S.type === 'battery' && S.bty) {
+    /* ENEMY1 — the volley loop. Fires only while the crew is alive and not
+       suppressed, so silencing the battery VISIBLY stops the shelling:
+       suppression pauses it (and the pause is watchable), neutralized or
+       destroyed ends it. bty.next counts seconds since scenario start. */
+    const tS = sim.now - scenarioT0;
+    if (enemyAlive && tS >= S.bty.next) {
+      if (sim.now < (S.suppressedUntil || 0)) {
+        // heads down: the crew waits out the suppression, then relays
+        S.bty.next = (S.suppressedUntil - scenarioT0) + 6;
+      } else {
+        S.bty.next = tS + S.bty.period;
+        enemyVolley(S);
+      }
+    }
   } else if (S.type === 'assault') {
     const adv = Math.min(S.fSpeed * (sim.now - S.ft0), S.fAdvMax);
     const fx = Math.sin(S.fAdvAz), fz = -Math.cos(S.fAdvAz);
@@ -585,6 +641,28 @@ function updateScenario() {
       const z = S.fStart.z + fz * adv + rz * l;
       units.fSquad[i].position.set(x, H(x, z), z);   // figure origin is at the feet
     }
+  }
+}
+
+/* ENEMY1 — one enemy volley: muzzle signature at the gun, three rounds around
+   the friendly position after a seeded presentation delay (a pacing constant,
+   like our own tofFor — nothing is computed from physics). Enemy aimpoint is
+   the friendly position; error is drawn from the scenario stream. A round
+   inside the position radius is casualties — a COST at grading, never a fail. */
+function enemyVolley(S) {
+  const fb = S.fireBase;
+  spawnBurst(S.enemy.x, H(S.enemy.x, S.enemy.z), S.enemy.z, true);   // signature
+  for (let i = 0; i < 3; i++) {
+    const ix = fb.x + gauss(S.rng) * 55, iz = fb.z + gauss(S.rng) * 55;
+    schedule(sim.now + S.bty.tof + i * 0.8, () => {
+      if (Scenario !== S) return;              // mission changed while in flight
+      spawnBurst(ix, Math.max(H(ix, iz), 0), iz);
+      if (dist2(ix, iz, fb.x, fb.z) < S.friendlies[0].r) {
+        S.btyCas++;
+        if (S.btyCas === 1)
+          log('', 'Rounds inside the friendly position. They are taking casualties down there — kill that gun.', 'sys');
+      }
+    });
   }
 }
 
@@ -668,6 +746,33 @@ function placeUnits() {
     m.rotation.set(0, rng() * Math.PI, 0.35);
     m.scale.set(2.2, 1.3, 1.6);
     visSetMat(m, units.vehMatDead);
+  } else if (S.type === 'battery') {
+    /* ENEMY1 — the gun position: bunker mesh as the emplacement, crew of
+       three, one truck standing off. The friendly position gets the huts and
+       the flag — a marked, map-plotted friendly location, same courtesy the
+       strongpoint compound gets. */
+    const e = S.enemy;
+    units.bunker.visible = true;
+    units.bunker.position.set(e.x, H(e.x, e.z) + 1.3, e.z);
+    troopCluster(e.x + 12, e.z + 8, 3, 8);
+    const vm = units.vehicles[0];
+    const va = rng() * Math.PI * 2;
+    const vx = e.x + Math.sin(va) * 26, vz = e.z + Math.cos(va) * 26;
+    vm.visible = true;
+    vm.position.set(vx, H(vx, vz) + 1.05, vz);
+    vm.rotation.set(0, rng() * Math.PI * 2, 0);
+    const c = S.fireBase;
+    const hutOff = [[0, 0], [10, 7], [-9, 8]];
+    units.huts.forEach((hm, i) => {
+      const x = c.x + hutOff[i][0], z = c.z + hutOff[i][1];
+      hm.visible = true;
+      hm.position.set(x, H(x, z) + 1.6, z);
+      hm.rotation.set(0, (i * 0.7) % Math.PI, 0);
+    });
+    units.flag.pole.visible = units.flag.banner.visible = true;
+    const fx = c.x + 4, fz = c.z - 5, fh = H(fx, fz);
+    units.flag.pole.position.set(fx, fh + 3.5, fz);
+    units.flag.banner.position.set(fx + 1.2, fh + 6.3, fz);
   } else if (S.type === 'kaiju') {
     // 11b — the crab is the bunker mesh, enormous and crimson; position is
     // driven per-frame by updateScenario as it wades

@@ -297,6 +297,7 @@ const SCN_META = {
   assault:     { name: 'COMBINED ARMS ASSAULT — DANGER CLOSE' },
   raid:        { name: 'VILLAGE RAID — NO-STRIKE ADJACENT' },
   wreck:       { name: 'DERELICT WRECK (TRAINING)' },
+  battery:     { name: 'COUNTERBATTERY — GUNS IN ACTION' },   // ENEMY1
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);
