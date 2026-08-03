@@ -922,13 +922,29 @@ function dispatchParsed(p) {
         mission.notes.push('Transmitted the OT factor. It is observer-side arithmetic; only OT DIRECTION goes to the FDC (grid missions).');
       break;
     case 'repeat':
+      /* NET6 — a shell word riding on REPEAT ("REPEAT ILLUM") switches the
+         nature BEFORE firing, the same switch handleShell makes, intent
+         following per TEMPO4. Before this it parsed as a bare repeat and
+         fired HE — the opposite of what a 2.5 player re-lighting the fight
+         asked for. */
+      if (p.shell && mission && !mission.done && p.shell !== mission.shell) {
+        mission.shell = p.shell;
+        mission.intent = p.shell === 'illum' ? 'illum'
+                       : p.shell === 'smoke' ? 'suppress'
+                       : (mission.imm ? 'suppress' : 'destroy');
+        FDC.say(`SHELL ${p.shell === 'illum' ? 'ILLUMINATION' : p.shell.toUpperCase()}, OUT.`, { delay: 0.8 });
+      }
       if (mission && !mission.done && state === 'ADJUSTING') {
         FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
       } else if (mission && !mission.done && state === 'EOM?') {
         /* G13 — REPEAT after ROUNDS COMPLETE fires the volley again at the same
            data. This is the continue-after-suppression path when the aim is
-           already good and the target just refuses to stay down. */
-        if (missionAccomplished()) {
+           already good and the target just refuses to stay down.
+           NET6 — an illumination repeat is exempt from the dead-position
+           refusal (light is never "done") and fires ONE flare, not a volley. */
+        if (mission.shell === 'illum') {
+          FDC.say('REPEAT, OUT.', { delay: 1 }); fireAdjustRound();
+        } else if (missionAccomplished()) {
           FDC.say('MUSTANG 12, the target is done — I am not re-attacking a dead position. Send end of mission, over.', { delay: 1 });
         } else {
           FDC.say('REPEAT, OUT.', { delay: 1 }); fireForEffect();

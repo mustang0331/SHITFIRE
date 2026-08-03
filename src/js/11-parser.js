@@ -385,7 +385,16 @@ function parseMessage(raw) {
   // re-fires the volley at the corrected aimpoint; flagged here, decided there.
   if (any || ffe) return { type: 'adjust', corr, any, ffe, stray,
                            rep: /\brepeat\b/.test(t), raw: t, toks };
-  if (/\brepeat\b/.test(t)) return { type: 'repeat' };
+  /* NET6 — "REPEAT ILLUM" (transcript 2026-08-03, 14:30, ch2.5): the natural
+     coordinated-illumination call for another flare parsed as a bare repeat
+     and fired HE — the opposite of its intent. A shell word riding on REPEAT
+     now travels with it, and the handler switches nature before firing. */
+  if (/\brepeat\b/.test(t)) {
+    const mRs = t.match(/\b(he|smoke|illum\w*|wp|white phosphorus)\b/);
+    return { type: 'repeat',
+             shell: mRs ? (mRs[1] === 'wp' || mRs[1] === 'white phosphorus' ? 'smoke'
+                         : mRs[1].startsWith('illum') ? 'illum' : mRs[1]) : null };
+  }
   /* G22 — a bare WARNING ORDER is doctrinal Transmission 1 ("HELLHOUND FIRES,
      this is MUSTANG 12, adjust fire, over"). It used to fall through to `unknown`
      and be answered with the reply reserved for gibberish, which meant an observer
