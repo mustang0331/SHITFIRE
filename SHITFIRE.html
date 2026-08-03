@@ -7756,7 +7756,16 @@ function cffqLocation(p, locEcho) {
 /* Transmission 3 completes it. Build the object handleCFF expects by merging the
    queued location with the accumulated text, then hand it over. */
 function cffqComplete(desc, p) {
-  const loc = CFFQ.loc;
+  /* NET5 — the "T2 and T3 in one" path (a location arriving WITH its
+     description while the queue waits at stage 1) reaches here before
+     cffqLocation ever ran, so CFFQ.loc is null and the merged call lost its
+     grid — handleCFF then threw on p.digits and the queue died SILENTLY,
+     already reset. The transcript's smoke word was a red herring: every
+     "GRID …, description" reply to SEND YOUR TARGET LOCATION crashed this
+     way, and retries only "worked" because the crash had killed the queue
+     and handed them the one-shot path. The location source is the queued
+     transmission when one exists, else the completing transmission itself. */
+  const loc = CFFQ.loc || p;
   cffqAdd(p);
   const merged = Object.assign({}, loc, {
     type: 'cff', warno: CFFQ.warno !== 'none' ? CFFQ.warno : loc.warno,
