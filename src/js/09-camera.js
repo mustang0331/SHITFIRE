@@ -200,3 +200,85 @@ function doLase() {
   });
 }
 
+
+/* ============================================================ NET2 — UAS FEED
+   The observer's own small drone (ATP 3-09.30 §7-12): an orbit camera over a
+   player-steered focus point, rendered picture-in-picture. TRACK-UP — screen-
+   up is the drone's course, and the course swings continuously around the
+   orbit, so "correct toward the top of the picture" is provably wrong within
+   half an orbit. The doctrinal habit survives contact with this feed; the lazy
+   one does not, which is the training point (user decision 2026-08-02:
+   track-up, player-steered). The feed changes NOTHING downstream: corrections
+   still resolve in the tower observer's OT frame, missions still need the
+   full call or a planned number — this is glass, not a fire-control system. */
+const UAS = { on: false, az: 0, focus: { x: 0, z: 0 }, cam: null,
+              keys: { up: false, down: false, left: false, right: false } };
+const uasEl = document.getElementById('uas');
+const uasGridEl = document.getElementById('uasgrid');
+const uasNorthEl = document.getElementById('uasnorth');
+function uasToggle() {
+  if (!UAS.on && activeChapter) {
+    log('', 'UAS: no feed on campaign chapters — they were authored for the tower. Skirmish flies the drone.', 'sys');
+    return;
+  }
+  UAS.on = !UAS.on;
+  if (UAS.on && !UAS.cam) UAS.cam = new THREE.PerspectiveCamera(CONFIG.UAS.fov, 1, 5, 22000);
+  if (UAS.on) { UAS.focus.x = OP.x; UAS.focus.z = OP.z; }
+  uasEl.style.display = UAS.on ? 'block' : 'none';
+  log('', UAS.on
+    ? 'UAS FEED UP — arrow keys slew the sensor point. TRACK-UP: the picture rotates with the drone; the N arrow is grid north. The readout is the SENSOR grid. Your corrections still run in YOUR OT frame from the tower — resolve direction on the ground, not off the screen.'
+    : 'UAS feed down.', 'sys');
+  TLOG.add('sys', '', UAS.on ? 'UAS feed up' : 'UAS feed down', {});
+}
+function uasCourse() {   // orbit tangent = the drone's course over the ground
+  return { x: Math.cos(UAS.az), z: Math.sin(UAS.az) };
+}
+function uasUpdate(dt) {
+  if (!UAS.on) return;
+  UAS.az += CONFIG.UAS.angSpeed * dt;
+  // steering is sensor-slewing in the TRACK frame — up-arrow pushes the point
+  // toward the top of the picture, exactly like slewing a real feed
+  const c = uasCourse();
+  const r = { x: -c.z, z: c.x };            // screen-right in world terms
+  const s = CONFIG.UAS.slew * dt;
+  const dy = (UAS.keys.up ? 1 : 0) - (UAS.keys.down ? 1 : 0);
+  const dx = (UAS.keys.right ? 1 : 0) - (UAS.keys.left ? 1 : 0);
+  UAS.focus.x += (c.x * dy + r.x * dx) * s;
+  UAS.focus.z += (c.z * dy + r.z * dx) * s;
+  const fy = Math.max(H(UAS.focus.x, UAS.focus.z), 0);
+  const px = UAS.focus.x + Math.sin(UAS.az) * CONFIG.UAS.radius;
+  const pz = UAS.focus.z - Math.cos(UAS.az) * CONFIG.UAS.radius;
+  UAS.cam.position.set(px, fy + CONFIG.UAS.alt, pz);
+  UAS.cam.up.set(c.x, 0, c.z);              // track-up: screen-up = course
+  UAS.cam.lookAt(UAS.focus.x, fy, UAS.focus.z);
+  // readout: 8-digit sensor grid + course, N arrow counter-rotated to truth
+  const en = worldToEN(UAS.focus.x, UAS.focus.z);
+  const gE = String(Math.floor(en.e / 10)).padStart(4, '0');
+  const gN = String(Math.floor(en.n / 10)).padStart(4, '0');
+  const crsMils = Math.round(radToMils(Math.atan2(c.x, -c.z)));
+  uasGridEl.textContent = `UAS SENSOR GRID ${gE} ${gN} · TRK ${fmtMils(crsMils)}`;
+  uasNorthEl.style.transform = `rotate(${-crsMils * 360 / 6400}deg)`;
+}
+function renderUAS() {
+  if (!UAS.on || !UAS.cam) return;
+  const W = innerWidth, Hh = innerHeight;
+  const w = Math.round(W * CONFIG.UAS.pipW), h = Math.round(Hh * CONFIG.UAS.pipH);
+  const x = W - w - 12, yTop = Math.round((Hh - h) * 0.42);
+  const yGL = Hh - yTop - h;                // GL viewport measures from the bottom
+  uasEl.style.right = '12px';
+  uasEl.style.top = yTop + 'px';
+  uasEl.style.width = w + 'px';
+  uasEl.style.height = h + 'px';
+  UAS.cam.aspect = w / h;
+  UAS.cam.updateProjectionMatrix();
+  // the drone is close to the ground: re-run figure legibility for ITS
+  // camera, render, then hand the pass back to the tower (AAR-plot precedent)
+  legibilityPass(UAS.cam.position.x, UAS.cam.position.y, UAS.cam.position.z);
+  renderer.setScissorTest(true);
+  renderer.setScissor(x, yGL, w, h);
+  renderer.setViewport(x, yGL, w, h);
+  renderer.render(scene, UAS.cam);
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, W, Hh);
+  legibilityPass(eye.x, eye.y, eye.z);
+}

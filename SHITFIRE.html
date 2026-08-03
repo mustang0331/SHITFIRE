@@ -78,6 +78,14 @@
   #ptt.on { display: block; }
   #ptt .live { color: #ffd98a; }
 
+  /* NET2 - UAS feed frame: border + readouts over the scissored render */
+  #uas { position: fixed; border: 1px solid #7fae6a; pointer-events: none;
+         box-shadow: 0 0 0 1px rgba(0,0,0,.55); z-index: 5; }
+  #uasgrid { position: absolute; left: 6px; top: 4px; font-size: 11px;
+             color: #cfe8b8; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+  #uasnorth { position: absolute; right: 8px; top: 4px; font-size: 13px;
+              color: #ffe9a8; text-shadow: 0 0 3px #000, 0 0 3px #000;
+              display: inline-block; }
   #hint { position: fixed; right: 12px; bottom: 12px; font-size: 11.5px;
     color: #9fb08c; text-align: right; pointer-events: none; line-height: 1.6;
     text-shadow: 0 1px 2px rgba(0,0,0,.8); }
@@ -343,6 +351,8 @@
   "<b>Plan target, grid 245 523</b>" files a numbered target, no rounds spent &middot; "<b>Fire target AB7101</b>" brings it down (planned = fast; unplanned = full CFF) &middot; <b>Priority target AB7101</b> keeps the guns laid on it &middot; Plan/fire <b>group</b> &amp; <b>series</b> by name &middot; <b>Plan FPF, grid&hellip;, direction&hellip;</b> then adjust by piece &middot; "<b>Fire the FPF</b>" when they cross.
   <h3>PARS (this sim)</h3>
   CFF within <b>2 min</b> of target ID &middot; initial location within <b>200 m</b> &middot; pass at <b>&le;4</b> adjusting rounds, bonus at &le;2 &middot; fratricide or civilian hit = <b>0&#9733; fail</b> (mission still must be finished).
+  <h3>UAS FEED (skirmish)</h3>
+  [U] toggles the drone; arrows slew the sensor. TRACK-UP: the picture rotates with the course — corrections stay in YOUR OT frame from the tower; use the N arrow and the sensor grid, never "screen left."
   <div class="dim" style="margin-top:8px">[H] or [ESC] closes. Full doctrine: DOCTRINE.md &middot; this card: CHEATSHEET.md.</div>
 </div>
 
@@ -356,6 +366,12 @@
   <button class="tbtn" data-act="new">NEW</button>
 </div>
 
+<!-- NET2 - the UAS feed frame: the picture renders INSIDE the main canvas
+     (scissored second pass); this element is the border and readout only -->
+<div id="uas" style="display:none">
+  <span id="uasgrid">UAS</span>
+  <span id="uasnorth">N&#8593;</span>
+</div>
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
   [B] BINOS &middot; [Z]/WHEEL ZOOM 4X&thinsp;/&thinsp;7X&thinsp;/&thinsp;14X &middot; [L] LASE &middot; [R] MIL CARD &middot; [O] OPTICS: DAY/NVG/THERMAL<br>
@@ -472,6 +488,16 @@ const CONFIG = {
                power magnifies it optically, as real glass does). 0 disables. */
             swayMil: 0.65,
             mouseSens: 0.0022, pitchClamp: 1.35 },
+  /* NET2 — the small-UAS feed (ATP 3-09.30 §7-12: a UAS-observed mission runs
+     the SAME observed-fires machinery; the observer establishes the OT line on
+     the ground, never off the camera). The feed is presentation only: a second
+     camera orbiting a player-steered focus point, rendered picture-in-picture.
+     TRACK-UP and PLAYER-STEERED by user decision 2026-08-02 — the picture
+     rotates with the drone's course, so a screen-frame correction is provably
+     wrong and the doctrinal habit (resolve direction on the ground) is the
+     only one that survives. Corrections/CFF machinery untouched. */
+  UAS: { alt: 520, radius: 420, angSpeed: 0.045, slew: 70, fov: 34,
+         pipW: 0.30, pipH: 0.34 },
   BALLISTICS: {
     tofDivisor: 300, tofBase: 8, tofMin: 15, tofMax: 40, splashLead: 5,
     firstRound: { easy: [40, 90], normal: [60, 150], hard: [90, 220] },   // m, uniform
@@ -5756,6 +5782,88 @@ function doLase() {
   });
 }
 
+
+/* ============================================================ NET2 — UAS FEED
+   The observer's own small drone (ATP 3-09.30 §7-12): an orbit camera over a
+   player-steered focus point, rendered picture-in-picture. TRACK-UP — screen-
+   up is the drone's course, and the course swings continuously around the
+   orbit, so "correct toward the top of the picture" is provably wrong within
+   half an orbit. The doctrinal habit survives contact with this feed; the lazy
+   one does not, which is the training point (user decision 2026-08-02:
+   track-up, player-steered). The feed changes NOTHING downstream: corrections
+   still resolve in the tower observer's OT frame, missions still need the
+   full call or a planned number — this is glass, not a fire-control system. */
+const UAS = { on: false, az: 0, focus: { x: 0, z: 0 }, cam: null,
+              keys: { up: false, down: false, left: false, right: false } };
+const uasEl = document.getElementById('uas');
+const uasGridEl = document.getElementById('uasgrid');
+const uasNorthEl = document.getElementById('uasnorth');
+function uasToggle() {
+  if (!UAS.on && activeChapter) {
+    log('', 'UAS: no feed on campaign chapters — they were authored for the tower. Skirmish flies the drone.', 'sys');
+    return;
+  }
+  UAS.on = !UAS.on;
+  if (UAS.on && !UAS.cam) UAS.cam = new THREE.PerspectiveCamera(CONFIG.UAS.fov, 1, 5, 22000);
+  if (UAS.on) { UAS.focus.x = OP.x; UAS.focus.z = OP.z; }
+  uasEl.style.display = UAS.on ? 'block' : 'none';
+  log('', UAS.on
+    ? 'UAS FEED UP — arrow keys slew the sensor point. TRACK-UP: the picture rotates with the drone; the N arrow is grid north. The readout is the SENSOR grid. Your corrections still run in YOUR OT frame from the tower — resolve direction on the ground, not off the screen.'
+    : 'UAS feed down.', 'sys');
+  TLOG.add('sys', '', UAS.on ? 'UAS feed up' : 'UAS feed down', {});
+}
+function uasCourse() {   // orbit tangent = the drone's course over the ground
+  return { x: Math.cos(UAS.az), z: Math.sin(UAS.az) };
+}
+function uasUpdate(dt) {
+  if (!UAS.on) return;
+  UAS.az += CONFIG.UAS.angSpeed * dt;
+  // steering is sensor-slewing in the TRACK frame — up-arrow pushes the point
+  // toward the top of the picture, exactly like slewing a real feed
+  const c = uasCourse();
+  const r = { x: -c.z, z: c.x };            // screen-right in world terms
+  const s = CONFIG.UAS.slew * dt;
+  const dy = (UAS.keys.up ? 1 : 0) - (UAS.keys.down ? 1 : 0);
+  const dx = (UAS.keys.right ? 1 : 0) - (UAS.keys.left ? 1 : 0);
+  UAS.focus.x += (c.x * dy + r.x * dx) * s;
+  UAS.focus.z += (c.z * dy + r.z * dx) * s;
+  const fy = Math.max(H(UAS.focus.x, UAS.focus.z), 0);
+  const px = UAS.focus.x + Math.sin(UAS.az) * CONFIG.UAS.radius;
+  const pz = UAS.focus.z - Math.cos(UAS.az) * CONFIG.UAS.radius;
+  UAS.cam.position.set(px, fy + CONFIG.UAS.alt, pz);
+  UAS.cam.up.set(c.x, 0, c.z);              // track-up: screen-up = course
+  UAS.cam.lookAt(UAS.focus.x, fy, UAS.focus.z);
+  // readout: 8-digit sensor grid + course, N arrow counter-rotated to truth
+  const en = worldToEN(UAS.focus.x, UAS.focus.z);
+  const gE = String(Math.floor(en.e / 10)).padStart(4, '0');
+  const gN = String(Math.floor(en.n / 10)).padStart(4, '0');
+  const crsMils = Math.round(radToMils(Math.atan2(c.x, -c.z)));
+  uasGridEl.textContent = `UAS SENSOR GRID ${gE} ${gN} · TRK ${fmtMils(crsMils)}`;
+  uasNorthEl.style.transform = `rotate(${-crsMils * 360 / 6400}deg)`;
+}
+function renderUAS() {
+  if (!UAS.on || !UAS.cam) return;
+  const W = innerWidth, Hh = innerHeight;
+  const w = Math.round(W * CONFIG.UAS.pipW), h = Math.round(Hh * CONFIG.UAS.pipH);
+  const x = W - w - 12, yTop = Math.round((Hh - h) * 0.42);
+  const yGL = Hh - yTop - h;                // GL viewport measures from the bottom
+  uasEl.style.right = '12px';
+  uasEl.style.top = yTop + 'px';
+  uasEl.style.width = w + 'px';
+  uasEl.style.height = h + 'px';
+  UAS.cam.aspect = w / h;
+  UAS.cam.updateProjectionMatrix();
+  // the drone is close to the ground: re-run figure legibility for ITS
+  // camera, render, then hand the pass back to the tower (AAR-plot precedent)
+  legibilityPass(UAS.cam.position.x, UAS.cam.position.y, UAS.cam.position.z);
+  renderer.setScissorTest(true);
+  renderer.setScissor(x, yGL, w, h);
+  renderer.setViewport(x, yGL, w, h);
+  renderer.render(scene, UAS.cam);
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, W, Hh);
+  legibilityPass(eye.x, eye.y, eye.z);
+}
 /* ============================================================ MISSION STATE MACHINE */
 let mission = null;
 let state = 'OBSERVING';
@@ -10448,6 +10556,11 @@ document.addEventListener('keydown', e => {
      be reachable by a stray keypress while flying a graded chapter. Also
      reachable as the IMPACT DISPERSION toggle in the mission menu [K]. */
   else if (k === 'd' && e.shiftKey) toggleDispersion();
+  else if (k === 'u') uasToggle();                          // NET2 - drone feed
+  else if (UAS.on && k.startsWith('arrow')) {               // NET2 - sensor slew
+    e.preventDefault();
+    UAS.keys[k.slice(5)] = true;
+  }
   else if (k === 'enter') { e.preventDefault(); txInput.focus(); }
 });
 document.addEventListener('keyup', e => {
@@ -10565,6 +10678,12 @@ canvas.addEventListener('touchmove', e => {
 }, { passive: false });
 canvas.addEventListener('touchend', () => { lastTouch = null; });
 
+
+/* NET2 - release the UAS slew keys (the handler above only sees keydown) */
+document.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k.startsWith('arrow')) UAS.keys[k.slice(5)] = false;
+});
 /* ============================================================ MAIN LOOP */
 const headingEl = document.getElementById('heading');
 const msnclockEl = document.getElementById('msnclock');   // TEMPO3
@@ -10736,7 +10855,9 @@ function animate(tMs) {
     p.m.material.opacity = 0.42 * (1 - ct);
   }
   updateBursts(dt);
+  uasUpdate(dt);   // NET2 — orbit + steering + readout
   renderFrame();   // 11d — direct render, or composer+bloom on the SUNLAMP net at tier 0
+  renderUAS();     // NET2 — scissored second pass; ~0.1 MPix, PERF1-cheap
   // observer optics overlay: 2D canvas only, throttled to CONFIG.OPTICS.hz and
   // drawn entirely from layers prebuilt at boot. No allocation, no composer.
   if (VISION.mode !== 'day' && t - VISION.last > 1 / CONFIG.OPTICS.hz) {
@@ -10763,6 +10884,14 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
      (it builds and returns an S, it does not install it). hasLOS rides along
      so a harness can check sight lines the way the scenario generator does. */
   genScenario, hasLOS,
+  /* NET2 — UAS QA: state readout + a setter so a harness can place the
+     sensor deterministically. */
+  uas: {
+    info: () => ({ on: UAS.on, az: +UAS.az.toFixed(4),
+                   fx: +UAS.focus.x.toFixed(1), fz: +UAS.focus.z.toFixed(1),
+                   crs: Math.round(radToMils(Math.atan2(Math.cos(UAS.az), -Math.sin(UAS.az)))) }),
+    set: (x, z, az) => { UAS.focus.x = x; UAS.focus.z = z; if (az !== undefined) UAS.az = az; },
+  },
   /* TEMPO1 — TOD legibility QA: point the view at a world point so a harness
      can screenshot the target area at any time of day. Sets the same yaw/pitch
      state the mouse input does; presentation (sway) rides on top as always. */

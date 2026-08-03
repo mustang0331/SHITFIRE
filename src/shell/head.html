@@ -78,6 +78,14 @@
   #ptt.on { display: block; }
   #ptt .live { color: #ffd98a; }
 
+  /* NET2 - UAS feed frame: border + readouts over the scissored render */
+  #uas { position: fixed; border: 1px solid #7fae6a; pointer-events: none;
+         box-shadow: 0 0 0 1px rgba(0,0,0,.55); z-index: 5; }
+  #uasgrid { position: absolute; left: 6px; top: 4px; font-size: 11px;
+             color: #cfe8b8; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+  #uasnorth { position: absolute; right: 8px; top: 4px; font-size: 13px;
+              color: #ffe9a8; text-shadow: 0 0 3px #000, 0 0 3px #000;
+              display: inline-block; }
   #hint { position: fixed; right: 12px; bottom: 12px; font-size: 11.5px;
     color: #9fb08c; text-align: right; pointer-events: none; line-height: 1.6;
     text-shadow: 0 1px 2px rgba(0,0,0,.8); }
@@ -343,6 +351,8 @@
   "<b>Plan target, grid 245 523</b>" files a numbered target, no rounds spent &middot; "<b>Fire target AB7101</b>" brings it down (planned = fast; unplanned = full CFF) &middot; <b>Priority target AB7101</b> keeps the guns laid on it &middot; Plan/fire <b>group</b> &amp; <b>series</b> by name &middot; <b>Plan FPF, grid&hellip;, direction&hellip;</b> then adjust by piece &middot; "<b>Fire the FPF</b>" when they cross.
   <h3>PARS (this sim)</h3>
   CFF within <b>2 min</b> of target ID &middot; initial location within <b>200 m</b> &middot; pass at <b>&le;4</b> adjusting rounds, bonus at &le;2 &middot; fratricide or civilian hit = <b>0&#9733; fail</b> (mission still must be finished).
+  <h3>UAS FEED (skirmish)</h3>
+  [U] toggles the drone; arrows slew the sensor. TRACK-UP: the picture rotates with the course — corrections stay in YOUR OT frame from the tower; use the N arrow and the sensor grid, never "screen left."
   <div class="dim" style="margin-top:8px">[H] or [ESC] closes. Full doctrine: DOCTRINE.md &middot; this card: CHEATSHEET.md.</div>
 </div>
 
@@ -356,6 +366,12 @@
   <button class="tbtn" data-act="new">NEW</button>
 </div>
 
+<!-- NET2 - the UAS feed frame: the picture renders INSIDE the main canvas
+     (scissored second pass); this element is the border and readout only -->
+<div id="uas" style="display:none">
+  <span id="uasgrid">UAS</span>
+  <span id="uasnorth">N&#8593;</span>
+</div>
 <div id="hint">
   CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
   [B] BINOS &middot; [Z]/WHEEL ZOOM 4X&thinsp;/&thinsp;7X&thinsp;/&thinsp;14X &middot; [L] LASE &middot; [R] MIL CARD &middot; [O] OPTICS: DAY/NVG/THERMAL<br>

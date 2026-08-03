@@ -169,7 +169,9 @@ function animate(tMs) {
     p.m.material.opacity = 0.42 * (1 - ct);
   }
   updateBursts(dt);
+  uasUpdate(dt);   // NET2 — orbit + steering + readout
   renderFrame();   // 11d — direct render, or composer+bloom on the SUNLAMP net at tier 0
+  renderUAS();     // NET2 — scissored second pass; ~0.1 MPix, PERF1-cheap
   // observer optics overlay: 2D canvas only, throttled to CONFIG.OPTICS.hz and
   // drawn entirely from layers prebuilt at boot. No allocation, no composer.
   if (VISION.mode !== 'day' && t - VISION.last > 1 / CONFIG.OPTICS.hz) {
@@ -196,6 +198,14 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
      (it builds and returns an S, it does not install it). hasLOS rides along
      so a harness can check sight lines the way the scenario generator does. */
   genScenario, hasLOS,
+  /* NET2 — UAS QA: state readout + a setter so a harness can place the
+     sensor deterministically. */
+  uas: {
+    info: () => ({ on: UAS.on, az: +UAS.az.toFixed(4),
+                   fx: +UAS.focus.x.toFixed(1), fz: +UAS.focus.z.toFixed(1),
+                   crs: Math.round(radToMils(Math.atan2(Math.cos(UAS.az), -Math.sin(UAS.az)))) }),
+    set: (x, z, az) => { UAS.focus.x = x; UAS.focus.z = z; if (az !== undefined) UAS.az = az; },
+  },
   /* TEMPO1 — TOD legibility QA: point the view at a world point so a harness
      can screenshot the target area at any time of day. Sets the same yaw/pitch
      state the mouse input does; presentation (sway) rides on top as always. */

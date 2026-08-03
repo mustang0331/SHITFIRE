@@ -38,6 +38,16 @@ const CONFIG = {
                power magnifies it optically, as real glass does). 0 disables. */
             swayMil: 0.65,
             mouseSens: 0.0022, pitchClamp: 1.35 },
+  /* NET2 — the small-UAS feed (ATP 3-09.30 §7-12: a UAS-observed mission runs
+     the SAME observed-fires machinery; the observer establishes the OT line on
+     the ground, never off the camera). The feed is presentation only: a second
+     camera orbiting a player-steered focus point, rendered picture-in-picture.
+     TRACK-UP and PLAYER-STEERED by user decision 2026-08-02 — the picture
+     rotates with the drone's course, so a screen-frame correction is provably
+     wrong and the doctrinal habit (resolve direction on the ground) is the
+     only one that survives. Corrections/CFF machinery untouched. */
+  UAS: { alt: 520, radius: 420, angSpeed: 0.045, slew: 70, fov: 34,
+         pipW: 0.30, pipH: 0.34 },
   BALLISTICS: {
     tofDivisor: 300, tofBase: 8, tofMin: 15, tofMax: 40, splashLead: 5,
     firstRound: { easy: [40, 90], normal: [60, 150], hard: [90, 220] },   // m, uniform

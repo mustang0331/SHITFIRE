@@ -130,6 +130,11 @@ document.addEventListener('keydown', e => {
      be reachable by a stray keypress while flying a graded chapter. Also
      reachable as the IMPACT DISPERSION toggle in the mission menu [K]. */
   else if (k === 'd' && e.shiftKey) toggleDispersion();
+  else if (k === 'u') uasToggle();                          // NET2 - drone feed
+  else if (UAS.on && k.startsWith('arrow')) {               // NET2 - sensor slew
+    e.preventDefault();
+    UAS.keys[k.slice(5)] = true;
+  }
   else if (k === 'enter') { e.preventDefault(); txInput.focus(); }
 });
 document.addEventListener('keyup', e => {
@@ -247,3 +252,9 @@ canvas.addEventListener('touchmove', e => {
 }, { passive: false });
 canvas.addEventListener('touchend', () => { lastTouch = null; });
 
+
+/* NET2 - release the UAS slew keys (the handler above only sees keydown) */
+document.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k.startsWith('arrow')) UAS.keys[k.slice(5)] = false;
+});
