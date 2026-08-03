@@ -186,6 +186,18 @@ function parseMessage(raw) {
   const mFire = t.match(/\bfire\s+target\s+([a-z]{2})\s*(\d{4})\b/);
   if (mFire && !imm)
     return { type: 'firetgt', tgtNum: (mFire[1] + mFire[2]).toUpperCase(), raw: t, toks };
+  /* SUGG8 — the quick fire plan's planning-phase entry (ATP 3-09.42 App. D /
+     DA Form 5368): "PLAN TARGET, GRID nnnnnn" files a numbered target with
+     data at the FDC WITHOUT firing — a form line in radio shape. Tested before
+     grid extraction (it carries a grid) and after the fire/priority/suppress
+     target-number branches (distinct keywords, but the order keeps it obvious). */
+  if (/\bplan\s+(?:a\s+)?target\b/.test(t)) {
+    const gi8 = toks.indexOf('grid');
+    let d8 = '';
+    if (gi8 >= 0)
+      for (let i = gi8 + 1; i < toks.length && /^\d+$/.test(toks[i]); i++) d8 += toks[i];
+    return { type: 'plantgt', digits: d8, raw: t, toks };
+  }
   /* SUGG1 — the final protective fire (ATP 3-09.30 §1-30–1-32, §7-16–7-23).
      Three shapes, all tested before location parsing:
        "FIRE THE FPF" / "REPEAT THE FPF"      — execute at max rate

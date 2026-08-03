@@ -316,6 +316,7 @@ const SCN_META = {
   defense:     { name: 'DEFEND THE OP — DANGER CLOSE' },      // ENEMY2
   callin:      { name: 'CALL FOR SUPPORT — ROCK EATERS' },    // NET1
   occupied:    { name: 'OCCUPIED SETTLEMENT — NO-STRIKE ADJACENT' },  // WORLD2
+  qfp:         { name: 'QUICK FIRE PLAN — H-HOUR' },                  // SUGG8
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);

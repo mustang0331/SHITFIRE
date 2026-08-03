@@ -277,6 +277,40 @@ function handlePriorityTarget(p) {
   log('', `Priority target set: ${p.tgtNum}. Re-engage it with "FIRE TARGET ${p.tgtNum}, OVER" ` +
     'and the rounds come fast — any other filed target waits for the re-lay.', 'sys');
 }
+/* SUGG8 — walk to the next free target number, seed-anchored the same way the
+   EOM record path does it (a number that stops meaning one fixed point is
+   worse than none — the SUGG2 finding, honored here too). */
+function nextFreeTgtNum() {
+  let tn = 'AB' + (7100 + (CONFIG.SEED.mission % 800));
+  while (RECTGT[tn]) tn = 'AB' + (7100 + ((parseInt(tn.slice(2), 10) - 7100 + 1) % 800));
+  return tn;
+}
+/* SUGG8 — the quick fire plan's line entry: file a target from a grid without
+   firing. The FDC holds the data; the payoff is the two-word initiation
+   (FIRE TARGET AB####) against the full CFF a cold target still costs. */
+function handlePlanTarget(p) {
+  if (mission && !mission.done) {
+    FDC.say('MUSTANG 12, we are mid-mission. Plan on your own time — finish this one, over.', { delay: 1 });
+    return;
+  }
+  const d = p.digits;
+  if (!d || (d.length !== 6 && d.length !== 8)) {
+    FDC.say('A plan entry needs a GRID — six or eight digits. "PLAN TARGET, GRID 245 523", over.', { delay: 1 });
+    return;
+  }
+  const e = d.length === 8 ? parseInt(d.slice(0, 4)) * 10 + 5 : parseInt(d.slice(0, 3)) * 100 + 50;
+  const n = d.length === 8 ? parseInt(d.slice(4)) * 10 + 5 : parseInt(d.slice(3)) * 100 + 50;
+  const w = enToWorld(e, n);
+  if (Math.abs(w.x) > 5000 || Math.abs(w.z) > 5000) {
+    FDC.say('That grid is off my map sheet, MUSTANG. Check your read and say again, over.', { delay: 1 });
+    return;
+  }
+  const tn = nextFreeTgtNum();
+  RECTGT[tn] = { x: w.x, z: w.z, t: sim.now };
+  FDC.say(`TARGET ${tn} PLANNED AT GRID ${d.length === 8 ? d.slice(0, 4) + ' ' + d.slice(4) : d.slice(0, 3) + ' ' + d.slice(3)}. DATA IS ON THE GUNS, OUT.`, { delay: 1 });
+  log('', `${tn} is on file — no rounds spent. Two words bring it down when they come: ` +
+    `"FIRE TARGET ${tn}, OVER". Make it the PRIORITY TARGET and the guns stay laid on it.`, 'sys');
+}
 function handleFireTarget(p) {
   if (mission && !mission.done) {
     FDC.say('MUSTANG 12, we are mid-mission. Finish this one, over.', { delay: 1 });

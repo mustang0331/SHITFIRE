@@ -657,8 +657,7 @@ function handleEOM(p) {
        target, so "FIRE TARGET AB7101" could hit a different grid than the one
        the observer recorded under that number. Walk to the next free number;
        a target number that stops meaning one fixed point is worse than none. */
-    let tn = 'AB' + (7100 + (CONFIG.SEED.mission % 800));
-    while (RECTGT[tn]) tn = 'AB' + (7100 + ((parseInt(tn.slice(2), 10) - 7100 + 1) % 800));
+    const tn = nextFreeTgtNum();   // SUGG8 — one allocator for record + plan
     /* G27 — the target number now means something. It used to be announced and
        thrown away, so "suppress target AB7101" had nothing to look up and the
        whole suppress-by-number mission type was unreachable. Stored with the
@@ -821,6 +820,7 @@ function onPlayerMessage(raw) {
     case 'suppresstgt': handleSuppressTarget(p); break;
     case 'prioritytgt': handlePriorityTarget(p); break;   // SUGG2
     case 'firetgt': handleFireTarget(p); break;           // SUGG2
+    case 'plantgt': handlePlanTarget(p); break;           // SUGG8
     case 'planfpf': handlePlanFPF(p); break;              // SUGG1
     case 'fpfadj': handleFPFAdjust(p); break;             // SUGG1
     case 'firefpf': handleFireFPF(p); break;              // SUGG1

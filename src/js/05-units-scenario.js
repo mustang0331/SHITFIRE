@@ -136,6 +136,19 @@ function scenarioDeadline() {
     if (dOP > 90 && pace > 0)
       return { t: (dOP - 90) / pace, label: 'WIRE' };
   }
+  if (S.type === 'qfp' && !S.overrun) {
+    /* SUGG8 — before H-hour the clock IS the planning window; after it, the
+       assault's own pace to the friendly wire, same shape as ENEMY2's. */
+    if (!S.hStarted)
+      return { t: Math.max(0, S.hHour - (sim.now - scenarioT0)), label: 'H-HOUR' };
+    if (enemyAlive && sim.now >= (S.suppressedUntil || 0)) {
+      const fb = S.fireBase;
+      const dFB = dist2(S.enemy.x, S.enemy.z, fb.x, fb.z);
+      const pace = S.aSpeed * Math.max(0.25, 1 - Math.min(S.eff, 1));
+      if (dFB > 90 && pace > 0) return { t: (dFB - 90) / pace, label: 'WIRE' };
+    }
+    return null;
+  }
   if (!S.path) return null;
   if (S.type === 'convoy' && S.veh && !S.escaped &&
       S.veh.filter(v => !v.dead).length > 1) {
@@ -460,6 +473,44 @@ function genScenario(type, seed) {
     S.lastT = null;            // incremental advance (speed varies with losses)
     S.overrun = false;
     S.brief = `You are the objective. Assault force forming up near grid ${gridOf(en.x, en.z)}, grid bearing ~${brgTo(en)} mils, advancing on YOUR TOWER. Your own position is the friendly element — expect DANGER CLOSE, expect creeping corrections, and do not drop one on yourself. Break the assault before it reaches the wire.`;
+  } else if (type === 'qfp') {
+    /* SUGG8 — the quick fire plan (ATP 3-09.42 ¶6-23–6-32, disseminated on DA
+       Form 5368): a warning order, a friendly position, named avenues of
+       approach, and a running clock to H-hour. The observer builds the plan
+       WHILE IT IS QUIET — "PLAN TARGET, GRID …" files a numbered target with
+       data at the FDC without firing a round — and at H-hour the assault
+       comes down one of the avenues. The payoff is the radio contrast doctrine
+       scripts (ATP 3-09.30 §4-14/4-15): a planned target initiates in two
+       words (FIRE TARGET AB####), a target of opportunity still costs the
+       full three-transmission call. Asset allocation is deferred by design —
+       this net has one firing asset (the sim's own simplification). */
+    let fb = null;
+    for (let tries = 0; tries < 400 && !fb; tries++)
+      fb = findSpot(1400, 2600, 3, 999, true);
+    fb = fb || { x: OP.x + 1600, z: OP.z };
+    S.fireBase = fb;
+    S.avenues = [];
+    for (let k = 0; k < 3; k++) {
+      let av = null;
+      for (let tries = 0; tries < 400 && !av; tries++) {
+        const az = rng() * Math.PI * 2, r = lerp(500, 800, rng());
+        const x = fb.x + Math.sin(az) * r, z = fb.z - Math.cos(az) * r;
+        if (H(x, z) < 2) continue;
+        if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+        if (S.avenues.some(a => dist2(a.x, a.z, x, z) < 300)) continue;
+        av = { x, z };
+      }
+      S.avenues.push(av || { x: fb.x + 550 + k * 90, z: fb.z + (k - 1) * 340 });
+    }
+    S.hHour = 240 + rng() * 120;                 // 4–6 minute planning window
+    S.assaultAv = Math.floor(rng() * S.avenues.length);
+    S.enemy = { x: S.avenues[S.assaultAv].x, z: S.avenues[S.assaultAv].z };
+    S.friendlies = [{ x: fb.x, z: fb.z, r: M.fratricideRadius }];
+    S.hStarted = false;
+    S.aSpeed = 0.7; S.lastT = null; S.overrun = false;
+    S.brief = `WARNING ORDER. An assault on the friendly position at grid ${gridOf(fb.x, fb.z)} (grid bearing ~${brgTo(fb)} mils) is expected at H-HOUR — the clock is running. Likely avenues of approach: ` +
+      S.avenues.map((a, i) => `${['ALPHA', 'BRAVO', 'CHARLIE'][i]} near grid ${gridOf(a.x, a.z)}`).join(', ') +
+      '. Build your QUICK FIRE PLAN while it is quiet: "PLAN TARGET, GRID …" files a numbered target the guns hold data for — a planned target fires off TWO WORDS when they come. A target of opportunity still costs the full call.';
   } else if (type === 'callin') {
     /* NET1 — a rock eater with a problem. A friendly team is pinned by an
        enemy element; the caller reports it in plain language, relative to the
@@ -769,6 +820,59 @@ function updateScenario() {
     // NET1 — the caller reacts to what the rounds actually do, once each
     if (!S.caller.saidDead && !enemyAlive) { S.caller.saidDead = true; callerSay('dead'); }
     else if (!S.caller.saidThanks && S.everSuppressed) { S.caller.saidThanks = true; callerSay('sup'); }
+  } else if (S.type === 'qfp' && !S.overrun) {
+    /* SUGG8 — quiet until H-hour, then the assault comes down its avenue and
+       closes on the friendly position; the advance mechanics are ENEMY2's
+       (suppression halts, casualties slow, a broken assault stops for good),
+       with the friendly COMPOUND as the objective instead of the tower. */
+    if (!S.hStarted) {
+      if (sim.now - scenarioT0 >= S.hHour) {
+        S.hStarted = true;
+        // install the assault (placeUnits' cluster helper is scoped to it;
+        // the per-frame line-abreast drive below owns positions from here on)
+        units.troops.forEach((m, i) => {
+          if (i >= 8) return;
+          const a = S.rng() * Math.PI * 2, r = 4 + S.rng() * 20;
+          const x = S.enemy.x + Math.sin(a) * r, z = S.enemy.z + Math.cos(a) * r;
+          m.visible = true;
+          m.position.set(x, H(x, z), z);
+          m.rotation.set(0, S.rng() * Math.PI * 2, 0);
+        });
+        log('', `H-HOUR. Assault force on avenue ${['ALPHA', 'BRAVO', 'CHARLIE'][S.assaultAv]} — grid ${gridOf(S.enemy.x, S.enemy.z)} — advancing on the position. If you planned it, two words bring it down.`, 'sys');
+      }
+    } else {
+      const dt2 = S.lastT === null ? 0 : sim.now - S.lastT;
+      S.lastT = sim.now;
+      const fb = S.fireBase;
+      const dFB = dist2(S.enemy.x, S.enemy.z, fb.x, fb.z);
+      if (enemyAlive && sim.now >= (S.suppressedUntil || 0) && dt2 > 0) {
+        const pace = S.aSpeed * Math.max(0.25, 1 - Math.min(S.eff, 1));
+        const step = Math.min(pace * dt2, Math.max(dFB - 60, 0));
+        if (dFB > 60) {
+          S.enemy.x += (fb.x - S.enemy.x) / dFB * step;
+          S.enemy.z += (fb.z - S.enemy.z) / dFB * step;
+        }
+      }
+      const aAz = Math.atan2(fb.x - S.enemy.x, -(fb.z - S.enemy.z));
+      const rx = Math.cos(aAz), rz = Math.sin(aAz);
+      for (let i = 0; i < 8; i++) {
+        const m = units.troops[i];
+        if (!m.visible) continue;
+        const l = (i - 3.5) * 9;
+        const x = S.enemy.x + rx * l, z = S.enemy.z + rz * l;
+        m.position.set(x, H(x, z), z);
+        if (i < units.flashes.length)
+          units.flashes[i].s.position.set(x, H(x, z) + 1.6, z);
+      }
+      if (dFB <= 90 && !S.overrun) {
+        S.overrun = true;
+        log('', 'They are inside the wire. The position is overrun — the plan came too late. Mission over.', 'sys');
+        if (mission && !mission.done) {
+          mission.done = true; mission.failReason = 'overrun'; mission.tEnd = sim.now;
+          schedule(sim.now + 2, showAAR);
+        }
+      }
+    }
   } else if (S.type === 'defense' && !S.overrun) {
     /* ENEMY2 — the assault closes on the tower. Advance is incremental so it
        honestly responds to what the observer does: suppression halts it (and
@@ -934,6 +1038,22 @@ function placeUnits() {
   } else if (S.type === 'defense') {
     // ENEMY2 — eight figures; positions are driven per-frame as they advance
     troopCluster(S.enemy.x, S.enemy.z, 8, 20);
+  } else if (S.type === 'qfp') {
+    /* SUGG8 — pre-H-hour the field is quiet: only the friendly position
+       renders (huts + flag, the battery type's courtesy); the assault
+       installs itself at H via updateScenario. */
+    const c = S.fireBase;
+    const hutOff = [[0, 0], [10, 7], [-9, 8]];
+    units.huts.forEach((hm, i) => {
+      const x = c.x + hutOff[i][0], z = c.z + hutOff[i][1];
+      hm.visible = true;
+      hm.position.set(x, H(x, z) + 1.6, z);
+      hm.rotation.set(0, (i * 0.7) % Math.PI, 0);
+    });
+    units.flag.pole.visible = units.flag.banner.visible = true;
+    const fx = c.x + 4, fz = c.z - 5, fh = H(fx, fz);
+    units.flag.pole.position.set(fx, fh + 3.5, fz);
+    units.flag.banner.position.set(fx + 1.2, fh + 6.3, fz);
   } else if (S.type === 'bunker') {
     const e = S.enemy;
     units.bunker.visible = true;
