@@ -213,6 +213,8 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
      per-flare draw without guessing from pixels. Read-only. */
   illumInfo: () => ({ T: ILLUM.T || null, age: +(sim.now - ILLUM.t0).toFixed(1),
                       lit: ILLUM.light ? ILLUM.light.intensity > 0 : false }),
+  // GFX2 - arm a one-shot presentation fault so the guard can be tested
+  qaBreakBurst: () => { QA_BREAK_BURST = true; },
   qaLookAt(x, z) {
     yaw = azTo(OP.x, OP.z, x, z);
     const d = dist2(OP.x, OP.z, x, z);

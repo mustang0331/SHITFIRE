@@ -1114,9 +1114,18 @@ function resolveImpact(impact, isFFE) {
     if (!isFFE) setState('ADJUSTING'); else setState('FIRE FOR EFFECT');
     return;
   }
-  if (sunNet()) fireBeam(impact.x, impact.z);   // 11c — a column of noon; the burst below is real
-  spawnBurst(impact.x, y, impact.z);
-  if (shell === 'smoke') deployScreen(impact.x, y, impact.z);   // 12h
+  /* GFX2 — THE MODEL FIRST, THE SHOW SECOND. A real player lost 4 of 6 FFE
+     rounds (transcript 2026-08-03, ch4.1: bursts seen, nothing logged, mission
+     graded a false 0★ FAIL) to something that killed the impact callback after
+     the visuals and before the bookkeeping — the old order ran spawnBurst
+     BEFORE rounds/ammo/effect/TLOG, so any exception in the presentation path
+     ate the round from the record while leaving it on the screen. The trigger
+     never reproduced headless (four attempts: as-played build, chapter 4.1,
+     overcast, binos+NVG/thermal over the impact window — 6/6 every time), so
+     the failure CLASS is removed instead: every consequence of the round is
+     booked first, and the presentation runs last inside a guard that logs the
+     error loudly instead of dying silently. If the user's machine ever throws
+     it again, the round survives and the log names the culprit. */
   mission.rounds.push(impact);
   if (isFFE) mission.ffeRounds.push(impact);
   const S = Scenario;
@@ -1126,6 +1135,16 @@ function resolveImpact(impact, isFFE) {
   TLOG.add('impact', '', isFFE ? 'FFE round' : `adjust round ${mission.adjustRounds}`,
     { dTgt: Math.round(dist2(impact.x, impact.z, S.enemy.x, S.enemy.z)),
       ...(shell !== 'he' ? { shell } : {}) });
+  try {
+    // the screen first: it carries the smoke round's obscuration-suppression
+    // effect, so it must not sit downstream of a purely visual throw
+    if (shell === 'smoke') deployScreen(impact.x, y, impact.z);   // 12h
+    if (sunNet()) fireBeam(impact.x, impact.z);   // 11c — a column of noon; the burst below is real
+    spawnBurst(impact.x, y, impact.z);
+  } catch (err) {
+    log('', `BURST VISUAL FAILED (${err && err.message ? err.message : err}) — the round itself resolved and is on the books. Report this line.`, 'sys');
+    TLOG.add('syserr', '', 'burst visual failed', { err: String(err && err.message || err) });
+  }
   // convoy attrition — any HE round can kill vehicles (smoke cannot; 12h)
   if (S.type === 'convoy' && shell === 'he') {
     /* SUGG6 — the intercept verdict, measured at the moment it can be: the

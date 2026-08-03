@@ -608,7 +608,11 @@ function visSetColor(obj, hex) {
       visDegrade(TOD_LIGHT(), CONFIG.OPTICS.nvgBloomAt),
       visDegrade(TOD_LIGHT(), CONFIG.OPTICS.thermalWashAt));
 }
+/* GFX2 - fault injection for the guard test ONLY: arms one throw so the
+   harness can prove a presentation exception cannot eat a round's books. */
+let QA_BREAK_BURST = false;
 function spawnBurst(x, y, z, sig) {
+  if (QA_BREAK_BURST) { QA_BREAK_BURST = false; throw new Error('qa burst fault'); }
   /* ENEMY1 — sig mode: a MUZZLE SIGNATURE, not an impact. No crater (nothing
      exploded on the ground), no debris, no shock ring; a pale smoke column
      borrowing the 13h water-column shape, tall enough to show over a crest —
