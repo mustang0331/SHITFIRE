@@ -61,6 +61,13 @@
   #txinput { flex: 1; background: transparent; border: 0; color: #ffd98a;
     font: inherit; padding: 9px 10px; outline: none; }
   #txinput::placeholder { color: #7d7455; }
+  /* NET7 - the NOTE channel */
+  #notebtn { display: none; flex: 0 0 auto; margin: 4px 0 4px 8px; padding: 3px 8px;
+    background: rgba(57,68,46,.5); border: 1px solid #39442e; color: #9fb08c;
+    font: inherit; font-size: 10.5px; letter-spacing: .09em; cursor: pointer; }
+  #notebtn.dev { display: inline-block; }
+  #notebtn.on { background: #4a3c1e; color: #ffd98a; border-color: #6b5a2e; }
+  .note { color: #c9b877; font-style: italic; }
 
   /* Touch controls */
   #touchbar { position: fixed; right: 10px; top: 50%; transform: translateY(-50%);
@@ -287,6 +294,9 @@
   <div id="commshead">RADIO NET &mdash; MUSTANG 12<span class="gr">DRAG TO MOVE &middot; CORNER TO RESIZE &middot; DBL-CLICK TO RESET</span></div>
   <div id="log"></div>
   <form id="txform">
+    <!-- NET7 - the NOTE channel: dev-mode button; notes go to the TLOG
+         verbatim, never to the parser or the FDC -->
+    <button id="notebtn" type="button" title="Log a tester note to the TLOG (never parsed, never answered)">NOTE</button>
     <span id="txprompt">MUSTANG 12 &gt;</span>
     <input id="txinput" autocomplete="off" spellcheck="false"
       placeholder='adjust fire, grid 245 523, infantry in the open, over'>
@@ -8423,7 +8433,24 @@ function noMissionReply() {
     FDC.say(pick(QUIPS.noMission), { delay: 1 });
   }
 }
+/* NET7 - the NOTE channel (user-requested from real play: tester annotations
+   were being parsed as radio traffic and mocked as gibberish). A note goes to
+   the TLOG verbatim as kind `note` - no parse, no FDC reply, no streak strike,
+   no squelch (it is not radio traffic). Entry points: the dev-mode NOTE
+   button, or a typed/spoken transmission starting with "note". */
+function addNote(text) {
+  TLOG.add('note', '', text);
+  /* rendered directly rather than via log() - log() writes its own TLOG entry
+     per line, and a note must appear in the transcript exactly once, verbatim */
+  const d = document.createElement('div');
+  d.className = 'note';
+  d.textContent = 'NOTE LOGGED: ' + text;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
 function onPlayerMessage(raw) {
+  const noteM = raw.match(/^\s*note[:,\s]+(.+)$/i);
+  if (noteM) { addNote(noteM[1].trim()); return; }
   squelch();
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
   const p = parseMessage(raw);
@@ -10314,6 +10341,7 @@ document.getElementById('mdevunlock').addEventListener('click', () => {
   CAMP.data._devUnlock = DEV_UNLOCK;
   CAMP.save();
   log('', `Developer unlock ${DEV_UNLOCK ? 'ON — all chapters open (progress untouched)' : 'OFF — normal star-gated progression'}.`, 'sys');
+  refreshNoteBtn();   // NET7 — the NOTE button rides the dev switch
   renderMenu();
 });
 // G3 — same toggle as SHIFT+D; toggleDispersion owns the flag, the HUD marker,
@@ -10530,15 +10558,35 @@ function endPTT() {
 /* ============================================================ INPUT WIRING */
 const txForm = document.getElementById('txform');
 const txInput = document.getElementById('txinput');
+/* NET7 - note mode: the button arms the input as a notebook line; the next
+   submit is logged, never transmitted. Escape or a second click disarms. */
+const noteBtn = document.getElementById('notebtn');
+const txPrompt = document.getElementById('txprompt');
+let noteMode = false;
+function setNoteMode(on) {
+  noteMode = on;
+  noteBtn.classList.toggle('on', on);
+  txPrompt.textContent = on ? 'NOTE >' : 'MUSTANG 12 >';
+  txInput.placeholder = on
+    ? 'logged to the transcript - never parsed, never answered'
+    : 'adjust fire, grid 245 523, infantry in the open, over';
+}
+noteBtn.addEventListener('click', () => { setNoteMode(!noteMode); txInput.focus(); });
+function refreshNoteBtn() {
+  noteBtn.classList.toggle('dev', !!DEV_UNLOCK);
+  if (!DEV_UNLOCK && noteMode) setNoteMode(false);
+}
 txForm.addEventListener('submit', e => {
   e.preventDefault();
   const v = txInput.value.trim();
   txInput.value = '';
-  if (v) onPlayerMessage(v);
+  if (!v) return;
+  if (noteMode) { addNote(v); setNoteMode(false); return; }   // NET7
+  onPlayerMessage(v);
 });
 document.addEventListener('keydown', e => {
   if (e.target === txInput) {
-    if (e.key === 'Escape') txInput.blur();
+    if (e.key === 'Escape') { if (noteMode) setNoteMode(false); txInput.blur(); }   // NET7
     return;
   }
   const k = e.key.toLowerCase();
@@ -10890,6 +10938,7 @@ function animate(tMs) {
 }
 
 /* ============================================================ BOOT */
+refreshNoteBtn();   // NET7 — show the NOTE button if dev mode persisted
 newMission(true);
 requestAnimationFrame(animate);
 

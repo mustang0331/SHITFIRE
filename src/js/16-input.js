@@ -81,15 +81,35 @@ function endPTT() {
 /* ============================================================ INPUT WIRING */
 const txForm = document.getElementById('txform');
 const txInput = document.getElementById('txinput');
+/* NET7 - note mode: the button arms the input as a notebook line; the next
+   submit is logged, never transmitted. Escape or a second click disarms. */
+const noteBtn = document.getElementById('notebtn');
+const txPrompt = document.getElementById('txprompt');
+let noteMode = false;
+function setNoteMode(on) {
+  noteMode = on;
+  noteBtn.classList.toggle('on', on);
+  txPrompt.textContent = on ? 'NOTE >' : 'MUSTANG 12 >';
+  txInput.placeholder = on
+    ? 'logged to the transcript - never parsed, never answered'
+    : 'adjust fire, grid 245 523, infantry in the open, over';
+}
+noteBtn.addEventListener('click', () => { setNoteMode(!noteMode); txInput.focus(); });
+function refreshNoteBtn() {
+  noteBtn.classList.toggle('dev', !!DEV_UNLOCK);
+  if (!DEV_UNLOCK && noteMode) setNoteMode(false);
+}
 txForm.addEventListener('submit', e => {
   e.preventDefault();
   const v = txInput.value.trim();
   txInput.value = '';
-  if (v) onPlayerMessage(v);
+  if (!v) return;
+  if (noteMode) { addNote(v); setNoteMode(false); return; }   // NET7
+  onPlayerMessage(v);
 });
 document.addEventListener('keydown', e => {
   if (e.target === txInput) {
-    if (e.key === 'Escape') txInput.blur();
+    if (e.key === 'Escape') { if (noteMode) setNoteMode(false); txInput.blur(); }   // NET7
     return;
   }
   const k = e.key.toLowerCase();

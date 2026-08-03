@@ -181,6 +181,7 @@ function animate(tMs) {
 }
 
 /* ============================================================ BOOT */
+refreshNoteBtn();   // NET7 — show the NOTE button if dev mode persisted
 newMission(true);
 requestAnimationFrame(animate);
 

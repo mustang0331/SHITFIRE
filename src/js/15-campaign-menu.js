@@ -485,6 +485,7 @@ document.getElementById('mdevunlock').addEventListener('click', () => {
   CAMP.data._devUnlock = DEV_UNLOCK;
   CAMP.save();
   log('', `Developer unlock ${DEV_UNLOCK ? 'ON — all chapters open (progress untouched)' : 'OFF — normal star-gated progression'}.`, 'sys');
+  refreshNoteBtn();   // NET7 — the NOTE button rides the dev switch
   renderMenu();
 });
 // G3 — same toggle as SHIFT+D; toggleDispersion owns the flag, the HUD marker,

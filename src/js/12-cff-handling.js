@@ -742,7 +742,24 @@ function noMissionReply() {
     FDC.say(pick(QUIPS.noMission), { delay: 1 });
   }
 }
+/* NET7 - the NOTE channel (user-requested from real play: tester annotations
+   were being parsed as radio traffic and mocked as gibberish). A note goes to
+   the TLOG verbatim as kind `note` - no parse, no FDC reply, no streak strike,
+   no squelch (it is not radio traffic). Entry points: the dev-mode NOTE
+   button, or a typed/spoken transmission starting with "note". */
+function addNote(text) {
+  TLOG.add('note', '', text);
+  /* rendered directly rather than via log() - log() writes its own TLOG entry
+     per line, and a note must appear in the transcript exactly once, verbatim */
+  const d = document.createElement('div');
+  d.className = 'note';
+  d.textContent = 'NOTE LOGGED: ' + text;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
 function onPlayerMessage(raw) {
+  const noteM = raw.match(/^\s*note[:,\s]+(.+)$/i);
+  if (noteM) { addNote(noteM[1].trim()); return; }
   squelch();
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
   const p = parseMessage(raw);

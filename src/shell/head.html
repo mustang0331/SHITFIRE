@@ -61,6 +61,13 @@
   #txinput { flex: 1; background: transparent; border: 0; color: #ffd98a;
     font: inherit; padding: 9px 10px; outline: none; }
   #txinput::placeholder { color: #7d7455; }
+  /* NET7 - the NOTE channel */
+  #notebtn { display: none; flex: 0 0 auto; margin: 4px 0 4px 8px; padding: 3px 8px;
+    background: rgba(57,68,46,.5); border: 1px solid #39442e; color: #9fb08c;
+    font: inherit; font-size: 10.5px; letter-spacing: .09em; cursor: pointer; }
+  #notebtn.dev { display: inline-block; }
+  #notebtn.on { background: #4a3c1e; color: #ffd98a; border-color: #6b5a2e; }
+  .note { color: #c9b877; font-style: italic; }
 
   /* Touch controls */
   #touchbar { position: fixed; right: 10px; top: 50%; transform: translateY(-50%);
@@ -287,6 +294,9 @@
   <div id="commshead">RADIO NET &mdash; MUSTANG 12<span class="gr">DRAG TO MOVE &middot; CORNER TO RESIZE &middot; DBL-CLICK TO RESET</span></div>
   <div id="log"></div>
   <form id="txform">
+    <!-- NET7 - the NOTE channel: dev-mode button; notes go to the TLOG
+         verbatim, never to the parser or the FDC -->
+    <button id="notebtn" type="button" title="Log a tester note to the TLOG (never parsed, never answered)">NOTE</button>
     <span id="txprompt">MUSTANG 12 &gt;</span>
     <input id="txinput" autocomplete="off" spellcheck="false"
       placeholder='adjust fire, grid 245 523, infantry in the open, over'>
