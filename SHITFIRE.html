@@ -3235,27 +3235,50 @@ function genScenario(type, seed) {
     fb = fb || { x: OP.x + 1600, z: OP.z };
     S.fireBase = fb;
     S.avenues = [];
-    for (let k = 0; k < 3; k++) {
-      let av = null;
-      for (let tries = 0; tries < 400 && !av; tries++) {
-        const az = rng() * Math.PI * 2, r = lerp(500, 800, rng());
-        const x = fb.x + Math.sin(az) * r, z = fb.z - Math.cos(az) * r;
-        if (H(x, z) < 2) continue;
-        if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
-        if (S.avenues.some(a => dist2(a.x, a.z, x, z) < 300)) continue;
-        av = { x, z };
+    if (OPT.lanes) {
+      /* SUGG4b — the defense-in-depth variant: one KNOWN, canalized approach
+         axis, with three PHASE LINES stacked along it (~850/550/250 m out).
+         The observer plans targets in DEPTH on the axis while it is quiet;
+         the assault walks the whole line through them. */
+      let aAz = null;
+      for (let tries = 0; tries < 400 && aAz === null; tries++) {
+        const az = rng() * Math.PI * 2;
+        const ox = fb.x + Math.sin(az) * 1100, oz = fb.z - Math.cos(az) * 1100;
+        if (H(ox, oz) < 2) continue;
+        if (WORLD.villages.some(v => dist2(ox, oz, v.x, v.z) < v.r + 120)) continue;
+        aAz = az;
       }
-      S.avenues.push(av || { x: fb.x + 550 + k * 90, z: fb.z + (k - 1) * 340 });
+      if (aAz === null) aAz = azTo(fb.x, fb.z, OP.x, OP.z) + Math.PI;   // away from the OP
+      S.axisAz = aAz;
+      for (const r of [850, 550, 250])
+        S.avenues.push({ x: fb.x + Math.sin(aAz) * r, z: fb.z - Math.cos(aAz) * r });
+      S.assaultAv = 0;   // the assault starts beyond the outermost line
+      S.enemy = { x: fb.x + Math.sin(aAz) * 1100, z: fb.z - Math.cos(aAz) * 1100 };
+    } else {
+      for (let k = 0; k < 3; k++) {
+        let av = null;
+        for (let tries = 0; tries < 400 && !av; tries++) {
+          const az = rng() * Math.PI * 2, r = lerp(500, 800, rng());
+          const x = fb.x + Math.sin(az) * r, z = fb.z - Math.cos(az) * r;
+          if (H(x, z) < 2) continue;
+          if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+          if (S.avenues.some(a => dist2(a.x, a.z, x, z) < 300)) continue;
+          av = { x, z };
+        }
+        S.avenues.push(av || { x: fb.x + 550 + k * 90, z: fb.z + (k - 1) * 340 });
+      }
+      S.assaultAv = Math.floor(rng() * S.avenues.length);
+      S.enemy = { x: S.avenues[S.assaultAv].x, z: S.avenues[S.assaultAv].z };
     }
     S.hHour = 240 + rng() * 120;                 // 4–6 minute planning window
-    S.assaultAv = Math.floor(rng() * S.avenues.length);
-    S.enemy = { x: S.avenues[S.assaultAv].x, z: S.avenues[S.assaultAv].z };
     S.friendlies = [{ x: fb.x, z: fb.z, r: M.fratricideRadius }];
     S.hStarted = false;
     S.aSpeed = 0.7; S.lastT = null; S.overrun = false;
-    S.brief = `WARNING ORDER. An assault on the friendly position at grid ${gridOf(fb.x, fb.z)} (grid bearing ~${brgTo(fb)} mils) is expected at H-HOUR — the clock is running. Likely avenues of approach: ` +
-      S.avenues.map((a, i) => `${['ALPHA', 'BRAVO', 'CHARLIE'][i]} near grid ${gridOf(a.x, a.z)}`).join(', ') +
-      '. Build your QUICK FIRE PLAN while it is quiet: "PLAN TARGET, GRID …" files a numbered target the guns hold data for — a planned target fires off TWO WORDS when they come. A target of opportunity still costs the full call.';
+    S.brief = OPT.lanes
+      ? `WARNING ORDER. A counterattack on the position at grid ${gridOf(fb.x, fb.z)} (grid bearing ~${brgTo(fb)} mils) steps off at H-HOUR, canalized down the draw from the ${['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'][Math.round(radToMils(S.axisAz) / 800) % 8]}. PHASE LINES on the axis — RED near grid ${gridOf(S.avenues[0].x, S.avenues[0].z)}, WHITE near ${gridOf(S.avenues[1].x, S.avenues[1].z)}, BLUE near ${gridOf(S.avenues[2].x, S.avenues[2].z)}. Plan targets in DEPTH while it is quiet; when they cross RED, two words open the fight.`
+      : `WARNING ORDER. An assault on the friendly position at grid ${gridOf(fb.x, fb.z)} (grid bearing ~${brgTo(fb)} mils) is expected at H-HOUR — the clock is running. Likely avenues of approach: ` +
+        S.avenues.map((a, i) => `${['ALPHA', 'BRAVO', 'CHARLIE'][i]} near grid ${gridOf(a.x, a.z)}`).join(', ') +
+        '. Build your QUICK FIRE PLAN while it is quiet: "PLAN TARGET, GRID …" files a numbered target the guns hold data for — a planned target fires off TWO WORDS when they come. A target of opportunity still costs the full call.';
   } else if (type === 'callin') {
     /* NET1 — a rock eater with a problem. A friendly team is pinned by an
        enemy element; the caller reports it in plain language, relative to the
@@ -3583,7 +3606,9 @@ function updateScenario() {
           m.position.set(x, H(x, z), z);
           m.rotation.set(0, S.rng() * Math.PI * 2, 0);
         });
-        log('', `H-HOUR. Assault force on avenue ${['ALPHA', 'BRAVO', 'CHARLIE'][S.assaultAv]} — grid ${gridOf(S.enemy.x, S.enemy.z)} — advancing on the position. If you planned it, two words bring it down.`, 'sys');
+        log('', S.axisAz !== undefined
+          ? `H-HOUR. The counterattack is in the draw — grid ${gridOf(S.enemy.x, S.enemy.z)}, walking your phase lines toward the position. Fire the plan.`
+          : `H-HOUR. Assault force on avenue ${['ALPHA', 'BRAVO', 'CHARLIE'][S.assaultAv]} — grid ${gridOf(S.enemy.x, S.enemy.z)} — advancing on the position. If you planned it, two words bring it down.`, 'sys');
       }
     } else {
       const dt2 = S.lastT === null ? 0 : sim.now - S.lastT;
@@ -5832,6 +5857,7 @@ function fireMission(targetLocation, warno, meta) {
     intent: (meta && meta.intent) || 'destroy',
     imm: (meta && meta.imm) || null,   // TEMPO2 — 'suppress'/'smoke' when the call was an immediate
     usedIllum: false,   // TEMPO4 — set when an illumination round deploys
+    planned: !!(meta && meta.planned),   // SUGG4b — born from a planned-fires call
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
@@ -6025,7 +6051,8 @@ function handleFireTarget(p) {
   setState('MISSION SENT');
   fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
     { desc: 'RECORDED TARGET', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
-      intent: 'destroy', sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw),
+      intent: 'destroy', planned: true,   // SUGG4b — a planned-fires initiation
+      sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw),
       /* the felt difference: laid guns shoot now; anyone else re-lays first */
       shotExtra: pri ? 0 : 22 });
 }
@@ -6134,7 +6161,7 @@ function handleFireFPF(p) {
   setState('MISSION SENT');
   fireMission({ x: (FPF.pts[1].x + FPF.pts[2].x) / 2, z: (FPF.pts[1].z + FPF.pts[2].z) / 2 },
     'ffe', { desc: 'FINAL PROTECTIVE FIRE', gridStr: 'THE FPF', method: 'grid',
-             intent: 'suppress', fpf: true });
+             intent: 'suppress', planned: true, fpf: true });
 }
 /* SUGG4 — series of targets (ATP 3-09.30 §1-42): a named, ordered sequence
    of RECORDED targets, fired one after another — pre-mission target planning
@@ -6174,7 +6201,7 @@ function handleFireSeries(p) {
   const first = RECTGT[s[0]];
   fireMission({ x: first.x, z: first.z }, 'ffe',
     { desc: `SERIES ${p.name}`, gridStr: `SERIES ${p.name}`, method: 'grid',
-      intent: 'destroy', series: s.slice() });
+      intent: 'destroy', planned: true, series: s.slice() });
 }
 /* SUGG3 — group of targets (ATP 3-09.30 §1-41): recorded targets fired
    TOGETHER under one designator. Shares the series' plumbing; the volley
@@ -6212,7 +6239,7 @@ function handleFireGroup(p) {
   const first = RECTGT[g[0]];
   fireMission({ x: first.x, z: first.z }, 'ffe',
     { desc: `GROUP ${p.name}`, gridStr: `GROUP ${p.name}`, method: 'grid',
-      intent: 'destroy', group: g.slice() });
+      intent: 'destroy', planned: true, group: g.slice() });
 }
 function handleSuppressTarget(p) {
   if (mission && !mission.done) {
@@ -6240,7 +6267,8 @@ function handleSuppressTarget(p) {
   fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
     { notes: mins ? [] : ['Suppress mission sent without a duration.'],
       desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
-      intent: 'suppress', sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw) });
+      intent: 'suppress', planned: true,
+      sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw) });
 }
 
 /* ---- G10: FIRE UNIT STATUS (FM 6-30 §8-12) ----------------------------------
@@ -8519,6 +8547,12 @@ function showAAR() {
     m.reqIllumNoted = true;
     m.notes.push('This chapter demanded COORDINATED ILLUMINATION — you fought it dark. Effective, maybe, but the skill under test was the light (chapter capped at 2★).');
   }
+  /* SUGG4b — same shape for the planned-fires requirement: only knowable at
+     the end, noted once, before grading reads m.notes. */
+  if (activeChapter && activeChapter.reqPlanned && !m.planned && !m.reqPlannedNoted) {
+    m.reqPlannedNoted = true;
+    m.notes.push('This chapter demanded PLANNED FIRES — plan targets while it is quiet, open in two words when they come. You fought it cold with a full call (chapter capped at 2★).');
+  }
   /* ENEMY1 — same shape as the reqIllum note: casualties are only countable at
      the end, land once, before grading reads them. Cost, never a fail. */
   if (S.btyCas && !m.btyCasNoted) {
@@ -9639,6 +9673,16 @@ const CAMPAIGN = [
     { id: '4.4', title: 'THE MEAT GRINDER', blurb: 'the final exam — strict, hard, everything at once', impl: true, type: 'assault', seed: 404, par: 330, strict: true, diffs: ['hard'],
       story: 'The last hill on the last island. Strict net, danger close, friendlies advancing, hard difficulty — the whole trade in one mission. Pass this and even HELLHOUND will say something almost kind. Almost.',
       outro: 'HELLHOUND, after a long pause: "…acceptable, MUSTANG." Frame it.' },
+    /* SUGG4b — the defense-in-depth chapter: the exam is over, the enemy did
+       not read the syllabus. Built on SUGG8's qfp type in its lanes variant
+       (phase lines in depth on one canalized axis) with reqPlanned grading —
+       a cold full CFF completes at 2★ most; the chapter's skill is the plan. */
+    { id: '4.5', title: 'DIG IN', blurb: 'defense in depth — plan the lines, fire in two words', impl: true, type: 'qfp', seed: 405, par: 600, reqPlanned: true, scn: { lanes: true },
+      story: 'You took the hill yesterday. Tonight the paperwork says HOLD, and the enemy never reads the paperwork — a counterattack steps off at H-hour, canalized down the one draw that leads up here. This is the fight you get to PLAN. While it is quiet: "PLAN TARGET, GRID …" on each phase line — RED, WHITE, BLUE, stacked in depth down the draw. When they cross RED, you do not build a call for fire. You say two words and the guns already know the rest.',
+      outro: 'The draw is a graveyard of a counterattack, one phase line at a time. HELLHOUND: "A plan. An actual plan. I am framing the log, MUSTANG."',
+      coach: [
+        'Plan while it is QUIET, killer. A target on each phase line — "PLAN TARGET, GRID …" costs nothing and files the data. PRIORITY TARGET the line you expect to fight on.',
+        'When they cross a line: "FIRE TARGET AB####" — two words, rounds now. Walk fire down YOUR OWN planned axis as they come. A series or a group of the lines works too. The full call is for people who did not plan.' ] },
   ]},
   { id: 'EP', tab: 'EPI', name: 'EPILOGUE — SUNBURN', need: 32, tseed: 1337, chapters: [
     /* 11a — the Epilogue opens. Humor dial at 11, readback sacred: the FDC
@@ -9772,6 +9816,11 @@ function gradeMission(m) {
   // real tool — but the chapter's skill is coordinated illumination, so no
   // illum means 2★ at most.
   if (activeChapter && activeChapter.reqIllum && !m.usedIllum) stars = Math.min(stars, 2);
+  // SUGG4b — a reqPlanned chapter grades the planned-fires initiation: the
+  // graded mission must be born from FIRE/SUPPRESS TARGET, a series, a group,
+  // or the FPF. A cold full CFF still completes — at 2★ most, because the
+  // chapter's skill is the plan you built while it was quiet.
+  if (activeChapter && activeChapter.reqPlanned && !m.planned) stars = Math.min(stars, 2);
   /* ENEMY1 — friendly casualties from ENEMY fire COST the observer, they never
      auto-fail (user decision, 2026-07-30; fratricide/collateral by our own
      rounds remain the only auto-fails). Every two casualty rounds the battery

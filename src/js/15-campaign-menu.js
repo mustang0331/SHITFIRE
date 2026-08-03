@@ -138,6 +138,16 @@ const CAMPAIGN = [
     { id: '4.4', title: 'THE MEAT GRINDER', blurb: 'the final exam — strict, hard, everything at once', impl: true, type: 'assault', seed: 404, par: 330, strict: true, diffs: ['hard'],
       story: 'The last hill on the last island. Strict net, danger close, friendlies advancing, hard difficulty — the whole trade in one mission. Pass this and even HELLHOUND will say something almost kind. Almost.',
       outro: 'HELLHOUND, after a long pause: "…acceptable, MUSTANG." Frame it.' },
+    /* SUGG4b — the defense-in-depth chapter: the exam is over, the enemy did
+       not read the syllabus. Built on SUGG8's qfp type in its lanes variant
+       (phase lines in depth on one canalized axis) with reqPlanned grading —
+       a cold full CFF completes at 2★ most; the chapter's skill is the plan. */
+    { id: '4.5', title: 'DIG IN', blurb: 'defense in depth — plan the lines, fire in two words', impl: true, type: 'qfp', seed: 405, par: 600, reqPlanned: true, scn: { lanes: true },
+      story: 'You took the hill yesterday. Tonight the paperwork says HOLD, and the enemy never reads the paperwork — a counterattack steps off at H-hour, canalized down the one draw that leads up here. This is the fight you get to PLAN. While it is quiet: "PLAN TARGET, GRID …" on each phase line — RED, WHITE, BLUE, stacked in depth down the draw. When they cross RED, you do not build a call for fire. You say two words and the guns already know the rest.',
+      outro: 'The draw is a graveyard of a counterattack, one phase line at a time. HELLHOUND: "A plan. An actual plan. I am framing the log, MUSTANG."',
+      coach: [
+        'Plan while it is QUIET, killer. A target on each phase line — "PLAN TARGET, GRID …" costs nothing and files the data. PRIORITY TARGET the line you expect to fight on.',
+        'When they cross a line: "FIRE TARGET AB####" — two words, rounds now. Walk fire down YOUR OWN planned axis as they come. A series or a group of the lines works too. The full call is for people who did not plan.' ] },
   ]},
   { id: 'EP', tab: 'EPI', name: 'EPILOGUE — SUNBURN', need: 32, tseed: 1337, chapters: [
     /* 11a — the Epilogue opens. Humor dial at 11, readback sacred: the FDC
@@ -271,6 +281,11 @@ function gradeMission(m) {
   // real tool — but the chapter's skill is coordinated illumination, so no
   // illum means 2★ at most.
   if (activeChapter && activeChapter.reqIllum && !m.usedIllum) stars = Math.min(stars, 2);
+  // SUGG4b — a reqPlanned chapter grades the planned-fires initiation: the
+  // graded mission must be born from FIRE/SUPPRESS TARGET, a series, a group,
+  // or the FPF. A cold full CFF still completes — at 2★ most, because the
+  // chapter's skill is the plan you built while it was quiet.
+  if (activeChapter && activeChapter.reqPlanned && !m.planned) stars = Math.min(stars, 2);
   /* ENEMY1 — friendly casualties from ENEMY fire COST the observer, they never
      auto-fail (user decision, 2026-07-30; fratricide/collateral by our own
      rounds remain the only auto-fails). Every two casualty rounds the battery

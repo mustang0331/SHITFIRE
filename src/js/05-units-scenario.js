@@ -490,27 +490,50 @@ function genScenario(type, seed) {
     fb = fb || { x: OP.x + 1600, z: OP.z };
     S.fireBase = fb;
     S.avenues = [];
-    for (let k = 0; k < 3; k++) {
-      let av = null;
-      for (let tries = 0; tries < 400 && !av; tries++) {
-        const az = rng() * Math.PI * 2, r = lerp(500, 800, rng());
-        const x = fb.x + Math.sin(az) * r, z = fb.z - Math.cos(az) * r;
-        if (H(x, z) < 2) continue;
-        if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
-        if (S.avenues.some(a => dist2(a.x, a.z, x, z) < 300)) continue;
-        av = { x, z };
+    if (OPT.lanes) {
+      /* SUGG4b — the defense-in-depth variant: one KNOWN, canalized approach
+         axis, with three PHASE LINES stacked along it (~850/550/250 m out).
+         The observer plans targets in DEPTH on the axis while it is quiet;
+         the assault walks the whole line through them. */
+      let aAz = null;
+      for (let tries = 0; tries < 400 && aAz === null; tries++) {
+        const az = rng() * Math.PI * 2;
+        const ox = fb.x + Math.sin(az) * 1100, oz = fb.z - Math.cos(az) * 1100;
+        if (H(ox, oz) < 2) continue;
+        if (WORLD.villages.some(v => dist2(ox, oz, v.x, v.z) < v.r + 120)) continue;
+        aAz = az;
       }
-      S.avenues.push(av || { x: fb.x + 550 + k * 90, z: fb.z + (k - 1) * 340 });
+      if (aAz === null) aAz = azTo(fb.x, fb.z, OP.x, OP.z) + Math.PI;   // away from the OP
+      S.axisAz = aAz;
+      for (const r of [850, 550, 250])
+        S.avenues.push({ x: fb.x + Math.sin(aAz) * r, z: fb.z - Math.cos(aAz) * r });
+      S.assaultAv = 0;   // the assault starts beyond the outermost line
+      S.enemy = { x: fb.x + Math.sin(aAz) * 1100, z: fb.z - Math.cos(aAz) * 1100 };
+    } else {
+      for (let k = 0; k < 3; k++) {
+        let av = null;
+        for (let tries = 0; tries < 400 && !av; tries++) {
+          const az = rng() * Math.PI * 2, r = lerp(500, 800, rng());
+          const x = fb.x + Math.sin(az) * r, z = fb.z - Math.cos(az) * r;
+          if (H(x, z) < 2) continue;
+          if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+          if (S.avenues.some(a => dist2(a.x, a.z, x, z) < 300)) continue;
+          av = { x, z };
+        }
+        S.avenues.push(av || { x: fb.x + 550 + k * 90, z: fb.z + (k - 1) * 340 });
+      }
+      S.assaultAv = Math.floor(rng() * S.avenues.length);
+      S.enemy = { x: S.avenues[S.assaultAv].x, z: S.avenues[S.assaultAv].z };
     }
     S.hHour = 240 + rng() * 120;                 // 4–6 minute planning window
-    S.assaultAv = Math.floor(rng() * S.avenues.length);
-    S.enemy = { x: S.avenues[S.assaultAv].x, z: S.avenues[S.assaultAv].z };
     S.friendlies = [{ x: fb.x, z: fb.z, r: M.fratricideRadius }];
     S.hStarted = false;
     S.aSpeed = 0.7; S.lastT = null; S.overrun = false;
-    S.brief = `WARNING ORDER. An assault on the friendly position at grid ${gridOf(fb.x, fb.z)} (grid bearing ~${brgTo(fb)} mils) is expected at H-HOUR — the clock is running. Likely avenues of approach: ` +
-      S.avenues.map((a, i) => `${['ALPHA', 'BRAVO', 'CHARLIE'][i]} near grid ${gridOf(a.x, a.z)}`).join(', ') +
-      '. Build your QUICK FIRE PLAN while it is quiet: "PLAN TARGET, GRID …" files a numbered target the guns hold data for — a planned target fires off TWO WORDS when they come. A target of opportunity still costs the full call.';
+    S.brief = OPT.lanes
+      ? `WARNING ORDER. A counterattack on the position at grid ${gridOf(fb.x, fb.z)} (grid bearing ~${brgTo(fb)} mils) steps off at H-HOUR, canalized down the draw from the ${['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'][Math.round(radToMils(S.axisAz) / 800) % 8]}. PHASE LINES on the axis — RED near grid ${gridOf(S.avenues[0].x, S.avenues[0].z)}, WHITE near ${gridOf(S.avenues[1].x, S.avenues[1].z)}, BLUE near ${gridOf(S.avenues[2].x, S.avenues[2].z)}. Plan targets in DEPTH while it is quiet; when they cross RED, two words open the fight.`
+      : `WARNING ORDER. An assault on the friendly position at grid ${gridOf(fb.x, fb.z)} (grid bearing ~${brgTo(fb)} mils) is expected at H-HOUR — the clock is running. Likely avenues of approach: ` +
+        S.avenues.map((a, i) => `${['ALPHA', 'BRAVO', 'CHARLIE'][i]} near grid ${gridOf(a.x, a.z)}`).join(', ') +
+        '. Build your QUICK FIRE PLAN while it is quiet: "PLAN TARGET, GRID …" files a numbered target the guns hold data for — a planned target fires off TWO WORDS when they come. A target of opportunity still costs the full call.';
   } else if (type === 'callin') {
     /* NET1 — a rock eater with a problem. A friendly team is pinned by an
        enemy element; the caller reports it in plain language, relative to the
@@ -838,7 +861,9 @@ function updateScenario() {
           m.position.set(x, H(x, z), z);
           m.rotation.set(0, S.rng() * Math.PI * 2, 0);
         });
-        log('', `H-HOUR. Assault force on avenue ${['ALPHA', 'BRAVO', 'CHARLIE'][S.assaultAv]} — grid ${gridOf(S.enemy.x, S.enemy.z)} — advancing on the position. If you planned it, two words bring it down.`, 'sys');
+        log('', S.axisAz !== undefined
+          ? `H-HOUR. The counterattack is in the draw — grid ${gridOf(S.enemy.x, S.enemy.z)}, walking your phase lines toward the position. Fire the plan.`
+          : `H-HOUR. Assault force on avenue ${['ALPHA', 'BRAVO', 'CHARLIE'][S.assaultAv]} — grid ${gridOf(S.enemy.x, S.enemy.z)} — advancing on the position. If you planned it, two words bring it down.`, 'sys');
       }
     } else {
       const dt2 = S.lastT === null ? 0 : sim.now - S.lastT;

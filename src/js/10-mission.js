@@ -138,6 +138,7 @@ function fireMission(targetLocation, warno, meta) {
     intent: (meta && meta.intent) || 'destroy',
     imm: (meta && meta.imm) || null,   // TEMPO2 — 'suppress'/'smoke' when the call was an immediate
     usedIllum: false,   // TEMPO4 — set when an illumination round deploys
+    planned: !!(meta && meta.planned),   // SUGG4b — born from a planned-fires call
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
@@ -331,7 +332,8 @@ function handleFireTarget(p) {
   setState('MISSION SENT');
   fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
     { desc: 'RECORDED TARGET', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
-      intent: 'destroy', sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw),
+      intent: 'destroy', planned: true,   // SUGG4b — a planned-fires initiation
+      sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw),
       /* the felt difference: laid guns shoot now; anyone else re-lays first */
       shotExtra: pri ? 0 : 22 });
 }
@@ -440,7 +442,7 @@ function handleFireFPF(p) {
   setState('MISSION SENT');
   fireMission({ x: (FPF.pts[1].x + FPF.pts[2].x) / 2, z: (FPF.pts[1].z + FPF.pts[2].z) / 2 },
     'ffe', { desc: 'FINAL PROTECTIVE FIRE', gridStr: 'THE FPF', method: 'grid',
-             intent: 'suppress', fpf: true });
+             intent: 'suppress', planned: true, fpf: true });
 }
 /* SUGG4 — series of targets (ATP 3-09.30 §1-42): a named, ordered sequence
    of RECORDED targets, fired one after another — pre-mission target planning
@@ -480,7 +482,7 @@ function handleFireSeries(p) {
   const first = RECTGT[s[0]];
   fireMission({ x: first.x, z: first.z }, 'ffe',
     { desc: `SERIES ${p.name}`, gridStr: `SERIES ${p.name}`, method: 'grid',
-      intent: 'destroy', series: s.slice() });
+      intent: 'destroy', planned: true, series: s.slice() });
 }
 /* SUGG3 — group of targets (ATP 3-09.30 §1-41): recorded targets fired
    TOGETHER under one designator. Shares the series' plumbing; the volley
@@ -518,7 +520,7 @@ function handleFireGroup(p) {
   const first = RECTGT[g[0]];
   fireMission({ x: first.x, z: first.z }, 'ffe',
     { desc: `GROUP ${p.name}`, gridStr: `GROUP ${p.name}`, method: 'grid',
-      intent: 'destroy', group: g.slice() });
+      intent: 'destroy', planned: true, group: g.slice() });
 }
 function handleSuppressTarget(p) {
   if (mission && !mission.done) {
@@ -546,7 +548,8 @@ function handleSuppressTarget(p) {
   fireMission({ x: tgt.x, z: tgt.z }, 'ffe',
     { notes: mins ? [] : ['Suppress mission sent without a duration.'],
       desc: 'SUPPRESSION', gridStr: `TARGET ${p.tgtNum}`, method: 'grid',
-      intent: 'suppress', sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw) });
+      intent: 'suppress', planned: true,
+      sheaf: inferSheaf('', p.raw), fuze: inferFuze('', p.raw) });
 }
 
 /* ---- G10: FIRE UNIT STATUS (FM 6-30 §8-12) ----------------------------------

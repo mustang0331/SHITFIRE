@@ -236,6 +236,12 @@ function showAAR() {
     m.reqIllumNoted = true;
     m.notes.push('This chapter demanded COORDINATED ILLUMINATION — you fought it dark. Effective, maybe, but the skill under test was the light (chapter capped at 2★).');
   }
+  /* SUGG4b — same shape for the planned-fires requirement: only knowable at
+     the end, noted once, before grading reads m.notes. */
+  if (activeChapter && activeChapter.reqPlanned && !m.planned && !m.reqPlannedNoted) {
+    m.reqPlannedNoted = true;
+    m.notes.push('This chapter demanded PLANNED FIRES — plan targets while it is quiet, open in two words when they come. You fought it cold with a full call (chapter capped at 2★).');
+  }
   /* ENEMY1 — same shape as the reqIllum note: casualties are only countable at
      the end, land once, before grading reads them. Cost, never a fail. */
   if (S.btyCas && !m.btyCasNoted) {
