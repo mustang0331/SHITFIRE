@@ -92,8 +92,16 @@ function locEchoOf(p) {
 /* ============================================================ MESSAGE HANDLING */
 function handleCFF(p) {
   if (mission && !mission.done) {
-    FDC.say('MUSTANG 12, we are mid-mission. Adjust, fire for effect, or send end of mission, over.', { delay: 1 });
-    return;
+    /* SUGG5 - on a two-target scenario the net holds TWO missions: a second
+       CFF is accepted (doctrine's heavy-contact case, ATP 3-09.30 para 7-26)
+       and every ambiguous transmission from here must lead with the target
+       number. Anywhere else the single-mission discipline stands. */
+    if (Scenario && Scenario.twinTgt && mission.mto && openMissions().length < 2) {
+      FDC.say('SECOND MISSION ACCEPTED - two on the net. LEAD EVERY TRANSMISSION WITH THE TARGET NUMBER from here, OUT.', { delay: 0.9 });
+    } else {
+      FDC.say('MUSTANG 12, we are mid-mission. Adjust, fire for effect, or send end of mission, over.', { delay: 1 });
+      return;
+    }
   }
   // 60mm precision shoots demand the full 8-digit grid
   if (activeChapter && activeChapter.asset === 'mortar60' &&
@@ -306,11 +314,15 @@ function handleCFF(p) {
       : { keys: ['gun', 'battery', 'adjust', 'effect', '155',
                  ...(shell === 'he' ? ['he', 'fuze', fuze.kind] : [shell])],
           tgt: '7001', read: false, nagged: false };
+    /* SUGG5 - two concurrent missions cannot share a number: the second slot
+       shifts its target number by ten (AA7001 -> AA7011 and kin). */
+    if (openMissions().length >= 1)
+      mtoSpec.tgt = String(parseInt(mtoSpec.tgt, 10) + 10);
     FDC.say(sunNet()
       ? 'MESSAGE TO OBSERVER: ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, TARGET NUMBER ALPHA ALPHA 7003. THANK YOU FOR CHOOSING SUNLAMP, OVER.'
       : m60
-      ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA 7002, OVER.`
-      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
+      ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA ${mtoSpec.tgt}, OVER.`
+      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA ${mtoSpec.tgt}, OVER.`,
             { delay: 1.4 });
   }
   // deviation policy: sloppy-but-safe call format earns a snide remark and
@@ -673,6 +685,17 @@ function handleEOM(p) {
     // G13 — the closing color keys on the graded outcome, not a hit count
     FDC.say(pick(missionAccomplished() ? QUIPS.eomGood : QUIPS.eomBad), { delay: 1.2 });
   }
+  /* SUGG5 - closing one of two missions does not end the fight: the AAR
+     waits for the last one, and the net switches to the survivor. */
+  const other = openMissions().find(m => m !== mission);
+  if (other) {
+    const closedNum = mission.mto ? 'AA' + mission.mto.tgt : 'THAT MISSION';
+    const otherNum = other.mto ? 'AA' + other.mto.tgt : 'the other mission';
+    mission = other;
+    state = other.phase || state;
+    FDC.say(`${closedNum} IS CLOSED - ${otherNum} IS STILL YOURS, OVER.`, { delay: 1.4 });
+    return;
+  }
   setState('AAR');
   schedule(FDC.lastT + 1.6, showAAR);
 }
@@ -800,6 +823,36 @@ function onPlayerMessage(raw) {
      still a correction — handleAdjust coaches the skipped readback there. */
   if ((p.type === 'unknown' || p.type === 'warno') && tryMTOReadback(p)) {
     unknownStreak = 0;
+    return;
+  }
+  dispatchParsed(p);
+}
+
+/* SUGG5 - the dispatch, factored out so routed traffic can re-enter it with
+   the active mission switched. The types listed are MISSION-SCOPED: with two
+   missions open, unprefixed traffic of these types is ambiguous and the FDC
+   demands the target number - which is the manual's own discipline (ATP
+   3-09.30 para 7-27). Safety prowords stay global and are never challenged. */
+const ROUTED_TYPES = new Set(['adjust', 'repeat', 'eom', 'direction', 'shell',
+  'fuze', 'sheaf', 'tot', 'cannotobserve', 'fire', 'amc', 'donotload']);
+function dispatchParsed(p) {
+  if (p.type === 'routed') {
+    const m2 = MISSIONS[p.tgtNum];
+    if (!m2 || m2.done) {
+      const open = Object.keys(MISSIONS).filter(k => !MISSIONS[k].done);
+      FDC.say(`NEGATIVE - no open mission under ${p.tgtNum}. ` +
+        (open.length ? `On the net: ${open.join(', ')}. ` : '') + 'Over.', { delay: 1 });
+      return;
+    }
+    mission = m2;
+    state = m2.phase || state;   // restore the mission's own phase
+    p.inner._routed = true;
+    dispatchParsed(p.inner);
+    return;
+  }
+  if (openMissions().length > 1 && ROUTED_TYPES.has(p.type) && !p._routed) {
+    FDC.say('MUSTANG 12 - TWO MISSIONS ON THIS NET. Lead with the target number: ' +
+      `"TARGET ${Object.keys(MISSIONS).filter(k => !MISSIONS[k].done).join('" or "TARGET ')}", then your traffic. Over.`, { delay: 1 });
     return;
   }
   switch (p.type) {

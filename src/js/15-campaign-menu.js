@@ -504,6 +504,7 @@ function newMission(first, type, chapter) {
   cffqReset();            // G22 — a half-sent call must not survive into a new mission
   FPF = null;             // SUGG1 — an FPF is planned against THIS fight's geometry
   mission = null;
+  for (const k in MISSIONS) delete MISSIONS[k];   // SUGG5 - the net clears
   bursts.forEach(b => { b.active = false; b.group.visible = false; });
   activeChapter = chapter || null;
   tutStop();

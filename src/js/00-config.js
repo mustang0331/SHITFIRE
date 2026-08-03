@@ -19,7 +19,7 @@ const CONFIG = {
        so burst deviation is judged against relief the base sheet aliases away. */
     patchSize: 1200, patchDiv: 4,
   },
-  CAMERA: { fov: 60, eyeHeight: 2.2, towerHeight: 300,   // 50 ft OP watchtower
+  CAMERA: { fov: 60, eyeHeight: 2.2, towerHeight: 300,   // 300 m OP watchtower
             /* G4 — three optical powers, cycled with [Z] or the mouse wheel while
                glassing. MAGNIFICATION is the authored number and the field of view
                is DERIVED from it (fov = naked-eye fov / power), which is what keeps
@@ -317,6 +317,7 @@ const SCN_META = {
   callin:      { name: 'CALL FOR SUPPORT — ROCK EATERS' },    // NET1
   occupied:    { name: 'OCCUPIED SETTLEMENT — NO-STRIKE ADJACENT' },  // WORLD2
   qfp:         { name: 'QUICK FIRE PLAN — H-HOUR' },                  // SUGG8
+  twin:        { name: 'TWO TARGETS — TRAFFIC BY NUMBER' },            // SUGG5
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);

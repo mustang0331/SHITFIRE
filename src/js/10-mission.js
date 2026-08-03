@@ -6,6 +6,10 @@ const statusEl = document.getElementById('status');
 function setState(s) {
   if (s !== state) { stateSince = sim.now; stateHinted = false; }
   state = s;
+  /* SUGG5 - with two missions on the net, each remembers its own phase; a
+     target-number switch restores it so state-gated handlers (corrections,
+     REPEAT) judge the mission they are now talking to, not the last event. */
+  if (mission) mission.phase = s;
   refreshStatus();
 }
 // Status strip. Called on every state change AND on every optics change, so the
@@ -110,6 +114,21 @@ function tofFor(aim) {
 }
 
 // Public interface: start a mission at a world-space target location.
+/* SUGG5 - the mission registry (ATP 3-09.30 para 7-26/27). At most two live
+   missions, keyed by target number; `mission` stays the ACTIVE binding every
+   existing handler reads, and target-number-led traffic switches it. Wiped
+   with every new scenario. */
+const MISSIONS = {};
+function openMissions() { return Object.values(MISSIONS).filter(m => !m.done); }
+/* SUGG5 - an impact belongs to the mission that fired it, not whichever one
+   is active when it lands: bind at fire time, restore after. */
+function scheduleImpact(t, m, fn) {
+  schedule(t, () => {
+    const cur = mission;
+    mission = m;
+    try { fn(); } finally { mission = cur; }
+  });
+}
 function fireMission(targetLocation, warno, meta) {
   noMissionStreak = 0;   // NET4 — a mission opening is the player getting unstuck
   mission = {
@@ -139,6 +158,12 @@ function fireMission(targetLocation, warno, meta) {
     imm: (meta && meta.imm) || null,   // TEMPO2 — 'suppress'/'smoke' when the call was an immediate
     usedIllum: false,   // TEMPO4 — set when an illumination round deploys
     planned: !!(meta && meta.planned),   // SUGG4b — born from a planned-fires call
+    /* SUGG5 - which element this mission is ON, on a two-target scenario:
+       whichever the transmitted aimpoint is nearer. */
+    tgtRef: (typeof Scenario !== 'undefined' && Scenario && Scenario.twinTgt &&
+             dist2(targetLocation.x, targetLocation.z, Scenario.twinTgt.x, Scenario.twinTgt.z) <
+             dist2(targetLocation.x, targetLocation.z, Scenario.enemy.x, Scenario.enemy.z))
+            ? 'twin' : 'main',
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
@@ -162,6 +187,9 @@ function fireMission(targetLocation, warno, meta) {
     series: (meta && meta.series) || null,      // SUGG4 — ordered recorded targets
     group: (meta && meta.group) || null,        // SUGG3 — recorded targets, together
   };
+  /* SUGG5 - register by target number so traffic can be led by it; missions
+     without an MTO (immediates) stay unrouted, as doctrine's own example does. */
+  if (mission.mto) MISSIONS['AA' + mission.mto.tgt] = mission;
   if (warno === 'ffe') fireForEffect();
   else fireAdjustRound();
 }
@@ -759,7 +787,7 @@ function fireAdjustRound() {
   const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay + (mission.shotExtra || 0) });
   FDC.say(splashWord(), { delay: tof - B.splashLead });
   if (sunNet()) chargeWhine(tof);   // 11c — TOF is a charging whine from everywhere at once
-  schedule(tShot + tof, () => resolveImpact(impact, false));
+  scheduleImpact(tShot + tof, mission, () => resolveImpact(impact, false));   // SUGG5
 }
 
 function fireForEffect() {
@@ -837,14 +865,15 @@ function fireForEffect() {
       : { x: mission.aim.x + base.x + err.x + (lin ? linDir.dx * lo : 0),
           z: mission.aim.z + base.z + err.z + (lin ? linDir.dz * lo : 0) };
     tLast = tShot + tof + off;
-    schedule(tLast, () => resolveImpact(impact, true));
+    scheduleImpact(tLast, mission, () => resolveImpact(impact, true));   // SUGG5
     // series: a re-lay pause between targets, max rate within one
     const gap = serRun && i % 4 === 3 ? 9 : 0;
     off += lerp(B.ffeStagger[0], B.ffeStagger[1], mission.rng()) * (fpfRun ? 0.33 : 1) + gap;
   }
-  schedule(tLast + 2.2, () => {
+  scheduleImpact(tLast + 2.2, mission, () => {   // SUGG5 - completion binds too
     if (mission.done) return;
     mission.tEnd = sim.now;
+    mission.ffeDone = true;
     assessFFE();
     FDC.say('ROUNDS COMPLETE, OVER.', { delay: 0.4 });
     /* G13 — the post-volley traffic now depends on what the volley actually
@@ -890,20 +919,37 @@ function addRoundEffect(impact, isFFE) {
   const S = Scenario;
   if (S.type === 'convoy') return;              // convoys are assessed by vehicle kills
   const b = effBands();
-  const d = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
+  /* SUGG5 - on a two-target scenario the round credits the element it landed
+     nearest; the twin keeps its own effect books so each mission grades on
+     its own target. */
+  let tw = null;
+  if (S.twinTgt) {
+    const dMain = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
+    const dTwin = dist2(impact.x, impact.z, S.twinTgt.x, S.twinTgt.z);
+    if (dTwin < dMain) tw = S.twinTgt;
+  }
+  const cx = tw ? tw.x : S.enemy.x, cz = tw ? tw.z : S.enemy.z;
+  const d = dist2(impact.x, impact.z, cx, cz);
   if (d > b.rSupp) return;
-  if (enemyAlive) {                              // the dead do not duck
-    S.everSuppressed = true;
-    S.suppressedUntil = sim.now + CONFIG.EFFECTS.suppressSec;
+  if (tw ? tw.alive : enemyAlive) {              // the dead do not duck
+    if (tw) {
+      tw.everSuppressed = true;
+      tw.suppressedUntil = sim.now + CONFIG.EFFECTS.suppressSec;
+    } else {
+      S.everSuppressed = true;
+      S.suppressedUntil = sim.now + CONFIG.EFFECTS.suppressSec;
+    }
   }
   const band = d <= b.rFull ? 1 : d <= b.rHalf ? 0.5 : 0.25;
   const post = S.tgtClass === 'personnel'
     ? (CONFIG.EFFECTS.posture[S.posture] || 1) : 1;
+  // (band/posture shared; the credit lands on the element's own books below)
   // G15 — sheaf shapes the VOLLEY, so it scales FFE rounds only; a single
   // adjusting round has no sheaf to speak of. G16 — the fuze is on EVERY round.
   // 11b — S.armor divides the contribution: big enough to hit easily can still
   // be hard to hurt (chitin the size of a church).
-  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult() / (S.armor || 1);
+  const contrib = b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult() / (S.armor || 1);
+  if (tw) tw.eff += contrib; else S.eff += contrib;   // SUGG5
 }
 
 /* ---- G15: sheaf (FM 6-30 §4-6.f / ATP 3-09.30 §4-45) -----------------------
@@ -1030,12 +1076,16 @@ function assessEffect() {
     return { outcome: dead >= 3 ? 'destroyed' : 'none', pct: dead * 25 };
   }
   const b = effBands();
+  // SUGG5 - a mission on the twin element grades on the twin's own books
+  const tw = mission && mission.tgtRef === 'twin' && S.twinTgt ? S.twinTgt : null;
+  const eff = tw ? tw.eff : S.eff;
+  const sup = tw ? tw.everSuppressed : S.everSuppressed;
   // threshold on the RAW figure — rounding first would gift a 9.6% volley the
   // 10% neutralization it did not earn; round only for display
-  const outcome = S.eff >= b.destroyPct ? 'destroyed'
-                : S.eff >= b.neutralizePct ? 'neutralized'
-                : S.everSuppressed ? 'suppressed' : 'none';
-  return { outcome, pct: Math.round(S.eff) };
+  const outcome = eff >= b.destroyPct ? 'destroyed'
+                : eff >= b.neutralizePct ? 'neutralized'
+                : sup ? 'suppressed' : 'none';
+  return { outcome, pct: Math.round(eff) };
 }
 // The mission is accomplished at NEUTRALIZED or better — or at SUPPRESSED when
 // suppression was the stated intent (immediate suppression, suppress-target,
@@ -1270,17 +1320,25 @@ function assessFFE() {
   }
   // G13 — `hits` is now "effect rounds inside the outer band": a display and
   // diagnosis stat, not the pass criterion. The criterion is assessEffect().
+  const el = mission.tgtRef === 'twin' && S.twinTgt ? S.twinTgt : S.enemy;   // SUGG5
   mission.hits = mission.ffeRounds.filter(r =>
-    dist2(r.x, r.z, S.enemy.x, S.enemy.z) < effBands().rSupp).length;
+    dist2(r.x, r.z, el.x, el.z) < effBands().rSupp).length;
   const a = assessEffect();
   // 11b — a kaiju does not do "combat-ineffective": it is walking or it is
   // not. Only DESTROYED fells it; anything less and the landfall clock runs.
-  if (a.outcome === 'destroyed' || (a.outcome === 'neutralized' && S.type !== 'kaiju')) {
+  /* SUGG5 - on a twin scenario only THIS mission's element goes down:
+     figures 0-3 belong to the main element, 4-7 to the twin. */
+  if (S.twinTgt && mission.tgtRef === 'twin') {
+    if (a.outcome === 'destroyed' || a.outcome === 'neutralized') {
+      S.twinTgt.alive = false;
+      units.troops.forEach((m, i) => { if (i >= 4 && m.visible) m.rotation.z = 1.35; });
+    }
+  } else if (a.outcome === 'destroyed' || (a.outcome === 'neutralized' && S.type !== 'kaiju')) {
     enemyAlive = false;
     // figure origin is at the feet, so this pivots the body over without sinking
     // it — and, unlike the old `position.y -= 0.55`, it is idempotent if the
     // effect check re-runs.
-    units.troops.forEach(m => { if (m.visible) m.rotation.z = 1.35; });
+    units.troops.forEach((m, i) => { if ((!S.twinTgt || i < 4) && m.visible) m.rotation.z = 1.35; });
     // the heavier materiel damage renders only at DESTROYED — a neutralized
     // position has broken men, not burning trucks
     if (S.type === 'strongpoint' && a.outcome === 'destroyed')

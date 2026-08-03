@@ -72,6 +72,19 @@ function parseMessage(raw) {
      Order matters twice here: CANCEL AT MY COMMAND must be tested before AT MY
      COMMAND (it contains it), and both must be tested before the bare FIRE below,
      since every one of these transmissions contains the word "fire". */
+  /* SUGG5 - multiple missions (ATP 3-09.30 para 7-26/27): traffic led by a
+     target number routes to that mission - "TARGET AA7001, LEFT 50, ADD 200,
+     OVER". Anchored at the start so FIRE/SUPPRESS/PRIORITY/PLAN TARGET (verbs
+     before the word) and MTO readbacks (numbers mid-text) never trip it. The
+     remainder is parsed recursively - one grammar, routed. Tested after the
+     safety prowords: CHECK FIRING stops guns no matter how it is addressed. */
+  const mRoute = t.match(/^target\s+(?:number\s+)?([a-z]{2})\s*(\d{4})\b[\s,]*(.+)$/);
+  if (mRoute) {
+    const inner = parseMessage(mRoute[3]);
+    if (inner.type !== 'unknown' && inner.type !== 'empty')
+      return { type: 'routed', tgtNum: (mRoute[1] + mRoute[2]).toUpperCase(),
+               inner, raw: t, toks };
+  }
   if (t.includes('cancel at my command')) return { type: 'amc', on: false, raw: t, toks };
   if (t.includes('do not load')) return { type: 'donotload', raw: t, toks };
   if (t.includes('cannot observe')) return { type: 'cannotobserve', raw: t, toks };

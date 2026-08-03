@@ -473,6 +473,30 @@ function genScenario(type, seed) {
     S.lastT = null;            // incremental advance (speed varies with losses)
     S.overrun = false;
     S.brief = `You are the objective. Assault force forming up near grid ${gridOf(en.x, en.z)}, grid bearing ~${brgTo(en)} mils, advancing on YOUR TOWER. Your own position is the friendly element — expect DANGER CLOSE, expect creeping corrections, and do not drop one on yourself. Break the assault before it reaches the wire.`;
+  } else if (type === 'twin') {
+    /* SUGG5 - two separate targets, live at once (ATP 3-09.30 para 7-26/27:
+       multiple simultaneous missions in heavy contact). Each element keeps
+       its own effect books; the trained skill is the radio discipline -
+       every transmission led by its target number once two missions are up. */
+    const e1 = findSpot(M.targetRange[0], M.targetRange[1], 2, spread ? 999 : 60, true) ||
+               { x: OP.x + 1800, z: OP.z };
+    let e2 = null;
+    for (let tries = 0; tries < 500 && !e2; tries++) {
+      const az = rng() * Math.PI * 2, r = lerp(700, 1400, rng());
+      const x = e1.x + Math.sin(az) * r, z = e1.z - Math.cos(az) * r;
+      const h = H(x, z);
+      if (h < 2) continue;
+      const dOP = dist2(x, z, OP.x, OP.z);
+      if (dOP < M.skirmishRange[0] || dOP > M.skirmishRange[1]) continue;
+      if (!hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) continue;
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+      e2 = { x, z };
+    }
+    e2 = e2 || { x: e1.x + 900, z: e1.z };
+    S.enemy = e1;
+    S.twinTgt = { x: e2.x, z: e2.z, eff: 0, everSuppressed: false,
+                  suppressedUntil: 0, alive: true };
+    S.brief = `TWO elements, both in the open and both yours: infantry near grid ${gridOf(e1.x, e1.z)} (grid bearing ~${brgTo(e1)} mils) and a second group near grid ${gridOf(e2.x, e2.z)} (~${brgTo(e2)} mils). The net will hold two missions at once - once the second is up, LEAD EVERY TRANSMISSION WITH ITS TARGET NUMBER ("TARGET AA7001, LEFT 50, ADD 100, OVER") or the FDC will bounce it.`;
   } else if (type === 'qfp') {
     /* SUGG8 — the quick fire plan (ATP 3-09.42 ¶6-23–6-32, disseminated on DA
        Form 5368): a warning order, a friendly position, named avenues of
@@ -1063,6 +1087,20 @@ function placeUnits() {
   } else if (S.type === 'defense') {
     // ENEMY2 — eight figures; positions are driven per-frame as they advance
     troopCluster(S.enemy.x, S.enemy.z, 8, 20);
+  } else if (S.type === 'twin') {
+    // SUGG5 - four figures on each element; twin books live on S.twinTgt
+    troopCluster(S.enemy.x, S.enemy.z, 4, 16);
+    const t2 = S.twinTgt;
+    units.troops.forEach((m, i) => {
+      if (i < 4 || i >= 8) return;
+      const a = rng() * Math.PI * 2, r = 4 + rng() * 16;
+      const x = t2.x + Math.sin(a) * r, z = t2.z + Math.cos(a) * r;
+      m.visible = true;
+      m.position.set(x, H(x, z), z);
+      m.rotation.set(0, rng() * Math.PI * 2, 0);
+      if (i < units.flashes.length)
+        units.flashes[i].s.position.set(x, H(x, z) + 1.6, z);
+    });
   } else if (S.type === 'qfp') {
     /* SUGG8 — pre-H-hour the field is quiet: only the friendly position
        renders (huts + flag, the battery type's courtesy); the assault

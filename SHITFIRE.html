@@ -453,7 +453,7 @@ const CONFIG = {
        so burst deviation is judged against relief the base sheet aliases away. */
     patchSize: 1200, patchDiv: 4,
   },
-  CAMERA: { fov: 60, eyeHeight: 2.2, towerHeight: 300,   // 50 ft OP watchtower
+  CAMERA: { fov: 60, eyeHeight: 2.2, towerHeight: 300,   // 300 m OP watchtower
             /* G4 — three optical powers, cycled with [Z] or the mouse wheel while
                glassing. MAGNIFICATION is the authored number and the field of view
                is DERIVED from it (fov = naked-eye fov / power), which is what keeps
@@ -751,6 +751,7 @@ const SCN_META = {
   callin:      { name: 'CALL FOR SUPPORT — ROCK EATERS' },    // NET1
   occupied:    { name: 'OCCUPIED SETTLEMENT — NO-STRIKE ADJACENT' },  // WORLD2
   qfp:         { name: 'QUICK FIRE PLAN — H-HOUR' },                  // SUGG8
+  twin:        { name: 'TWO TARGETS — TRAFFIC BY NUMBER' },            // SUGG5
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);
@@ -3218,6 +3219,30 @@ function genScenario(type, seed) {
     S.lastT = null;            // incremental advance (speed varies with losses)
     S.overrun = false;
     S.brief = `You are the objective. Assault force forming up near grid ${gridOf(en.x, en.z)}, grid bearing ~${brgTo(en)} mils, advancing on YOUR TOWER. Your own position is the friendly element — expect DANGER CLOSE, expect creeping corrections, and do not drop one on yourself. Break the assault before it reaches the wire.`;
+  } else if (type === 'twin') {
+    /* SUGG5 - two separate targets, live at once (ATP 3-09.30 para 7-26/27:
+       multiple simultaneous missions in heavy contact). Each element keeps
+       its own effect books; the trained skill is the radio discipline -
+       every transmission led by its target number once two missions are up. */
+    const e1 = findSpot(M.targetRange[0], M.targetRange[1], 2, spread ? 999 : 60, true) ||
+               { x: OP.x + 1800, z: OP.z };
+    let e2 = null;
+    for (let tries = 0; tries < 500 && !e2; tries++) {
+      const az = rng() * Math.PI * 2, r = lerp(700, 1400, rng());
+      const x = e1.x + Math.sin(az) * r, z = e1.z - Math.cos(az) * r;
+      const h = H(x, z);
+      if (h < 2) continue;
+      const dOP = dist2(x, z, OP.x, OP.z);
+      if (dOP < M.skirmishRange[0] || dOP > M.skirmishRange[1]) continue;
+      if (!hasLOS(eye.x, eye.y, eye.z, x, h + 2, z)) continue;
+      if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
+      e2 = { x, z };
+    }
+    e2 = e2 || { x: e1.x + 900, z: e1.z };
+    S.enemy = e1;
+    S.twinTgt = { x: e2.x, z: e2.z, eff: 0, everSuppressed: false,
+                  suppressedUntil: 0, alive: true };
+    S.brief = `TWO elements, both in the open and both yours: infantry near grid ${gridOf(e1.x, e1.z)} (grid bearing ~${brgTo(e1)} mils) and a second group near grid ${gridOf(e2.x, e2.z)} (~${brgTo(e2)} mils). The net will hold two missions at once - once the second is up, LEAD EVERY TRANSMISSION WITH ITS TARGET NUMBER ("TARGET AA7001, LEFT 50, ADD 100, OVER") or the FDC will bounce it.`;
   } else if (type === 'qfp') {
     /* SUGG8 — the quick fire plan (ATP 3-09.42 ¶6-23–6-32, disseminated on DA
        Form 5368): a warning order, a friendly position, named avenues of
@@ -3808,6 +3833,20 @@ function placeUnits() {
   } else if (S.type === 'defense') {
     // ENEMY2 — eight figures; positions are driven per-frame as they advance
     troopCluster(S.enemy.x, S.enemy.z, 8, 20);
+  } else if (S.type === 'twin') {
+    // SUGG5 - four figures on each element; twin books live on S.twinTgt
+    troopCluster(S.enemy.x, S.enemy.z, 4, 16);
+    const t2 = S.twinTgt;
+    units.troops.forEach((m, i) => {
+      if (i < 4 || i >= 8) return;
+      const a = rng() * Math.PI * 2, r = 4 + rng() * 16;
+      const x = t2.x + Math.sin(a) * r, z = t2.z + Math.cos(a) * r;
+      m.visible = true;
+      m.position.set(x, H(x, z), z);
+      m.rotation.set(0, rng() * Math.PI * 2, 0);
+      if (i < units.flashes.length)
+        units.flashes[i].s.position.set(x, H(x, z) + 1.6, z);
+    });
   } else if (S.type === 'qfp') {
     /* SUGG8 — pre-H-hour the field is quiet: only the friendly position
        renders (huts + flag, the battery type's courtesy); the assault
@@ -5725,6 +5764,10 @@ const statusEl = document.getElementById('status');
 function setState(s) {
   if (s !== state) { stateSince = sim.now; stateHinted = false; }
   state = s;
+  /* SUGG5 - with two missions on the net, each remembers its own phase; a
+     target-number switch restores it so state-gated handlers (corrections,
+     REPEAT) judge the mission they are now talking to, not the last event. */
+  if (mission) mission.phase = s;
   refreshStatus();
 }
 // Status strip. Called on every state change AND on every optics change, so the
@@ -5829,6 +5872,21 @@ function tofFor(aim) {
 }
 
 // Public interface: start a mission at a world-space target location.
+/* SUGG5 - the mission registry (ATP 3-09.30 para 7-26/27). At most two live
+   missions, keyed by target number; `mission` stays the ACTIVE binding every
+   existing handler reads, and target-number-led traffic switches it. Wiped
+   with every new scenario. */
+const MISSIONS = {};
+function openMissions() { return Object.values(MISSIONS).filter(m => !m.done); }
+/* SUGG5 - an impact belongs to the mission that fired it, not whichever one
+   is active when it lands: bind at fire time, restore after. */
+function scheduleImpact(t, m, fn) {
+  schedule(t, () => {
+    const cur = mission;
+    mission = m;
+    try { fn(); } finally { mission = cur; }
+  });
+}
 function fireMission(targetLocation, warno, meta) {
   noMissionStreak = 0;   // NET4 — a mission opening is the player getting unstuck
   mission = {
@@ -5858,6 +5916,12 @@ function fireMission(targetLocation, warno, meta) {
     imm: (meta && meta.imm) || null,   // TEMPO2 — 'suppress'/'smoke' when the call was an immediate
     usedIllum: false,   // TEMPO4 — set when an illumination round deploys
     planned: !!(meta && meta.planned),   // SUGG4b — born from a planned-fires call
+    /* SUGG5 - which element this mission is ON, on a two-target scenario:
+       whichever the transmitted aimpoint is nearer. */
+    tgtRef: (typeof Scenario !== 'undefined' && Scenario && Scenario.twinTgt &&
+             dist2(targetLocation.x, targetLocation.z, Scenario.twinTgt.x, Scenario.twinTgt.z) <
+             dist2(targetLocation.x, targetLocation.z, Scenario.enemy.x, Scenario.enemy.z))
+            ? 'twin' : 'main',
     bdaClaim: null,         // G13 — surveillance term the observer sent at EOM
     sheaf: (meta && meta.sheaf) || null,   // G15 — {kind, source, why}
     fuze:  (meta && meta.fuze)  || null,   // G16 — {kind, source, why}
@@ -5881,6 +5945,9 @@ function fireMission(targetLocation, warno, meta) {
     series: (meta && meta.series) || null,      // SUGG4 — ordered recorded targets
     group: (meta && meta.group) || null,        // SUGG3 — recorded targets, together
   };
+  /* SUGG5 - register by target number so traffic can be led by it; missions
+     without an MTO (immediates) stay unrouted, as doctrine's own example does. */
+  if (mission.mto) MISSIONS['AA' + mission.mto.tgt] = mission;
   if (warno === 'ffe') fireForEffect();
   else fireAdjustRound();
 }
@@ -6478,7 +6545,7 @@ function fireAdjustRound() {
   const tShot = FDC.say(shotWord(), { delay: CONFIG.FDC.shotDelay + (mission.shotExtra || 0) });
   FDC.say(splashWord(), { delay: tof - B.splashLead });
   if (sunNet()) chargeWhine(tof);   // 11c — TOF is a charging whine from everywhere at once
-  schedule(tShot + tof, () => resolveImpact(impact, false));
+  scheduleImpact(tShot + tof, mission, () => resolveImpact(impact, false));   // SUGG5
 }
 
 function fireForEffect() {
@@ -6556,14 +6623,15 @@ function fireForEffect() {
       : { x: mission.aim.x + base.x + err.x + (lin ? linDir.dx * lo : 0),
           z: mission.aim.z + base.z + err.z + (lin ? linDir.dz * lo : 0) };
     tLast = tShot + tof + off;
-    schedule(tLast, () => resolveImpact(impact, true));
+    scheduleImpact(tLast, mission, () => resolveImpact(impact, true));   // SUGG5
     // series: a re-lay pause between targets, max rate within one
     const gap = serRun && i % 4 === 3 ? 9 : 0;
     off += lerp(B.ffeStagger[0], B.ffeStagger[1], mission.rng()) * (fpfRun ? 0.33 : 1) + gap;
   }
-  schedule(tLast + 2.2, () => {
+  scheduleImpact(tLast + 2.2, mission, () => {   // SUGG5 - completion binds too
     if (mission.done) return;
     mission.tEnd = sim.now;
+    mission.ffeDone = true;
     assessFFE();
     FDC.say('ROUNDS COMPLETE, OVER.', { delay: 0.4 });
     /* G13 — the post-volley traffic now depends on what the volley actually
@@ -6609,20 +6677,37 @@ function addRoundEffect(impact, isFFE) {
   const S = Scenario;
   if (S.type === 'convoy') return;              // convoys are assessed by vehicle kills
   const b = effBands();
-  const d = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
+  /* SUGG5 - on a two-target scenario the round credits the element it landed
+     nearest; the twin keeps its own effect books so each mission grades on
+     its own target. */
+  let tw = null;
+  if (S.twinTgt) {
+    const dMain = dist2(impact.x, impact.z, S.enemy.x, S.enemy.z);
+    const dTwin = dist2(impact.x, impact.z, S.twinTgt.x, S.twinTgt.z);
+    if (dTwin < dMain) tw = S.twinTgt;
+  }
+  const cx = tw ? tw.x : S.enemy.x, cz = tw ? tw.z : S.enemy.z;
+  const d = dist2(impact.x, impact.z, cx, cz);
   if (d > b.rSupp) return;
-  if (enemyAlive) {                              // the dead do not duck
-    S.everSuppressed = true;
-    S.suppressedUntil = sim.now + CONFIG.EFFECTS.suppressSec;
+  if (tw ? tw.alive : enemyAlive) {              // the dead do not duck
+    if (tw) {
+      tw.everSuppressed = true;
+      tw.suppressedUntil = sim.now + CONFIG.EFFECTS.suppressSec;
+    } else {
+      S.everSuppressed = true;
+      S.suppressedUntil = sim.now + CONFIG.EFFECTS.suppressSec;
+    }
   }
   const band = d <= b.rFull ? 1 : d <= b.rHalf ? 0.5 : 0.25;
   const post = S.tgtClass === 'personnel'
     ? (CONFIG.EFFECTS.posture[S.posture] || 1) : 1;
+  // (band/posture shared; the credit lands on the element's own books below)
   // G15 — sheaf shapes the VOLLEY, so it scales FFE rounds only; a single
   // adjusting round has no sheaf to speak of. G16 — the fuze is on EVERY round.
   // 11b — S.armor divides the contribution: big enough to hit easily can still
   // be hard to hurt (chitin the size of a church).
-  S.eff += b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult() / (S.armor || 1);
+  const contrib = b.perRound * band * post * (isFFE ? sheafMult() : 1) * fuzeMult() / (S.armor || 1);
+  if (tw) tw.eff += contrib; else S.eff += contrib;   // SUGG5
 }
 
 /* ---- G15: sheaf (FM 6-30 §4-6.f / ATP 3-09.30 §4-45) -----------------------
@@ -6749,12 +6834,16 @@ function assessEffect() {
     return { outcome: dead >= 3 ? 'destroyed' : 'none', pct: dead * 25 };
   }
   const b = effBands();
+  // SUGG5 - a mission on the twin element grades on the twin's own books
+  const tw = mission && mission.tgtRef === 'twin' && S.twinTgt ? S.twinTgt : null;
+  const eff = tw ? tw.eff : S.eff;
+  const sup = tw ? tw.everSuppressed : S.everSuppressed;
   // threshold on the RAW figure — rounding first would gift a 9.6% volley the
   // 10% neutralization it did not earn; round only for display
-  const outcome = S.eff >= b.destroyPct ? 'destroyed'
-                : S.eff >= b.neutralizePct ? 'neutralized'
-                : S.everSuppressed ? 'suppressed' : 'none';
-  return { outcome, pct: Math.round(S.eff) };
+  const outcome = eff >= b.destroyPct ? 'destroyed'
+                : eff >= b.neutralizePct ? 'neutralized'
+                : sup ? 'suppressed' : 'none';
+  return { outcome, pct: Math.round(eff) };
 }
 // The mission is accomplished at NEUTRALIZED or better — or at SUPPRESSED when
 // suppression was the stated intent (immediate suppression, suppress-target,
@@ -6989,17 +7078,25 @@ function assessFFE() {
   }
   // G13 — `hits` is now "effect rounds inside the outer band": a display and
   // diagnosis stat, not the pass criterion. The criterion is assessEffect().
+  const el = mission.tgtRef === 'twin' && S.twinTgt ? S.twinTgt : S.enemy;   // SUGG5
   mission.hits = mission.ffeRounds.filter(r =>
-    dist2(r.x, r.z, S.enemy.x, S.enemy.z) < effBands().rSupp).length;
+    dist2(r.x, r.z, el.x, el.z) < effBands().rSupp).length;
   const a = assessEffect();
   // 11b — a kaiju does not do "combat-ineffective": it is walking or it is
   // not. Only DESTROYED fells it; anything less and the landfall clock runs.
-  if (a.outcome === 'destroyed' || (a.outcome === 'neutralized' && S.type !== 'kaiju')) {
+  /* SUGG5 - on a twin scenario only THIS mission's element goes down:
+     figures 0-3 belong to the main element, 4-7 to the twin. */
+  if (S.twinTgt && mission.tgtRef === 'twin') {
+    if (a.outcome === 'destroyed' || a.outcome === 'neutralized') {
+      S.twinTgt.alive = false;
+      units.troops.forEach((m, i) => { if (i >= 4 && m.visible) m.rotation.z = 1.35; });
+    }
+  } else if (a.outcome === 'destroyed' || (a.outcome === 'neutralized' && S.type !== 'kaiju')) {
     enemyAlive = false;
     // figure origin is at the feet, so this pivots the body over without sinking
     // it — and, unlike the old `position.y -= 0.55`, it is idempotent if the
     // effect check re-runs.
-    units.troops.forEach(m => { if (m.visible) m.rotation.z = 1.35; });
+    units.troops.forEach((m, i) => { if ((!S.twinTgt || i < 4) && m.visible) m.rotation.z = 1.35; });
     // the heavier materiel damage renders only at DESTROYED — a neutralized
     // position has broken men, not burning trucks
     if (S.type === 'strongpoint' && a.outcome === 'destroyed')
@@ -7083,6 +7180,19 @@ function parseMessage(raw) {
      Order matters twice here: CANCEL AT MY COMMAND must be tested before AT MY
      COMMAND (it contains it), and both must be tested before the bare FIRE below,
      since every one of these transmissions contains the word "fire". */
+  /* SUGG5 - multiple missions (ATP 3-09.30 para 7-26/27): traffic led by a
+     target number routes to that mission - "TARGET AA7001, LEFT 50, ADD 200,
+     OVER". Anchored at the start so FIRE/SUPPRESS/PRIORITY/PLAN TARGET (verbs
+     before the word) and MTO readbacks (numbers mid-text) never trip it. The
+     remainder is parsed recursively - one grammar, routed. Tested after the
+     safety prowords: CHECK FIRING stops guns no matter how it is addressed. */
+  const mRoute = t.match(/^target\s+(?:number\s+)?([a-z]{2})\s*(\d{4})\b[\s,]*(.+)$/);
+  if (mRoute) {
+    const inner = parseMessage(mRoute[3]);
+    if (inner.type !== 'unknown' && inner.type !== 'empty')
+      return { type: 'routed', tgtNum: (mRoute[1] + mRoute[2]).toUpperCase(),
+               inner, raw: t, toks };
+  }
   if (t.includes('cancel at my command')) return { type: 'amc', on: false, raw: t, toks };
   if (t.includes('do not load')) return { type: 'donotload', raw: t, toks };
   if (t.includes('cannot observe')) return { type: 'cannotobserve', raw: t, toks };
@@ -7532,8 +7642,16 @@ function locEchoOf(p) {
 /* ============================================================ MESSAGE HANDLING */
 function handleCFF(p) {
   if (mission && !mission.done) {
-    FDC.say('MUSTANG 12, we are mid-mission. Adjust, fire for effect, or send end of mission, over.', { delay: 1 });
-    return;
+    /* SUGG5 - on a two-target scenario the net holds TWO missions: a second
+       CFF is accepted (doctrine's heavy-contact case, ATP 3-09.30 para 7-26)
+       and every ambiguous transmission from here must lead with the target
+       number. Anywhere else the single-mission discipline stands. */
+    if (Scenario && Scenario.twinTgt && mission.mto && openMissions().length < 2) {
+      FDC.say('SECOND MISSION ACCEPTED - two on the net. LEAD EVERY TRANSMISSION WITH THE TARGET NUMBER from here, OUT.', { delay: 0.9 });
+    } else {
+      FDC.say('MUSTANG 12, we are mid-mission. Adjust, fire for effect, or send end of mission, over.', { delay: 1 });
+      return;
+    }
   }
   // 60mm precision shoots demand the full 8-digit grid
   if (activeChapter && activeChapter.asset === 'mortar60' &&
@@ -7746,11 +7864,15 @@ function handleCFF(p) {
       : { keys: ['gun', 'battery', 'adjust', 'effect', '155',
                  ...(shell === 'he' ? ['he', 'fuze', fuze.kind] : [shell])],
           tgt: '7001', read: false, nagged: false };
+    /* SUGG5 - two concurrent missions cannot share a number: the second slot
+       shifts its target number by ten (AA7001 -> AA7011 and kin). */
+    if (openMissions().length >= 1)
+      mtoSpec.tgt = String(parseInt(mtoSpec.tgt, 10) + 10);
     FDC.say(sunNet()
       ? 'MESSAGE TO OBSERVER: ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, TARGET NUMBER ALPHA ALPHA 7003. THANK YOU FOR CHOOSING SUNLAMP, OVER.'
       : m60
-      ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA 7002, OVER.`
-      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA 7001, OVER.`,
+      ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA ${mtoSpec.tgt}, OVER.`
+      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA ${mtoSpec.tgt}, OVER.`,
             { delay: 1.4 });
   }
   // deviation policy: sloppy-but-safe call format earns a snide remark and
@@ -8113,6 +8235,17 @@ function handleEOM(p) {
     // G13 — the closing color keys on the graded outcome, not a hit count
     FDC.say(pick(missionAccomplished() ? QUIPS.eomGood : QUIPS.eomBad), { delay: 1.2 });
   }
+  /* SUGG5 - closing one of two missions does not end the fight: the AAR
+     waits for the last one, and the net switches to the survivor. */
+  const other = openMissions().find(m => m !== mission);
+  if (other) {
+    const closedNum = mission.mto ? 'AA' + mission.mto.tgt : 'THAT MISSION';
+    const otherNum = other.mto ? 'AA' + other.mto.tgt : 'the other mission';
+    mission = other;
+    state = other.phase || state;
+    FDC.say(`${closedNum} IS CLOSED - ${otherNum} IS STILL YOURS, OVER.`, { delay: 1.4 });
+    return;
+  }
   setState('AAR');
   schedule(FDC.lastT + 1.6, showAAR);
 }
@@ -8240,6 +8373,36 @@ function onPlayerMessage(raw) {
      still a correction — handleAdjust coaches the skipped readback there. */
   if ((p.type === 'unknown' || p.type === 'warno') && tryMTOReadback(p)) {
     unknownStreak = 0;
+    return;
+  }
+  dispatchParsed(p);
+}
+
+/* SUGG5 - the dispatch, factored out so routed traffic can re-enter it with
+   the active mission switched. The types listed are MISSION-SCOPED: with two
+   missions open, unprefixed traffic of these types is ambiguous and the FDC
+   demands the target number - which is the manual's own discipline (ATP
+   3-09.30 para 7-27). Safety prowords stay global and are never challenged. */
+const ROUTED_TYPES = new Set(['adjust', 'repeat', 'eom', 'direction', 'shell',
+  'fuze', 'sheaf', 'tot', 'cannotobserve', 'fire', 'amc', 'donotload']);
+function dispatchParsed(p) {
+  if (p.type === 'routed') {
+    const m2 = MISSIONS[p.tgtNum];
+    if (!m2 || m2.done) {
+      const open = Object.keys(MISSIONS).filter(k => !MISSIONS[k].done);
+      FDC.say(`NEGATIVE - no open mission under ${p.tgtNum}. ` +
+        (open.length ? `On the net: ${open.join(', ')}. ` : '') + 'Over.', { delay: 1 });
+      return;
+    }
+    mission = m2;
+    state = m2.phase || state;   // restore the mission's own phase
+    p.inner._routed = true;
+    dispatchParsed(p.inner);
+    return;
+  }
+  if (openMissions().length > 1 && ROUTED_TYPES.has(p.type) && !p._routed) {
+    FDC.say('MUSTANG 12 - TWO MISSIONS ON THIS NET. Lead with the target number: ' +
+      `"TARGET ${Object.keys(MISSIONS).filter(k => !MISSIONS[k].done).join('" or "TARGET ')}", then your traffic. Over.`, { delay: 1 });
     return;
   }
   switch (p.type) {
@@ -10039,6 +10202,7 @@ function newMission(first, type, chapter) {
   cffqReset();            // G22 — a half-sent call must not survive into a new mission
   FPF = null;             // SUGG1 — an FPF is planned against THIS fight's geometry
   mission = null;
+  for (const k in MISSIONS) delete MISSIONS[k];   // SUGG5 - the net clears
   bursts.forEach(b => { b.active = false; b.group.visible = false; });
   activeChapter = chapter || null;
   tutStop();
