@@ -57,8 +57,13 @@ const TLOG = {
       const tag = `[${fmtTime(e.t)} ${e.state}${e.ch ? ' ch' + e.ch : ''} s${e.seed}]`;
       if (e.kind === 'parse')
         return `${tag} · parsed as ${e.ptype}${e.method ? '/' + e.method : ''}${e.warno ? '/' + e.warno : ''}`;
-      if (e.kind === 'impact')
-        return `${tag} * ${e.msg} — ${e.dTgt} m from target`;
+      if (e.kind === 'impact')   /* NET8a — legacy illum entries had no dTgt
+        and printed "undefined m from target"; render distance only when held */
+        return `${tag} * ${e.msg}${e.dTgt !== undefined ? ` — ${e.dTgt} m from target` : ''}`;
+      if (e.kind === 'spot')     /* NET8b — the spot entry is the cue's METADATA,
+        logged when the report is scheduled; unmarked it read as a bare answer
+        leaked before its own SALUTE in every export */
+        return `${tag} ~ spot-report cue (${e.form || 'report'}): ${e.msg}`;
       if (e.kind === 'aar')
         return `${tag} == AAR: ${e.msg}${e.stars !== undefined ? ` (${e.stars}★)` : ''} — ${e.rounds} adj rds, ${fmtTime(e.dur)}`;
       return `${tag} ${e.call ? e.call + ': ' : ''}${e.msg}`;

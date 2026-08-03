@@ -1110,7 +1110,9 @@ function resolveImpact(impact, isFFE) {
     mission.usedIllum = true;   // TEMPO4 — reqIllum chapters grade on this
     mission.rounds.push(impact);
     if (isFFE) mission.ffeRounds.push(impact);
-    TLOG.add('impact', '', 'illumination round', { shell: 'illum' });
+    TLOG.add('impact', '', 'illumination round',
+      { shell: 'illum',   // NET8a — the flare's offset from the target matters
+        dTgt: Math.round(dist2(impact.x, impact.z, Scenario.enemy.x, Scenario.enemy.z)) });
     if (!isFFE) setState('ADJUSTING'); else setState('FIRE FOR EFFECT');
     return;
   }

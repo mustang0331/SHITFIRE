@@ -130,7 +130,8 @@ function fmtMils(m) { return String(Math.round(m) % 6400).padStart(4, '0'); }
    back. Description means what the target IS, not how to engage it. Duplication
    in the doctrinal readback is the one place cosmetic sloppiness is not cosmetic. */
 const descClean = d => (d || '')
-  .replace(DC_RE, ' ')
+  .replace(/\bot\s+factor\s+\d+(?:\.\d+)?\b/g, ' ')   // NET8c — observer-side arithmetic
+  .replace(new RegExp(DC_RE.source, 'g'), ' ')          // NET8c — strip EVERY occurrence
   .replace(/\b(?:at my command|when ready|do not load|cannot observe)\b/g, ' ')
   // G15/G16 — sheaf and fuze are method of engagement, not target description
   .replace(/\b(?:converged|open|parallel|linear|circular|special)\s+sheaf\b/g, ' ')
