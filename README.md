@@ -1,5 +1,9 @@
 # SHITFIRE
 
+<p align="center">
+  <img src="docs/screenshots/cover.png" width="100%" alt="SHITFIRE — RAIN LEAD. A forward observer on a ridge glasses a burning objective at sunset." />
+</p>
+
 **A single-file browser trainer for the FORWARD OBSERVER.** You sit on an OP over a low-poly WW2 Pacific island, locate a target with binos, laser, map, and compass, key the net, and talk a (rule-based, deeply unimpressed) fire direction center onto it: *observe → locate → transmit → observe impact → correct → fire for effect → assess*. The gun crew is a black box. You are the eyes.
 
 - **Observer:** MUSTANG 12 (you) · **FDC:** HELLHOUND FIRES (sardonic, doctrinally flawless)
