@@ -33,3 +33,11 @@ user_feedback.md
 *.PDF
 NIGHT_RUN_2_NOTES.md
 RESEARCH_NIGHT_RUN.md
+
+# Cover-art drafts — kept locally, not committed (user direction 2026-08-05).
+# The chosen final ships as docs/screenshots/cover.png; these are working files.
+docs/screenshots/ChatGPT Image*.png
+docs/screenshots/cover-option-*.png
+docs/screenshots/cover-pixel-*.png
+docs/screenshots/cover-art-prompt.md
+docs/screenshots/reference-*.png
