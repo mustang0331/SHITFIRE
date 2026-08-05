@@ -55,6 +55,12 @@ def render_island(isl):
 def w2p(x, z):
     return ((x + EXT) / (2 * EXT) * MAP_PX, (z + EXT) / (2 * EXT) * MAP_PX)
 
+def az_mils(isl, x, z):
+    # grid azimuth OP -> point, azTo convention (0 = grid north), 4-digit mils
+    op = isl['op']
+    a = math.atan2(x - op['x'], -(z - op['z']))
+    return f"{int(round(a * 6400 / (2 * math.pi))) % 6400:04d}"
+
 def grid_of(isl, x, z):
     e = isl['map']['originE'] + x + EXT
     n = isl['map']['originN'] + EXT - z
@@ -156,6 +162,21 @@ for idx, key in enumerate(ORDER):
         p = MP(isl['battery']['x'], isl['battery']['z'])
         md.text((p[0] - 8, p[1] - 12), '\u2295', font=f16, fill=BLUE)
 
+    # OP sight-line rays (drawn first: recessive, under the markers)
+    for c in chapters:
+        g = c['geo']
+        tgt = g.get('enemy') or (g.get('route') and g['route'][0]) or g.get('fireBase')
+        if not tgt: continue
+        p0 = MP(isl['op']['x'], isl['op']['z']); p1 = MP(*tgt)
+        # manual dash
+        dx, dy = p1[0] - p0[0], p1[1] - p0[1]
+        L = max(1.0, math.hypot(dx, dy)); ux, uy = dx / L, dy / L
+        t = 14.0
+        while t < L - 8:
+            md.line([(p0[0] + ux * t, p0[1] + uy * t),
+                     (p0[0] + ux * min(t + 7, L - 8), p0[1] + uy * min(t + 7, L - 8))],
+                    fill=(150, 146, 132), width=1)
+            t += 16
     # chapter annotations
     index_rows = []
     for c in chapters:
@@ -172,7 +193,8 @@ for idx, key in enumerate(ORDER):
                 md.ellipse([sp[0] - 6, sp[1] - 6, sp[0] + 6, sp[1] + 6], fill=PAPER, outline=ORANGE, width=3)
             mid = pts[len(pts) // 2]
             label(md, mid, f'{cid} {typ} ROUTE', ORANGE)
-            index_rows.append((cid, f'{typ} — route, start GRID {grid_of(isl, *g["route"][0])}'
+            index_rows.append((cid, f'{typ} — route, start GRID {grid_of(isl, *g["route"][0])} '
+                                    f'AZ {az_mils(isl, *g["route"][0])}'
                                     + (', pit stop marked' if 'stop' in g else '')))
         elif 'avenues' in g and g.get('fireBase'):
             fb = MP(*g['fireBase'])
@@ -186,7 +208,8 @@ for idx, key in enumerate(ORDER):
                 arrow(md, en, fb, PURPLE, 4)
             square(md, fb, 9, BLUE)
             label(md, fb, f'{cid} {typ} PHASE LINES{todTag}', PURPLE)
-            index_rows.append((cid, f'QFP defense — position GRID {grid_of(isl, *g["fireBase"])}, lines RED/WHITE/BLUE in depth'))
+            index_rows.append((cid, f'QFP defense — position GRID {grid_of(isl, *g["fireBase"])} '
+                                    f'AZ {az_mils(isl, *g["fireBase"])}, lines RED/WHITE/BLUE in depth'))
         else:
             en = g.get('enemy')
             if g.get('compound'):
@@ -205,7 +228,8 @@ for idx, key in enumerate(ORDER):
                 if g.get('compound'): extra = ' (friendly compound adjacent)'
                 if g.get('village'):  extra = ' (no-strike village adjacent)'
                 if g.get('bbq'):      extra = ' (no-fire cooks adjacent)'
-                index_rows.append((cid, f'{typ}{todTag} — target GRID {grid_of(isl, *en)}{extra}'))
+                index_rows.append((cid, f'{typ}{todTag} — target GRID {grid_of(isl, *en)} '
+                                        f'AZ {az_mils(isl, *en)}{extra}'))
 
     # index column
     ix = MAP_PX + 16
@@ -244,7 +268,8 @@ sd.ellipse([x0 + 1280, ly + 4, x0 + 1298, ly + 22], outline=BLUE, width=4)
 sd.text((x0 + 1306, ly), 'OP tower', font=f12, fill=INK)
 sd.ellipse([x0 + 1450, ly + 4, x0 + 1466, ly + 20], outline=BLUE, width=3)
 sd.text((x0 + 1474, ly), 'village (no-strike)', font=f12, fill=INK)
-sd.text((x0 + 1720, ly), 'grid: 1 km lines, labels in km (map-sheet convention); assault arrows show friendly advance', font=f10, fill=INK2)
+sd.text((x0 + 1720, ly), 'grid: 1 km lines, labels in km; AZ = GRID azimuth OP-to-target in mils (compass reads MAG = GRID - 124);', font=f10, fill=INK2)
+sd.text((x0 + 1720, ly + 20), 'dashed rays = OP sight lines; assault arrows show friendly advance', font=f10, fill=INK2)
 
 sheet.save('SHITFIRE_MASTER_MAP.png')
 print('wrote SHITFIRE_MASTER_MAP.png', sheet.size)
