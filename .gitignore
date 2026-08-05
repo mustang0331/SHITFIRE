@@ -25,3 +25,11 @@ tools/.cache/
 dem/
 *.tif
 *.tiff
+
+# Private working material — local only, never pushed (user direction 2026-08-04)
+Dialogue History/
+user_feedback.md
+*.pdf
+*.PDF
+NIGHT_RUN_2_NOTES.md
+RESEARCH_NIGHT_RUN.md
