@@ -8,6 +8,12 @@
 - Printable 1:50,000 topo sheets generated from the same heightfield as the 3D world — print one and do real mapwork alongside the sim.
 - OP watchtower (+50 ft) raises the observer's eye height, feeding every line-of-sight check. Every mission logs to a **TLOG** transcript (comms, parse classification, impacts, AAR outcome), exportable as text/JSON from the mission menu, for reviewing or correcting FDC dialogue.
 
+<p align="center">
+  <img src="docs/screenshots/observing.png" width="32%" alt="Observing from the OP, radio net open, FDC on the line" />
+  <img src="docs/screenshots/binos-reticle.png" width="32%" alt="7x binocular mil reticle on target" />
+  <img src="docs/screenshots/tactical-map.png" width="32%" alt="Printable 1:50,000 tactical map with legend" />
+</p>
+
 ## Run it
 
 Open `SHITFIRE.html` in **Chrome or Edge (desktop)**. That's it. Voice needs mic permission; print/save uses the browser print dialog. Gamepad and touch are supported.
@@ -30,9 +36,9 @@ Open `SHITFIRE.html` in **Chrome or Edge (desktop)**. That's it. Voice needs mic
 
 ## Current state
 
-**The campaign is complete, Foreword through Epilogue, built end to end.** All of [SPEC.md](SPEC.md)'s BUILD ORDER has shipped: core typed loop, voice layer, all three location methods (grid / polar / shift-from-known-point), FDC personality + radio audio, the five scenario templates with difficulties and danger close, the printable map library, real-DEM ingestion with adaptive quality and mobile/gamepad controls, world detail & population (structures, roads, villages, convoy pit stops, FDC rant/snide deviation policy), the campaign skeleton (volumes/chapters/stars, bookshelf menu, Skirmish mode), the narrative layer (Foreword tutorial with GUNNY BOTTLECAP, skippable chapter briefings + narrative AAR outros, per-volume islands, Volume IV strict-net + 60mm mortars, named known points, AAR commendations, career-counter continuity quips), **stage 12** (FO skill depth — adjustment coaching, the mil-relation/OT-factor workflow, doctrinal grading metrics, slow-fire consequences, smoke/illumination missions, wind, degraded optics, OT direction and RREMS), **stage 13** (the visual overhaul — tone mapping, sky + time of day, baked hillshade, near-field terrain LOD, vegetation, shoreline/water, persistent craters, optics presentation), **stage 11** (the SUNBURN Epilogue, including the SUNLAMP directed-energy finale), and **stage 14** (the dialogue punch-up). Two extras shipped alongside spec: an OP watchtower and a TLOG session transcript (see above). Track E (observation/target-acquisition legibility, night/NVG/thermal optics, roads, settlement hierarchy) and Track G (player-feedback fixes and CFF-protocol corrections) have also shipped in full.
+**The campaign is complete, Foreword through Epilogue, built end to end.** Typed and voice input, all three target-location methods (grid / polar / shift-from-known-point), an FDC with a real personality and radio audio, five scenario templates with difficulty tiers and danger-close rules, a printable map library, real-terrain (DEM) ingestion with gamepad/mobile support, a populated world (permanent structures, roads, villages, convoy pit stops), the full campaign structure (volumes, chapters, star grading, a bookshelf-style mission menu), a narrative layer (tutorial, chapter briefings, per-volume islands, strict-net mortars in the final volume), deeper forward-observer mechanics (adjustment coaching, the mil-relation/OT-factor workflow, doctrinal grading, wind, degraded optics, smoke/illumination missions), a full visual pass (dynamic sky and lighting, terrain detail, vegetation, water, persistent craters), and the SUNBURN epilogue with its SUNLAMP directed-energy finale. Two extras beyond the original spec: an OP watchtower and the TLOG session-transcript export (see above).
 
-Open work now lives on **[ROADMAP.md](ROADMAP.md)'s live board**, reorganized by domain (frame rate, world, enemy behavior, radio net, time-of-day/tempo, rendering beyond the shipped graphics plan, the build artifact itself, and the future engine port) rather than by stage number — see below.
+**[ROADMAP.md](ROADMAP.md)** carries the full build history (every stage, in order) and the live board of what's open now, organized by domain — frame rate, world, enemy behavior, radio net, time-of-day/tempo, rendering, the build artifact itself, and a future engine port.
 
 ## Scope: surface-to-surface only (for now)
 
