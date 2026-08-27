@@ -36,6 +36,8 @@ page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.
 await page.goto('file:///' + simPath.replace(/\\/g, '/'));
 // boot = the debug surface exists and the first frame has rendered
 await page.waitForFunction(() => window.SHITFIRE && window.SHITFIRE.Scenario, null, { timeout: 30000 });
+// UX1 — the title screen would otherwise be all twelve pictures
+await page.evaluate(() => window.SHITFIRE.dismissTitle && window.SHITFIRE.dismissTitle());
 await page.waitForTimeout(2500);   // let the FDC's opening traffic land and the scene settle
 
 async function shot(name, note) {

@@ -133,7 +133,9 @@ document.addEventListener('keydown', e => {
      Escape stays above this guard so it always closes; each surface keeps
      only its own keys. */
   {
-    const SURF = [[aarEl, 'nk'], [menuEl, 'kn'], [briefEl, ''], [libEl, 'p'], [mapEl, 'm']];
+    // UX1 — the title screen owns every key (its own listener takes Enter/Space)
+    const SURF = [[document.getElementById('title'), ''],
+                  [aarEl, 'nk'], [menuEl, 'kn'], [briefEl, ''], [libEl, 'p'], [mapEl, 'm']];
     for (const [el, own] of SURF)
       if (el.classList.contains('on') && !own.includes(k)) return;
   }

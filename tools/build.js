@@ -59,6 +59,16 @@ function addonUrl(rel) {
   for (const [from, to] of PP_REWRITE) src = src.split(from).join(to);
   return 'data:text/javascript;base64,' + Buffer.from(src).toString('base64');
 }
+/* UX1 — the cover art goes in the same way three.js does: base64 into the one
+   file. Same reason (file:// has no second request) and same determinism
+   (same bytes in, same bytes out). Base64's alphabet has no `$`, so
+   String.replace's `$&` substitution rules cannot bite. +587 KB on the
+   artifact; the source file stays readable because the placeholder, not the
+   payload, lives in head.html. */
+function imgUrl(rel, mime) {
+  return 'data:' + mime + ';base64,' +
+    fs.readFileSync(path.join(root, rel)).toString('base64');
+}
 let head = read(manifest.head).toString('latin1');
 head = head.replace('__VENDOR_THREE_CORE__', dataUrl('three/three.module.min.js'))
            .replace('__VENDOR_THREE_SKY__', dataUrl('three/addons/objects/Sky.js'))
@@ -69,7 +79,8 @@ head = head.replace('__VENDOR_THREE_CORE__', dataUrl('three/three.module.min.js'
            .replace('__VENDOR_PP_RENDER__', addonUrl('three/addons/postprocessing/RenderPass.js'))
            .replace('__VENDOR_PP_BLOOM__', addonUrl('three/addons/postprocessing/UnrealBloomPass.js'))
            .replace('__VENDOR_SH_COPY__', addonUrl('three/addons/shaders/CopyShader.js'))
-           .replace('__VENDOR_SH_LUM__', addonUrl('three/addons/shaders/LuminosityHighPassShader.js'));
+           .replace('__VENDOR_SH_LUM__', addonUrl('three/addons/shaders/LuminosityHighPassShader.js'))
+           .replace('__COVER_PNG__', imgUrl('docs/screenshots/cover.png', 'image/png'));   // UX1
 
 const parts = [];
 parts.push(Buffer.from(head, 'latin1'));

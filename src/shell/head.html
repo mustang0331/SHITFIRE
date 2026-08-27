@@ -101,6 +101,27 @@
   #uasnorth { position: absolute; right: 8px; top: 4px; font-size: 13px;
               color: #ffe9a8; text-shadow: 0 0 3px #000, 0 0 3px #000;
               display: inline-block; }
+  /* UX1 — the title gate. The world still builds and the boot mission still
+     opens underneath (four QA rigs block on window.SHITFIRE.Scenario), but the
+     first thing a HUMAN sees is a front door: identity, a route into the
+     tutorial, and the keys — not a live fire mission mid-monologue. The art
+     keeps the top band; the buttons get a solid strip so nothing lands on the
+     wordmark. */
+  #title { position: fixed; inset: 0; z-index: 40; display: none;
+    flex-direction: column; align-items: center; justify-content: flex-end;
+    background: #05070a center top / auto calc(100% - 132px) no-repeat
+      url("__COVER_PNG__"); }
+  #title.on { display: flex; }
+  #titlebtns { display: flex; gap: 14px; margin-bottom: 14px; }
+  #titlebtns button { font: inherit; font-size: 14px; letter-spacing: .12em;
+    padding: 10px 24px; cursor: pointer; color: #ffe9a8;
+    background: #141a10; border: 1px solid #7d8f5f; }
+  #titlebtns button:hover { background: #2b3420; border-color: #ffe9a8; }
+  #titlebtns button.alt { color: #cfe0bd; border-color: #4d5a3c; }
+  #titlefoot { margin-bottom: 16px; color: #9fb08c; font-size: 12px;
+    letter-spacing: .06em; text-align: center; line-height: 1.7; }
+  #titlefoot b { color: #cfe0bd; font-weight: normal; }
+
   /* UX2 — the pointer-lock badge: top centre, on only while the lock holds.
      z 9 sits over the world and under every modal that releases the lock. */
   #plock { position: fixed; left: 50%; transform: translateX(-50%); top: 44px;
@@ -436,6 +457,21 @@
   <span id="uasgrid">UAS</span>
   <span id="uasnorth">N&#8593;</span>
 </div>
+<!-- UX1 — the front door. START HERE is the default: the Foreword tutorial
+     exists precisely for a first-timer, and the old cold boot routed 100% of
+     them past it into a live mission. Enter or Space picks it. -->
+<div id="title" class="on">
+  <div id="titlebtns">
+    <button id="tsTut">START HERE &mdash; THE SCHOOLHOUSE</button>
+    <button id="tsMenu" class="alt">MISSION MENU</button>
+    <button id="tsSkirm" class="alt">RANDOM SKIRMISH</button>
+  </div>
+  <div id="titlefoot">
+    CLICK TO LOOK (CAPTURES MOUSE &mdash; [ESC] RELEASES) &middot; [B] BINOS &middot; [L] LASE &middot; [M] MAP &middot; [H] CHEAT SHEET &middot; [K] MENU<br>
+    <b>You are the forward observer. Find the target, then say it on the radio.</b>
+  </div>
+</div>
+
 <!-- UX2 — visible exactly as long as pointer lock holds the cursor. -->
 <div id="plock">MOUSE CAPTURED &mdash; [ESC] RELEASES IT &middot; [ENTER] RADIO</div>
 <div id="hint">

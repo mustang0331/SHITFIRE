@@ -31,6 +31,8 @@ page.on('pageerror', e => errors.push('pageerror: ' + e.message));
 
 await page.goto('file:///' + simPath.replace(/\\/g, '/'));
 await page.waitForFunction(() => window.SHITFIRE && window.SHITFIRE.Scenario, null, { timeout: 30000 });
+// UX1 — the title overlay would cover every legibility frame
+await page.evaluate(() => window.SHITFIRE.dismissTitle && window.SHITFIRE.dismissTitle());
 await page.waitForTimeout(3000);
 
 const G = await page.evaluate(() => ({

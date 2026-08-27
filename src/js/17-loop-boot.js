@@ -188,6 +188,35 @@ function animate(tMs) {
 
 /* ============================================================ BOOT */
 refreshNoteBtn();   // NET7 — show the NOTE button if dev mode persisted
+/* UX1 — the world is still built at boot (tools/shots.js, perflegibility,
+   perfprobe and perfsweep all block on window.SHITFIRE.Scenario, and the
+   title sits over a live sim), but the first FIRE MISSION now waits for a
+   choice. Every route out runs newMission or the menu, so the camera still
+   snaps onto the target area exactly as it did. The boot mission's traffic
+   is wiped on dismiss so the chosen mission's brief is the first thing read. */
+const titleEl2 = document.getElementById('title');
+function dismissTitle(fn) {
+  if (!titleEl2.classList.contains('on')) return;
+  titleEl2.classList.remove('on');
+  document.removeEventListener('keydown', titleKey);
+  // newMission kills the pending events, the FDC clock and any speech; the
+  // visible log is all that is left of the boot mission.
+  logEl.innerHTML = '';
+  if (fn) fn();
+}
+function titleKey(e) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    document.getElementById('tsTut').click();
+  }
+}
+document.addEventListener('keydown', titleKey);
+document.getElementById('tsTut').onclick =
+  () => dismissTitle(() => newMission(true, null, CAMPAIGN[0].chapters[0]));   // Foreword F.1
+document.getElementById('tsMenu').onclick =
+  () => dismissTitle(() => { menuVol = 'F'; toggleMenu(true); });
+document.getElementById('tsSkirm').onclick =
+  () => dismissTitle(() => newMission(true));
 newMission(true);
 requestAnimationFrame(animate);
 
@@ -200,6 +229,11 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
   // states no keybind reaches; the replay rig re-classifies recorded traffic
   // through parseMessage without touching mission state.
   applyTOD, setVision, onPlayerMessage, parseMessage,
+  /* UX1 — the QA rigs and any harness screenshot the world, and the title
+     overlay would otherwise be every picture. Dismisses into a random
+     skirmish (the pre-UX1 boot state), so every existing rig sees exactly
+     what it always saw. */
+  dismissTitle: () => dismissTitle(() => newMission(true)),
   /* WORLD1 — placement QA. genScenario lets a harness sample target positions
      across many seeds without driving the UI; read-only against world state
      (it builds and returns an S, it does not install it). hasLOS rides along
