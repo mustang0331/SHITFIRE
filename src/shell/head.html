@@ -12,10 +12,18 @@
 
   .panel { background: rgba(12,16,10,.80); border: 1px solid #39442e; color: #cfe0bd; }
 
+  /* GFX4 — the topbar and #hint were the only two elements with no background,
+     and the only two failing contrast: body 1.19:1 against the day sky, the
+     mission clock 1.52:1, its final-minute warn red 2.61:1 (WCAG, measured
+     against the composited backdrop). The scrim lifts them to 7.5:1 / 5.85:1 /
+     3.4:1 and gives the empty sky band a job. Every panel-backed element was
+     already AA+ — this closes the one inconsistency, not a palette change. */
   #topbar { position: fixed; top: 0; left: 0; right: 0; display: flex;
-    justify-content: space-between; padding: 6px 14px; font-size: 13px;
+    justify-content: space-between; padding: 6px 14px 14px; font-size: 13px;
     letter-spacing: .08em; color: #dfe8c8; pointer-events: none;
-    text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+    text-shadow: 0 1px 2px rgba(0,0,0,.8);
+    background: linear-gradient(to bottom,
+      rgba(8,11,7,.80) 0%, rgba(8,11,7,.66) 55%, rgba(8,11,7,0) 100%); }
   #heading { font-size: 15px; }
   /* TEMPO3 — the mission clock: present only when the scenario has a real,
      already-coded deadline (convoy escape, E.2 landfall). Amber so it reads
@@ -93,8 +101,11 @@
   #uasnorth { position: absolute; right: 8px; top: 4px; font-size: 13px;
               color: #ffe9a8; text-shadow: 0 0 3px #000, 0 0 3px #000;
               display: inline-block; }
+  /* GFX4 — surface + raised ink: 1.77:1 over sand -> 6.61:1 measured. */
   #hint { position: fixed; right: 12px; bottom: 12px; font-size: 11.5px;
-    color: #9fb08c; text-align: right; pointer-events: none; line-height: 1.6;
+    color: #b9c9a4; text-align: right; pointer-events: none; line-height: 1.6;
+    padding: 7px 11px; background: rgba(12,16,10,.62);
+    border: 1px solid rgba(95,113,80,.5);
     text-shadow: 0 1px 2px rgba(0,0,0,.8); }
 
   /* Observer optics overlay (NVG / thermal): grain, vignette, tube tint, halo.
