@@ -45,7 +45,12 @@ const TLOG = {
     }, 3000);
   },
   load() {
-    try { this.entries = JSON.parse(localStorage.getItem('shitfire_transcript') || '[]'); }
+    /* BUILD3 — 'null' or a bare number parses fine and killed the boot at
+       this.entries.push; only an array is acceptable here. */
+    try {
+      const d = JSON.parse(localStorage.getItem('shitfire_transcript') || '[]');
+      this.entries = Array.isArray(d) ? d : [];
+    }
     catch (e) { this.entries = []; }
   },
   clear() {

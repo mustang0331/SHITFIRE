@@ -190,7 +190,14 @@ function tutLandmark() {
 const CAMP = {
   data: {},
   load() {
-    try { this.data = JSON.parse(localStorage.getItem('shitfire_campaign') || '{}'); }
+    /* BUILD3 — the catch guards a PARSE error, not a wrong TYPE: the string
+       'null' parses fine and this.data becomes null, which threw at module
+       eval and black-screened the whole boot with no message. Shape-check the
+       result the way the comms-geometry loader always has. */
+    try {
+      const d = JSON.parse(localStorage.getItem('shitfire_campaign') || '{}');
+      this.data = (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
+    }
     catch (e) { this.data = {}; }
   },
   save() {

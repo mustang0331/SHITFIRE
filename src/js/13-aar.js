@@ -211,7 +211,13 @@ const aarBox = document.getElementById('aarbox');
 const BEST = {
   data: {},
   load() {
-    try { this.data = JSON.parse(localStorage.getItem('shitfire_best') || '{}'); }
+    /* BUILD3 — 'null' parsed clean, left data null, and [K] then threw inside
+       renderMenu before toggleMenu set the class: the menu silently never
+       opened again. Shape-check like the comms-geometry loader. */
+    try {
+      const d = JSON.parse(localStorage.getItem('shitfire_best') || '{}');
+      this.data = (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
+    }
     catch (e) { this.data = {}; }
   },
   save() {
