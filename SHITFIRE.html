@@ -186,6 +186,7 @@
     font: inherit; padding: 7px 10px; cursor: pointer; letter-spacing: .06em; }
   .mbtn:hover { background: #2a3520; }
   .mbtn.sel { background: #39482a; color: #ffe9a8; border-color: #5a6b42; }
+  .mbtn.lk { color: #7f8a6e; border-style: dashed; }   /* GFX5 — locked volume */
   #mbest { color: #9fb08c; font-size: 11.5px; line-height: 1.6; margin: 8px 0; }
   #menubox .foot { color: #8fa387; font-style: italic; font-size: 11.5px; }
   /* campaign bookshelf */
@@ -10311,7 +10312,13 @@ function renderMenu() {
   for (const vol of CAMPAIGN) {
     const b = document.createElement('button');
     b.className = 'mbtn' + (vol.id === menuVol ? ' sel' : '');
-    b.textContent = vol.tab + (volUnlocked(vol) ? '' : ' \u{1F512}');
+    /* GFX5 — locked volumes show their price, not a padlock. The colour-emoji
+       lock was the only emoji in an otherwise monochrome instrument UI, and
+       "II  6★" tells the player what unlocking costs, which the lock never did. */
+    const locked = !volUnlocked(vol);
+    b.textContent = vol.tab + (locked && isFinite(vol.need) ? '  ' + vol.need + '★'
+                             : locked ? '  —' : '');
+    if (locked) b.classList.add('lk');
     b.onclick = () => { menuVol = vol.id; renderMenu(); };
     vEl.appendChild(b);
   }

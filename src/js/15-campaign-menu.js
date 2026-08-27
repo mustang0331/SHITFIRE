@@ -371,7 +371,13 @@ function renderMenu() {
   for (const vol of CAMPAIGN) {
     const b = document.createElement('button');
     b.className = 'mbtn' + (vol.id === menuVol ? ' sel' : '');
-    b.textContent = vol.tab + (volUnlocked(vol) ? '' : ' \u{1F512}');
+    /* GFX5 — locked volumes show their price, not a padlock. The colour-emoji
+       lock was the only emoji in an otherwise monochrome instrument UI, and
+       "II  6★" tells the player what unlocking costs, which the lock never did. */
+    const locked = !volUnlocked(vol);
+    b.textContent = vol.tab + (locked && isFinite(vol.need) ? '  ' + vol.need + '★'
+                             : locked ? '  —' : '');
+    if (locked) b.classList.add('lk');
     b.onclick = () => { menuVol = vol.id; renderMenu(); };
     vEl.appendChild(b);
   }
