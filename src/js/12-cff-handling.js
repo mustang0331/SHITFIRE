@@ -94,6 +94,40 @@ function cffqComplete(desc, p) {
     Object.assign(CFFQ, snap, { on: true, stage: 2, t0: sim.now });
   }
 }
+/* NET17 — cheap location validation for TRANSMISSION 2, so the readback stays
+   a CHECK. The FDC used to echo "GRID 999 999, OUT." and ask for a description,
+   then refuse the grid two transmissions later — after the observer had spent
+   T3 and (pre-NET14) the whole call. This mirrors handleCFF's own gates for
+   the checks that need nothing but the location itself; handleCFF remains the
+   authority and still re-checks everything on the merged call. Returns a
+   refusal string, or null when the location is workable. */
+function locError(p) {
+  if (p.method === 'shift') {
+    const kp = (Scenario.kps || []).find(k => k.id === p.kpId);
+    if (!kp) return `NEGATIVE. There is no known point ${p.kpId} registered on this net. Say again, over.`;
+    return null;
+  }
+  if (p.method === 'polar') {
+    if (!Scenario.posRep)
+      return 'MUSTANG 12, HELLHOUND — I cannot resolve a POLAR mission. I do not hold your ' +
+             'position. Send a position report first — "POSITION GRID 245 523" — then your call, over.';
+    if (p.distM < 100 || p.distM > 12000) return pick(QUIPS.badGrid);
+    return null;
+  }
+  const okLen = p.digits && (p.digits.length === 6 || p.digits.length === 8 ||
+                             (p.digits.length === 10 && sunNet()));
+  if (!okLen) return pick(QUIPS.badGrid);
+  let e, n;
+  if (p.digits.length === 6) { e = parseInt(p.digits.slice(0, 3)) * 100 + 50; n = parseInt(p.digits.slice(3)) * 100 + 50; }
+  else if (p.digits.length === 8) { e = parseInt(p.digits.slice(0, 4)) * 10 + 5; n = parseInt(p.digits.slice(4)) * 10 + 5; }
+  else { e = parseInt(p.digits.slice(0, 5)) + 0.5; n = parseInt(p.digits.slice(5)) + 0.5; }
+  const w = enToWorld(e, n);
+  const en = worldToEN(w.x, w.z);
+  if (en.e < CONFIG.MAP.originE || en.e >= CONFIG.MAP.originE + 10000 ||
+      en.n < CONFIG.MAP.originN || en.n >= CONFIG.MAP.originN + 10000)
+    return pick(QUIPS.badGrid);
+  return null;
+}
 /* A short echo of just the location, for the T2 readback. Mirrors the strings
    handleCFF builds; kept deliberately terse because it is a readback, not a brief. */
 function locEchoOf(p) {
@@ -878,6 +912,10 @@ function onPlayerMessage(raw) {
       }
       // T2: a location with no warning order of its own, while a call is open.
       if (p.type === 'cff' && CFFQ.stage === 1 && p.warno === 'none') {
+        /* NET17 — refuse an unworkable location AT the readback, not two
+           transmissions later. The queue stays at stage 1 for the resend. */
+        const le = locError(p);
+        if (le) { FDC.say(le, { delay: 1 }); CFFQ.t0 = sim.now; return; }
         if (p.desc) { cffqComplete(p.desc, p); return; }   // T2 and T3 in one, fine
         cffqLocation(p, locEchoOf(p));
         return;
@@ -922,6 +960,32 @@ function onPlayerMessage(raw) {
 const ROUTED_TYPES = new Set(['adjust', 'repeat', 'eom', 'direction', 'shell',
   'fuze', 'sheaf', 'tot', 'cannotobserve', 'fire', 'amc', 'donotload']);
 function dispatchParsed(p) {
+  /* NET17 — the CORRECTION proword replaces the current transmission instead
+     of stacking a new one. A corrected location while a call is staged wipes
+     the queued one and takes its place (the readback then confirms the NEW
+     location); anything else re-dispatches the corrected content — corrections
+     and readbacks already overwrite their predecessors naturally. */
+  if (p.type === 'correction') {
+    const q = p.inner;
+    const bare = !q || q.type === 'empty' ||
+      (q.type === 'unknown' && !(q.raw || '').replace(/\b(over|out)\b/g, '').trim());
+    if (bare) {
+      FDC.say('CORRECTION heard. Send the corrected transmission, over.', { delay: 0.9 });
+      return;
+    }
+    if (CFFQ.on && q.type === 'cff' && q.warno === 'none') {
+      /* The corrected location takes the queued one's slot — validated and
+         read back HERE, because dispatchParsed sits below the staging logic
+         and re-dispatching would send the call one-shot. */
+      const le = locError(q);
+      if (le) { FDC.say(le, { delay: 1 }); CFFQ.t0 = sim.now; return; }
+      CFFQ.loc = null; CFFQ.stage = 1;
+      if (q.desc) { cffqComplete(q.desc, q); return; }
+      cffqLocation(q, locEchoOf(q));
+      return;
+    }
+    return dispatchParsed(q);
+  }
   if (p.type === 'routed') {
     const m2 = MISSIONS[p.tgtNum];
     if (!m2 || m2.done) {

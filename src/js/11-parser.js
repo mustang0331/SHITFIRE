@@ -76,6 +76,18 @@ function parseMessage(raw) {
   const toks = t.split(' ').filter(Boolean);
   if (!toks.length) return { type: 'empty' };
   if (t.includes('say again')) return { type: 'sayagain' };
+  /* NET17 — the CORRECTION proword is taught by DOCTRINE.md, CHEATSHEET.md §1
+     and the [H] card, and was implemented NOWHERE: bare CORRECTION drew the
+     gibberish quip, and "CORRECTION, GRID …" mid-call abandoned the queue and
+     read back the OLD grid. A leading CORRECTION now wraps the re-parsed
+     remainder; the dispatcher replaces the current transmission instead of
+     stacking a new one. Matched after SAY AGAIN (a say-again about a
+     correction is still a say-again), before everything else. */
+  if (/^(?:hellhound\s+|hacksaw\s+|fires\s+|this\s+is\s+|mustang\s+|\d+\s+)*correction\b/.test(t)) {
+    const rest = raw.replace(/^[\s\S]*?correction[,.\s]*/i, '');
+    const inner = rest.trim() ? parseMessage(rest) : { type: 'empty' };
+    return { type: 'correction', inner, raw: t, toks };
+  }
   /* G25 — the two SAFETY prowords (DOCTRINE.md §67). Both used to fall through to
      `unknown` and be answered with the reply reserved for gibberish. These are the
      calls that stop guns; being mocked for one, in the moment somebody uses one,
