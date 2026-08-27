@@ -32,7 +32,9 @@ fi
 if echo "$staged" | grep -q '^SHITFIRE\.html$'; then
   echo "[gate] syntax gate + parser-order guard"
   powershell -NoProfile -File tools/syntaxgate.ps1 || { echo "[gate] SYNTAX GATE FAILED"; exit 1; }
-  cscript //Nologo //E:JScript tools/parser-order.js >/dev/null || { echo "[gate] PARSER-ORDER GUARD FAILED"; exit 1; }
+  # BUILD2: node, gating src/js/11-parser.js with a real exit code. The old
+  # cscript/JScript version read a dead hardcoded path and could not fail.
+  "$NODE" tools/parser-order.js >/dev/null || { echo "[gate] PARSER-ORDER GUARD FAILED"; exit 1; }
   echo "[gate] clean"
 fi
 exit 0
