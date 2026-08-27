@@ -390,6 +390,61 @@ Findings the audit checked and *killed* are listed at the end so they are not re
 **Context: a showcase to Marines / fire-support peers on 2026-08-29/30**, demo-then-hands-on.
 Rows are ordered by demo impact per hour of work, not by severity.
 
+#### NIGHT RUN LEDGER — 2026-08-27/28 (autonomous, author-authorized)
+
+**Every row below is DONE unless listed under "still open".** One commit per row (small
+same-subsystem rows share one labelled commit); every commit passed build --check, lint
+(0/1 baseline), syntaxgate, the resurrected parser-order guard, shots 12/12 offline, and
+a row-specific e2e harness; parser rows also held the replay baseline (21 -> 22, the one
+move being the recorded 2026-08-08 POS REP transmission NET10 was opened from — an
+improvement, accepted).
+
+| Rows | Commit |
+|---|---|
+| BUILD2 (gate resurrected + falsified) | `b94ebdd` |
+| UX5 cold boot -> troops | `8119644` |
+| GFX4 topbar/hint contrast | `e894edb` |
+| UX2 pointer-lock badge + releases | `3d76174` |
+| GFX5 padlock -> star price | `6f40871` |
+| NET14 CFF queue survives refusal | `8a2ae4a` |
+| UX6 skirmish stars | `e3e472f` |
+| UX3 AAR sticky foot + medals up | `ca54b0e` |
+| BUILD3 localStorage shape checks | `a1fe382` |
+| ENEMY3 clamped deltas + AAR overrun + CFFQ lapse | `8c271aa` |
+| UX4 off-map example grids | `5d70ca7` |
+| GFX7 plot label + table columns | `e14fd32` |
+| GFX8 map fits every viewport | `0550fda` |
+| NET26+NET27+NET28 state-machine guards | `d47ba57` |
+| NET18 FDC queue cap 5 s (author-set) | `21e046b` |
+| NET16 numeric description vs grid | `289a9d3` |
+| NET19+NET20 callsign + phonetic target numbers | `6f04b78` |
+| NET15 JFIRE shift, both forms + card | `8da13e6` |
+| NET17 CORRECTION + T2 validation | `6cbe6bc` |
+| NET24 REQUEST SPLASH / RECORD AS TARGET / MARK | `07a853d` |
+| NET22 MTO rounds element | `7fe0f71` |
+| NET23 danger-close creep + proximity gate | `fbb9a2f` |
+| WORLD4 occupied centroid (33% unwinnable -> 0) | `bb36a25` |
+| WORLD5+WORLD6 range bands + DC floor | `c052601` |
+| GFX9 spawnBurst guards (GFX2 contract) | `f101063` |
+| UX9 modal key ownership + [N] confirm | `e408422` |
+| BUILD4+NET9 paste bomb + loud parser guard | `7a1a9d7` |
+| NET29(a,c,e) 8-digit note / degrees / apostrophe | `46febb1` |
+| NET21 card copy (code ruled unchanged) | `9ba5437` |
+| NET25 instant copy-ack during the opening | `4a17a90` |
+| UX11 star floor + gates 4/9/15/20 + eggs in skirmish (author-ruled) | `8c056ef` |
+| UX1 title screen, cover art inlined | `f55fb9d` |
+| UX7+UX10 THE JOB line + five honesty fixes | `5d85b9d` |
+| UX8+UX12 hint yields + clamp() widths | `5c2cad4` |
+| NET10+NET12 POS REP + MAGNETIC honoured | `9574720` |
+| (tower ruling, pre-run) 300 m in all four sites | `0103a4a` |
+
+**Still open from the audit, deliberately:** GFX6 (thermal halo — a legibility/feel
+trade that needs the author’s eyes), NET29(b) (six guns vs four — author’s call on the
+canon count), the sheet FIT/100% zoom toggle and the one-line contextual hint collapse
+(both content/taste), NET30 and NET13 (dialogue — parked by the author for a later
+pass), and NET11’s coaching-trigger half (entangled with the quip pools, so it rides
+with the dialogue pass). Pre-existing rows untouched by the audit keep their status.
+
 #### The convergence
 
 `NET14` was found independently by **five** of the nine agents by five unrelated routes. That
@@ -897,6 +952,7 @@ Automated coverage is the reason this list can be dismissed rather than merely d
 
 | Date | Change |
 |---|---|
+| 2026-08-28 | **NIGHT RUN — 36 audit rows shipped in 39 commits** (autonomous, author-authorized): the five-agent CFF-queue defect (`NET14`), `ENEMY3`, the title screen (`UX1`, cover art inlined), skirmish grading, the parser-order gate resurrected (`BUILD2` — dead since the repo move; it could not fail), the NET9 paste-bomb repro fixed loudly (`BUILD4`), occupied made winnable (`WORLD4`), full ledger in §3.10. Rulings recorded: tower 300 m, danger close and TTS voice no-change, FDC cap 5 s, gates 4/9/15/20. |
 | 2026-08-08 | **Play transcript triaged, seven rows opened.** `Dialogue History/shitfire_transcript_2026-08-09-01-47-39.txt` — three sittings, four graded missions (skirmish PASS, ch3.6 FAIL, quick-fire-plan FAIL, ch2.1 PASS 2★) — walked line by line against the code. The player typed **four notes in-game** and all four are real defects: `NET9` (the net went dead on a staged CFF — an unguarded throw, invisible because [src/js/16-input.js:108](src/js/16-input.js#L108) has no `try`/`catch`), `NET10` (`POS REP 244553` unparseable without the literal word GRID — in the one chapter that requires a position report), `NET11` (correction coaching scolds off the **true** miss distance including on a burst logged "not observed", and `corrSnark` mocks bracket-halving on magnitude alone), and `GFX3` (destroyed vs prone-under-fire indistinguishable through the glass). Three more found unflagged: `ENEMY3` — **the sharpest of the batch** — both advancing-assault branches compute an **unclamped** delta off `sim.now` while the render loop clamps its own at [src/js/17-loop-boot.js:70](src/js/17-loop-boot.js#L70), so one frame gap walks the assault its entire remaining distance and an alt-tab is a silent instant loss (the transcript's nonsense `[1430:54] They are inside the wire` is the cosmetic tail of it, printed on a mission that had already closed at `t=772`); `NET12` (`MAGNETIC` on a polar direction silently taken as grid, though the OT-direction leg catches exactly that); `NET13` (unit word leaking into the read-back description, EOM quip overwriting the observer's own surveillance term). `NET9` is deliberately shaped after `GFX2` — guard the class loudly, since the trigger did not reproduce headless on the same seed and same three transmissions. Checked and **not** filed: the quick-fire-plan loss was honest (planned grid went stale as the assault advanced) and ch2.1's 2★ was the competency rubric, not the method cap. `NEXT` untouched — no row is NEXT, the user picks. |
 | 2026-08-03 | **`MASTER_MAP.png` committed `2c08ff7` — the instructor's answer key.** One sheet, four panels (one per campaign island/terrain seed), plotting all 26 fixed-seed chapters: targets with mission # / type / TOD tags and six-digit grids, the 3.1 convoy route with its pit stop (the authored straight legacy line, per the `WORLD3` record), the E.2 kaiju wade-in, 4.5's RED/WHITE/BLUE phase lines, friendly/no-fire elements, no-strike villages, the OP, and a 1 km labeled grid. **Ground truth, not notes**: `tools/mastermap-collect.mjs` launches every chapter through the real menu and records live scenario geometry plus each island's sampled heightfield/roads/villages; `tools/mastermap_render.py` draws the sheet. Regenerate after any chapter or terrain change: collect → render → replace the PNG. Skirmish is deliberately absent (randomized per mission). |
 | 2026-08-03 | **`NET5`/`NET6`/`NET8` shipped (`edf14f0`/`746f74d`/`f73172d`) — the 8/02 transcript batch closes, and two of its three diagnoses were wrong in instructive ways.** NET5: the "shell word kills the call" theory was false — the real bug was G22's T2+T3-in-one path completing with a null queued location, crashing after the queue reset (silence by construction); one line fixes it and the whole staged-call family is harness-covered now. NET6: REPEAT with a shell word switches nature before firing, illum repeats are exempt from the dead-position refusal and fire one flare, not a volley. NET8: the "area cue leak" was the .txt exporter rendering the spot entry's metadata as a bare line — the game never leaked it; illum impacts carry their distance; OT FACTOR stripped from readbacks; the doubled-DANGER-CLOSE report did not reproduce on either build and is recorded as unconfirmed rather than claimed fixed. Also for posterity: a patch script turned a regex `` into a literal backspace byte — syntactically valid, invisible in grep, matching nothing — found only by shimming `String.prototype.replace` in the live page to capture the executing pattern's bytes. **The 8/02 transcript's rows are all closed. Open: `GFX1` (attended), the tower-height `[YOUR CALL]`, and the parked shelf.** |
