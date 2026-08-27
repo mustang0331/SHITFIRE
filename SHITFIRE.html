@@ -7403,7 +7403,22 @@ function normalize(s) {
       merged.push(num);
     } else merged.push(out[i]);
   }
-  return merged.join(' ');
+  /* NET20 — the FDC SPEAKS target numbers phonetically ("TARGET NUMBER ALPHA
+     ALPHA 7001") but every target-number regex demands the letters adjacent to
+     the digits, so leading with what you heard drew "Lead with the target
+     number" — from a transmission that just did. Collapse a phonetic-letter
+     pair IMMEDIATELY followed by a 4-digit run into the written form. Gated on
+     the digits so the qfp avenue names (ALPHA/BRAVO/CHARLIE, no digits after)
+     are untouched. */
+  const PHON = { alpha: 'a', alfa: 'a', bravo: 'b', charlie: 'c', delta: 'd' };
+  const folded = [];
+  for (let i = 0; i < merged.length; i++) {
+    if (PHON[merged[i]] && PHON[merged[i + 1]] && /^\d{4}$/.test(merged[i + 2] || '')) {
+      folded.push(PHON[merged[i]] + PHON[merged[i + 1]] + merged[i + 2]);
+      i += 2;
+    } else folded.push(merged[i]);
+  }
+  return folded.join(' ');
 }
 
 function parseMessage(raw) {
@@ -7749,7 +7764,13 @@ function parseMessage(raw) {
      against the ones actually consumed, so an unclaimed number can be reported
      instead of vanishing. Being told "I heard a number I could not attach to
      anything" is recoverable; a silently halved correction is not. */
-  const numCount = (t.match(/\b\d+\b/g) || []).length;
+  /* NET19 — the observer's own callsign was counted as a stray number: the 12
+     in "HELLHOUND, THIS IS MUSTANG 12, LEFT 30, ADD 200" drew the unclaimed-
+     number refusal and a permanent format note — while strict mode DEMANDS
+     callsigns on the call one transmission earlier. Identifying yourself is
+     never wrong; strip the callsign (and its digits) before counting. */
+  const tNums = t.replace(/\bmustang\s+\d+\b/g, 'mustang');
+  const numCount = (tNums.match(/\b\d+\b/g) || []).length;
   const stray = numCount - (mLR ? 1 : 0) - (mAD ? 1 : 0) - (mUD ? 1 : 0);
   // G13 — REPEAT riding on a correction ("right 50, repeat"): after a volley it
   // re-fires the volley at the corrected aimpoint; flagged here, decided there.
