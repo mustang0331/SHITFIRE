@@ -7488,6 +7488,16 @@ function normalize(s) {
      pair IMMEDIATELY followed by a 4-digit run into the written form. Gated on
      the digits so the qfp avenue names (ALPHA/BRAVO/CHARLIE, no digits after)
      are untouched. */
+  /* NET29(c) — JFIRE: "degrees may be transmitted but must be announced."
+     The announcement was heard and DISCARDED: "DIRECTION 340 DEGREES" was
+     read as 340 mils — a ~5,700 mil error, plotted without complaint. The
+     announced unit is honoured here, once, for every branch downstream. */
+  for (let i = 0; i < merged.length - 1; i++) {
+    if (/^\d+$/.test(merged[i]) && /^degrees?$/.test(merged[i + 1])) {
+      merged[i] = String(Math.round(parseInt(merged[i]) * 6400 / 360) % 6400);
+      merged.splice(i + 1, 1);
+    }
+  }
   const PHON = { alpha: 'a', alfa: 'a', bravo: 'b', charlie: 'c', delta: 'd' };
   const folded = [];
   for (let i = 0; i < merged.length; i++) {
@@ -7610,7 +7620,10 @@ function parseMessage(raw) {
      mission (NGF shape, FM 6-30 §8-12 — no land doctrine has one). Contains
      the word "fire", so it must sit before the bare-FIRE branch; tested here
      with its method-of-engagement kin. Tolerant of the STT variants. */
-  if (/\b(?:fire|firing) unit'?s? status\b/.test(t) || /\brequest (?:your )?status\b/.test(t))
+  /* NET29(e) — normalize() replaces every non-alphanumeric with a space, so
+     the '? alternative was DEAD: "FIRE UNIT'S STATUS" reached here as
+     "fire unit s status" and parsed as gibberish. Accept the split form. */
+  if (/\b(?:fire|firing) unit(?:'?s|\s+s)? status\b/.test(t) || /\brequest (?:your )?status\b/.test(t))
     return { type: 'unitstatus', raw: t, toks };
   const mSheaf = t.match(/\b(?:(cancel)\s+)?(converged|open|parallel|linear|circular|special)\s+sheaf\b/);
   if (mSheaf && !t.includes('fire') && !t.includes('grid')) {
@@ -7948,9 +7961,10 @@ function formatNotes(p) {
     notes.push(`Open with both callsigns: "${fdcCall()}, THIS IS MUSTANG 12".`);
   if (p.warno === 'none')
     notes.push('No warning order — say ADJUST FIRE or FIRE FOR EFFECT.');
-  if (p.method === 'grid' && p.digits.length === 8 &&
-      !(activeChapter && activeChapter.asset === 'mortar60'))
-    notes.push('8-digit grid is 60mm mortar precision; artillery works in hundreds (6-digit).');
+  /* NET29(a) — the 8-digit-on-artillery note is deleted: JFIRE Table 7 says
+     grid missions take a MINIMUM of 6 digits and ties 8/10 to laser accuracy,
+     never to the weapon. Requiring 8 for the 60 is a kept simplification;
+     PENALISING 8 on the 155 taught a rule that does not exist. */
   if (!p.desc)
     notes.push('No target description ("infantry in the open", etc.).');
   if (!p.toks.includes('over'))
