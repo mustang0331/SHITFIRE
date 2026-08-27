@@ -890,7 +890,13 @@ function updateScenario() {
           : `H-HOUR. Assault force on avenue ${['ALPHA', 'BRAVO', 'CHARLIE'][S.assaultAv]} — grid ${gridOf(S.enemy.x, S.enemy.z)} — advancing on the position. If you planned it, two words bring it down.`, 'sys');
       }
     } else {
-      const dt2 = S.lastT === null ? 0 : sim.now - S.lastT;
+      /* ENEMY3 — clamp to the render loop's own frame budget (17-loop-boot.js
+         clamps its dt to 50 ms but sets sim.now raw). Unclamped, one hidden-tab
+         or blocked-thread gap credited ALL the elapsed time to the assault in a
+         single frame: a real 20 s alt-tab measured 14.63 m of advance in one
+         step (418x the clamped budget) and a stale clock walked the entire
+         board. Hidden time now simply does not count against the observer. */
+      const dt2 = S.lastT === null ? 0 : Math.min(0.05, sim.now - S.lastT);
       S.lastT = sim.now;
       const fb = S.fireBase;
       const dFB = dist2(S.enemy.x, S.enemy.z, fb.x, fb.z);
@@ -915,8 +921,11 @@ function updateScenario() {
       }
       if (dFB <= 90 && !S.overrun) {
         S.overrun = true;
-        log('', 'They are inside the wire. The position is overrun — the plan came too late. Mission over.', 'sys');
+        /* ENEMY3 — the loss line only belongs to a LIVE mission. On a closed
+           one it printed "mission over" on top of the AAR the player had just
+           earned; S.overrun still latches either way, so the advance stops. */
         if (mission && !mission.done) {
+          log('', 'They are inside the wire. The position is overrun — the plan came too late. Mission over.', 'sys');
           mission.done = true; mission.failReason = 'overrun'; mission.tEnd = sim.now;
           schedule(sim.now + 2, showAAR);
         }
@@ -927,7 +936,7 @@ function updateScenario() {
        honestly responds to what the observer does: suppression halts it (and
        the halt is watchable), casualties slow it in proportion, a broken
        assault (enemyAlive false) stops for good. */
-    const dt2 = S.lastT === null ? 0 : sim.now - S.lastT;
+    const dt2 = S.lastT === null ? 0 : Math.min(0.05, sim.now - S.lastT);   // ENEMY3 — see qfp branch
     S.lastT = sim.now;
     const dOP = dist2(S.enemy.x, S.enemy.z, OP.x, OP.z);
     if (enemyAlive && sim.now >= (S.suppressedUntil || 0) && dt2 > 0) {
@@ -952,8 +961,8 @@ function updateScenario() {
     }
     if (dOP <= 90 && !S.overrun) {
       S.overrun = true;
-      log('', 'They are through the wire and on the tower stairs. The OP is overrun — mission over.', 'sys');
-      if (mission && !mission.done) {
+      if (mission && !mission.done) {   // ENEMY3 — no loss line over a finished mission's AAR
+        log('', 'They are through the wire and on the tower stairs. The OP is overrun — mission over.', 'sys');
         mission.done = true; mission.failReason = 'overrun'; mission.tEnd = sim.now;
         schedule(sim.now + 2, showAAR);
       }

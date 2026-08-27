@@ -67,9 +67,15 @@ let lastFrame = 0, lastHdg = -1;
 function animate(tMs) {
   requestAnimationFrame(animate);
   const t = tMs / 1000;
-  const dt = Math.min(0.05, t - lastFrame);
+  const rawGap = t - lastFrame;
+  const dt = Math.min(0.05, rawGap);
   lastFrame = t;
   sim.now = t;
+  /* ENEMY3 — sim.now is the raw clock, so a hidden-tab gap also aged the
+     staged call-for-fire queue: a >75 s alt-tab silently lapsed a half-sent
+     call. Shift the lapse clock forward by the un-simulated time, same
+     principle as the clamped dt — hidden time does not count. */
+  if (rawGap > 0.05 && CFFQ.on) CFFQ.t0 += rawGap - 0.05;
   // 13g — three scalar writes into preallocated uniforms; no allocation
   if (CONFIG.GFX.water) {
     WATER_U.uTime.value = t;
