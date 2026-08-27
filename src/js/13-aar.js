@@ -397,6 +397,11 @@ function showAAR() {
     starsHtml +
     `<div class="verdict ${pass ? 'pass' : 'fail'}">${verdict}</div>` +
     (why ? `<div style="margin-bottom:10px">${why}</div>` : '') +
+    /* UX3 — commendations sit with the verdict, not a full viewport below it.
+       Measured: they rendered at offsetTop ~1300 in an 844 px box, so the
+       medals a good run earns were never seen. The reward leads; the
+       spreadsheet follows. */
+    (medals.length ? `<div class="mlabel">COMMENDATIONS</div><ul>${medals.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     `<canvas id="aarplot" width="880" height="550"></canvas>` +
     `<div class="plotcap">Bird's-eye review, oriented along the observer-target line — plot left/right is deviation, up/down is range.</div>` +
     `<table>` +
@@ -430,7 +435,6 @@ function showAAR() {
     `</table>` +
     (diag.length ? `<div class="mlabel" style="margin-top:8px">ADJUSTMENT DIAGNOSIS</div><ul>${diag.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     (m.notes.length ? `<div>Format coaching:</div><ul>${m.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
-    (medals.length ? `<div class="mlabel" style="margin-top:8px">COMMENDATIONS</div><ul>${medals.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     (activeChapter && activeChapter.outro && pass
       ? `<div style="font-style:italic;color:#9fb08c;margin:8px 0">${activeChapter.outro}</div>` : '') +
     (activeChapter ? `<div style="margin-bottom:6px;color:#9fb08c">Replay from the mission menu [K] to improve your stars.</div>` : '') +

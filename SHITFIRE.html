@@ -147,8 +147,15 @@
   #aar { position: fixed; inset: 0; display: none; align-items: center;
     justify-content: center; background: rgba(0,0,0,.5); z-index: 10; }
   #aar.on { display: flex; }
+  /* UX3 — the box scrolls, and now SAYS so: a real scrollbar, and the exit
+     keys ride a sticky footer instead of sitting a viewport below the fold
+     (measured footVisible:false at every resolution tested, incl. 3440x1440). */
   #aarbox { width: 620px; max-width: 92vw; max-height: 94vh; overflow-y: auto;
-    padding: 20px 26px; font-size: 13.5px; line-height: 1.6; }
+    padding: 20px 26px 0; font-size: 13.5px; line-height: 1.6;
+    scrollbar-width: thin; scrollbar-color: #5f7150 rgba(10,13,8,.6); }
+  #aarbox::-webkit-scrollbar { width: 10px; }
+  #aarbox::-webkit-scrollbar-thumb { background: #4d5a3c; }
+  #aarbox::-webkit-scrollbar-track { background: #1a2114; }
   #aarplot { display: block; width: 100%; height: auto; margin: 6px 0 4px;
     border: 1px solid #39442e; background: #10150c; }
   #aarbox .plotcap { color: #8fa387; font-size: 11px; font-style: italic;
@@ -161,7 +168,9 @@
   #aarbox td { padding: 2.5px 0; }
   #aarbox td:last-child { text-align: right; color: #ffe9a8; }
   #aarbox ul { margin: 4px 0 10px; padding-left: 18px; color: #d8b08a; }
-  #aarbox .foot { color: #8fa387; font-style: italic; }
+  #aarbox .foot { color: #8fa387; font-style: italic;
+    position: sticky; bottom: 0; z-index: 1; background: #0f130c;
+    border-top: 1px solid #39442e; margin: 8px -26px 0; padding: 9px 26px; }   /* UX3 */
 
   /* Map */
   #map { position: fixed; inset: 0; display: none; align-items: center;
@@ -9126,6 +9135,11 @@ function showAAR() {
     starsHtml +
     `<div class="verdict ${pass ? 'pass' : 'fail'}">${verdict}</div>` +
     (why ? `<div style="margin-bottom:10px">${why}</div>` : '') +
+    /* UX3 — commendations sit with the verdict, not a full viewport below it.
+       Measured: they rendered at offsetTop ~1300 in an 844 px box, so the
+       medals a good run earns were never seen. The reward leads; the
+       spreadsheet follows. */
+    (medals.length ? `<div class="mlabel">COMMENDATIONS</div><ul>${medals.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     `<canvas id="aarplot" width="880" height="550"></canvas>` +
     `<div class="plotcap">Bird's-eye review, oriented along the observer-target line — plot left/right is deviation, up/down is range.</div>` +
     `<table>` +
@@ -9159,7 +9173,6 @@ function showAAR() {
     `</table>` +
     (diag.length ? `<div class="mlabel" style="margin-top:8px">ADJUSTMENT DIAGNOSIS</div><ul>${diag.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     (m.notes.length ? `<div>Format coaching:</div><ul>${m.notes.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
-    (medals.length ? `<div class="mlabel" style="margin-top:8px">COMMENDATIONS</div><ul>${medals.map(n => `<li>${n}</li>`).join('')}</ul>` : '') +
     (activeChapter && activeChapter.outro && pass
       ? `<div style="font-style:italic;color:#9fb08c;margin:8px 0">${activeChapter.outro}</div>` : '') +
     (activeChapter ? `<div style="margin-bottom:6px;color:#9fb08c">Replay from the mission menu [K] to improve your stars.</div>` : '') +

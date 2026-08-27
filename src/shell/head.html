@@ -147,8 +147,15 @@
   #aar { position: fixed; inset: 0; display: none; align-items: center;
     justify-content: center; background: rgba(0,0,0,.5); z-index: 10; }
   #aar.on { display: flex; }
+  /* UX3 — the box scrolls, and now SAYS so: a real scrollbar, and the exit
+     keys ride a sticky footer instead of sitting a viewport below the fold
+     (measured footVisible:false at every resolution tested, incl. 3440x1440). */
   #aarbox { width: 620px; max-width: 92vw; max-height: 94vh; overflow-y: auto;
-    padding: 20px 26px; font-size: 13.5px; line-height: 1.6; }
+    padding: 20px 26px 0; font-size: 13.5px; line-height: 1.6;
+    scrollbar-width: thin; scrollbar-color: #5f7150 rgba(10,13,8,.6); }
+  #aarbox::-webkit-scrollbar { width: 10px; }
+  #aarbox::-webkit-scrollbar-thumb { background: #4d5a3c; }
+  #aarbox::-webkit-scrollbar-track { background: #1a2114; }
   #aarplot { display: block; width: 100%; height: auto; margin: 6px 0 4px;
     border: 1px solid #39442e; background: #10150c; }
   #aarbox .plotcap { color: #8fa387; font-size: 11px; font-style: italic;
@@ -161,7 +168,9 @@
   #aarbox td { padding: 2.5px 0; }
   #aarbox td:last-child { text-align: right; color: #ffe9a8; }
   #aarbox ul { margin: 4px 0 10px; padding-left: 18px; color: #d8b08a; }
-  #aarbox .foot { color: #8fa387; font-style: italic; }
+  #aarbox .foot { color: #8fa387; font-style: italic;
+    position: sticky; bottom: 0; z-index: 1; background: #0f130c;
+    border-top: 1px solid #39442e; margin: 8px -26px 0; padding: 9px 26px; }   /* UX3 */
 
   /* Map */
   #map { position: fixed; inset: 0; display: none; align-items: center;
