@@ -101,6 +101,13 @@
   #uasnorth { position: absolute; right: 8px; top: 4px; font-size: 13px;
               color: #ffe9a8; text-shadow: 0 0 3px #000, 0 0 3px #000;
               display: inline-block; }
+  /* UX2 — the pointer-lock badge: top centre, on only while the lock holds.
+     z 9 sits over the world and under every modal that releases the lock. */
+  #plock { position: fixed; left: 50%; transform: translateX(-50%); top: 44px;
+    display: none; z-index: 9; padding: 5px 14px; font-size: 12px;
+    letter-spacing: .1em; color: #ffe9a8; background: rgba(10,13,8,.9);
+    border: 1px solid #7d8f5f; }
+  #plock.on { display: block; }
   /* GFX4 — surface + raised ink: 1.77:1 over sand -> 6.61:1 measured. */
   #hint { position: fixed; right: 12px; bottom: 12px; font-size: 11.5px;
     color: #b9c9a4; text-align: right; pointer-events: none; line-height: 1.6;
@@ -393,8 +400,10 @@
   <span id="uasgrid">UAS</span>
   <span id="uasnorth">N&#8593;</span>
 </div>
+<!-- UX2 — visible exactly as long as pointer lock holds the cursor. -->
+<div id="plock">MOUSE CAPTURED &mdash; [ESC] RELEASES IT &middot; [ENTER] RADIO</div>
 <div id="hint">
-  CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
+  CLICK TO LOOK (CAPTURES MOUSE) &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] RELEASE / CLOSE<br>
   [B] BINOS &middot; [Z]/WHEEL ZOOM 4X&thinsp;/&thinsp;7X&thinsp;/&thinsp;14X &middot; [L] LASE &middot; [R] MIL CARD &middot; [O] OPTICS: DAY/NVG/THERMAL<br>
   [M] MAP &middot; [P] PRINT MAP &middot; [H] CHEAT SHEET &middot; [K] MENU &middot; [V] FDC VOICE &middot; [N] RANDOM MSN<br>
   <span style="opacity:.62">[SHIFT+D] DISPERSION OFF — test aid, mission not graded</span>

@@ -132,8 +132,12 @@ document.addEventListener('keydown', e => {
   }
   if (k === 'b') setBinos(!binos);
   else if (k === 'z') cycleBinoZoom(e.shiftKey ? -1 : 1);   // G4 — optical power
-  else if (k === 'h') cheatEl.classList.toggle('on');       // F3 — cheat sheet
-  else if (k === 'r') toggleMilCard();
+  /* UX2 — [H] and [R] open surfaces meant to be read while the mission runs;
+     holding pointer lock across them leaves a hidden cursor over a reference
+     card. [ENTER] hands the mouse back with the keyboard, so the radio box is
+     reachable without knowing that ESC releases the lock. */
+  else if (k === 'h') { if (document.exitPointerLock) document.exitPointerLock(); cheatEl.classList.toggle('on'); }   // F3 — cheat sheet
+  else if (k === 'r') { if (document.exitPointerLock) document.exitPointerLock(); toggleMilCard(); }
   else if (k === 'o') cycleVision();
   else if (k === 'l') doLase();
   else if (k === 'm') toggleMap();
@@ -155,7 +159,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     UAS.keys[k.slice(5)] = true;
   }
-  else if (k === 'enter') { e.preventDefault(); txInput.focus(); }
+  else if (k === 'enter') { e.preventDefault(); if (document.exitPointerLock) document.exitPointerLock(); txInput.focus(); }   // UX2
 });
 document.addEventListener('keyup', e => {
   if (e.target === txInput) return;

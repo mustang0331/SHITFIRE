@@ -101,6 +101,13 @@
   #uasnorth { position: absolute; right: 8px; top: 4px; font-size: 13px;
               color: #ffe9a8; text-shadow: 0 0 3px #000, 0 0 3px #000;
               display: inline-block; }
+  /* UX2 — the pointer-lock badge: top centre, on only while the lock holds.
+     z 9 sits over the world and under every modal that releases the lock. */
+  #plock { position: fixed; left: 50%; transform: translateX(-50%); top: 44px;
+    display: none; z-index: 9; padding: 5px 14px; font-size: 12px;
+    letter-spacing: .1em; color: #ffe9a8; background: rgba(10,13,8,.9);
+    border: 1px solid #7d8f5f; }
+  #plock.on { display: block; }
   /* GFX4 — surface + raised ink: 1.77:1 over sand -> 6.61:1 measured. */
   #hint { position: fixed; right: 12px; bottom: 12px; font-size: 11.5px;
     color: #b9c9a4; text-align: right; pointer-events: none; line-height: 1.6;
@@ -393,8 +400,10 @@
   <span id="uasgrid">UAS</span>
   <span id="uasnorth">N&#8593;</span>
 </div>
+<!-- UX2 — visible exactly as long as pointer lock holds the cursor. -->
+<div id="plock">MOUSE CAPTURED &mdash; [ESC] RELEASES IT &middot; [ENTER] RADIO</div>
 <div id="hint">
-  CLICK TO LOOK &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] CLOSE<br>
+  CLICK TO LOOK (CAPTURES MOUSE) &middot; [SPACE] HOLD TO TALK &middot; [ENTER] RADIO &middot; [ESC] RELEASE / CLOSE<br>
   [B] BINOS &middot; [Z]/WHEEL ZOOM 4X&thinsp;/&thinsp;7X&thinsp;/&thinsp;14X &middot; [L] LASE &middot; [R] MIL CARD &middot; [O] OPTICS: DAY/NVG/THERMAL<br>
   [M] MAP &middot; [P] PRINT MAP &middot; [H] CHEAT SHEET &middot; [K] MENU &middot; [V] FDC VOICE &middot; [N] RANDOM MSN<br>
   <span style="opacity:.62">[SHIFT+D] DISPERSION OFF — test aid, mission not graded</span>
@@ -5621,6 +5630,22 @@ function updateBursts(dt) {
 let yaw = 0, pitch = 0, binos = false;
 const _dir = new THREE.Vector3(), _tgt = new THREE.Vector3();
 canvas.addEventListener('click', () => { if (!aarEl.classList.contains('on')) canvas.requestPointerLock(); });
+/* UX2 — pointer lock hides the cursor and confines it to the window, and the
+   browser says nothing. Real users read that as broken hardware — the author
+   did, mid-audit. The badge is visible exactly as long as the lock lasts; the
+   log line fires once per session. (The lock also escapes headless Chrome via
+   ClipCursor, which is why harnesses must never mouse-click this canvas.) */
+const plockEl = document.getElementById('plock');
+let plockTold = false;
+document.addEventListener('pointerlockchange', () => {
+  const on = document.pointerLockElement === canvas;
+  plockEl.classList.toggle('on', on);
+  if (on && !plockTold) {
+    plockTold = true;
+    log('', 'MOUSE CAPTURED — the cursor is hidden so you can look around freely. ' +
+            '[ESC] gives it back; [ENTER] radio, [M] map and [K] menu also release it.', 'sys');
+  }
+});
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement !== canvas) return;
   const s = CONFIG.CAMERA.mouseSens * (binos ? binoFovNow() / CONFIG.CAMERA.fov : 1);
@@ -10668,8 +10693,12 @@ document.addEventListener('keydown', e => {
   }
   if (k === 'b') setBinos(!binos);
   else if (k === 'z') cycleBinoZoom(e.shiftKey ? -1 : 1);   // G4 — optical power
-  else if (k === 'h') cheatEl.classList.toggle('on');       // F3 — cheat sheet
-  else if (k === 'r') toggleMilCard();
+  /* UX2 — [H] and [R] open surfaces meant to be read while the mission runs;
+     holding pointer lock across them leaves a hidden cursor over a reference
+     card. [ENTER] hands the mouse back with the keyboard, so the radio box is
+     reachable without knowing that ESC releases the lock. */
+  else if (k === 'h') { if (document.exitPointerLock) document.exitPointerLock(); cheatEl.classList.toggle('on'); }   // F3 — cheat sheet
+  else if (k === 'r') { if (document.exitPointerLock) document.exitPointerLock(); toggleMilCard(); }
   else if (k === 'o') cycleVision();
   else if (k === 'l') doLase();
   else if (k === 'm') toggleMap();
@@ -10691,7 +10720,7 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     UAS.keys[k.slice(5)] = true;
   }
-  else if (k === 'enter') { e.preventDefault(); txInput.focus(); }
+  else if (k === 'enter') { e.preventDefault(); if (document.exitPointerLock) document.exitPointerLock(); txInput.focus(); }   // UX2
 });
 document.addEventListener('keyup', e => {
   if (e.target === txInput) return;

@@ -2,6 +2,22 @@
 let yaw = 0, pitch = 0, binos = false;
 const _dir = new THREE.Vector3(), _tgt = new THREE.Vector3();
 canvas.addEventListener('click', () => { if (!aarEl.classList.contains('on')) canvas.requestPointerLock(); });
+/* UX2 — pointer lock hides the cursor and confines it to the window, and the
+   browser says nothing. Real users read that as broken hardware — the author
+   did, mid-audit. The badge is visible exactly as long as the lock lasts; the
+   log line fires once per session. (The lock also escapes headless Chrome via
+   ClipCursor, which is why harnesses must never mouse-click this canvas.) */
+const plockEl = document.getElementById('plock');
+let plockTold = false;
+document.addEventListener('pointerlockchange', () => {
+  const on = document.pointerLockElement === canvas;
+  plockEl.classList.toggle('on', on);
+  if (on && !plockTold) {
+    plockTold = true;
+    log('', 'MOUSE CAPTURED — the cursor is hidden so you can look around freely. ' +
+            '[ESC] gives it back; [ENTER] radio, [M] map and [K] menu also release it.', 'sys');
+  }
+});
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement !== canvas) return;
   const s = CONFIG.CAMERA.mouseSens * (binos ? binoFovNow() / CONFIG.CAMERA.fov : 1);
