@@ -39,8 +39,9 @@ Grid missions: send **OT direction** before or with the first correction.
 
 ## 4. Danger close
 
-Round predicted within **600 m** of friendlies → announce **"danger close."**
+Round predicted within **600 m** of friendlies (battery) / **250 m** (60mm mortar) → announce **"danger close."**
 Adjust with **creeping fire**: corrections **≤100 m**, walked in from the safe side.
+*(The sim keys the threshold off the firing asset — author ruling 2026-08-27.)*
 
 ## 5. End of mission — RREMS
 
