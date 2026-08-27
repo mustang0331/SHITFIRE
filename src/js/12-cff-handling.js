@@ -741,7 +741,10 @@ function expectedHint() {
     case 'SHOT': case 'MISSION SENT': case 'FIRE FOR EFFECT':
       return 'Rounds are in progress — wait for SPLASH, observe the burst, then correct.';
     default:
-      return 'Send a call for fire — grid: "adjust fire, grid 245523, infantry in the open, over" — or polar: "adjust fire, direction 4400, distance 2100, troops in the open, over".';
+      /* UX4 — example digits are off-map on purpose; the old real square,
+         copied verbatim, fired 3 km off target. Keep in step with the
+         placeholder in head.html. */
+      return 'Send a call for fire — grid: "adjust fire, grid 123 456, infantry in the open, over" (with YOUR target grid) — or polar: "adjust fire, direction 4400, distance 2100, troops in the open, over".';
   }
 }
 function sysHint() { log('', 'HINT: ' + expectedHint(), 'sys'); }

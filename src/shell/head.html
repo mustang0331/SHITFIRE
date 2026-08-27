@@ -326,8 +326,13 @@
          verbatim, never to the parser or the FDC -->
     <button id="notebtn" type="button" title="Log a tester note to the TLOG (never parsed, never answered)">NOTE</button>
     <span id="txprompt">MUSTANG 12 &gt;</span>
+    <!-- UX4 — the example grid is deliberately OFF-MAP (map squares run
+         200-299 / 500-599). The old 245 523 was a real square: typed verbatim
+         it opened a working mission ~3 km off target and even cleared the
+         danger-close gate BECAUSE it was nowhere near the friendlies. A copied
+         example must fail loudly, not succeed wrongly. -->
     <input id="txinput" autocomplete="off" spellcheck="false"
-      placeholder='adjust fire, grid 245 523, infantry in the open, over'>
+      placeholder='e.g. "adjust fire, grid 123 456, infantry in the open, over" — use YOUR target grid'>
   </form>
 </div>
 
@@ -384,7 +389,7 @@
   <h3>PROWORDS</h3>
   Over &middot; Out &middot; Say again &middot; Correction &middot; Repeat (= fire again, same data) &middot; At my command / Fire / Cancel at my command &middot; <b>Check firing</b> &middot; Cease loading &middot; Suppress target AB#### &middot; Record as target
   <h3>IMMEDIATE MISSIONS — ONE TRANSMISSION</h3>
-  Friendlies taking effective fire, speed over precision: "<b>Immediate suppression, grid 245 523, over.</b>" (or <b>immediate smoke</b>) &mdash; rounds NOW, no MTO, refine after. Suppression lasts only while fires land.
+  Friendlies taking effective fire, speed over precision: "<b>Immediate suppression, grid 123 456, over.</b>" (or <b>immediate smoke</b>) &mdash; rounds NOW, no MTO, refine after. Suppression lasts only while fires land.
   <h3>PLANNED FIRES — plan while quiet, fire in two words</h3>
   "<b>Plan target, grid 245 523</b>" files a numbered target, no rounds spent &middot; "<b>Fire target AB7101</b>" brings it down (planned = fast; unplanned = full CFF) &middot; <b>Priority target AB7101</b> keeps the guns laid on it &middot; Plan/fire <b>group</b> &amp; <b>series</b> by name &middot; <b>Plan FPF, grid&hellip;, direction&hellip;</b> then adjust by piece &middot; "<b>Fire the FPF</b>" when they cross.
   <h3>PARS (this sim)</h3>
