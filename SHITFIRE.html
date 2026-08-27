@@ -8596,6 +8596,15 @@ function addNote(text) {
 function onPlayerMessage(raw) {
   const noteM = raw.match(/^\s*note[:,\s]+(.+)$/i);
   if (noteM) { addNote(noteM[1].trim()); return; }
+  /* NET18 — FDC.say queues monotonically on lastT, so typing faster than the
+     FDC talks ran the reply queue away: 12 transmissions in 3.8 s left the net
+     ~32 s behind, every answer attached to the WRONG transmission, and only
+     [N] recovered it. The cap lives HERE, not in say() — scripted chains (the
+     boot monologue, SALUTE traffic) legitimately queue 20+ s ahead and must
+     keep their pacing. When the PLAYER keys the net, stale backlog lead
+     collapses so the reply to this transmission lands within ~5 s (author-set,
+     2026-08-27). Already-scheduled lines still deliver at their old times. */
+  FDC.lastT = Math.min(FDC.lastT, sim.now + 5);
   squelch();
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
   const p = parseMessage(raw);
