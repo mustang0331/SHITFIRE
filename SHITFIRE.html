@@ -7826,13 +7826,24 @@ function cffqComplete(desc, p) {
      and handed them the one-shot path. The location source is the queued
      transmission when one exists, else the completing transmission itself. */
   const loc = CFFQ.loc || p;
+  /* NET14 — a refused transmission 3 used to destroy the whole call: the queue
+     was reset BEFORE handleCFF ran, and handleCFF has nine refusal paths (the
+     danger-close gate above all). The FDC would say "Say DANGER CLOSE, over",
+     the observer would comply, and the compliant resend — arriving on a dead
+     queue — got the gibberish quip. Snapshot BEFORE folding T3 in (so a
+     refused description is not doubled on the retry), and on refusal restore
+     the queue at stage 2 with a fresh t0 so the lapse clock restarts. The
+     one-shot path ignores handleCFF's return value, so it is unchanged. */
+  const snap = { warno: CFFQ.warno, loc: CFFQ.loc, raw: CFFQ.raw, toks: CFFQ.toks.slice() };
   cffqAdd(p);
   const merged = Object.assign({}, loc, {
     type: 'cff', warno: CFFQ.warno !== 'none' ? CFFQ.warno : loc.warno,
     desc, raw: CFFQ.raw, toks: CFFQ.toks, staged: true,
   });
   cffqReset();
-  handleCFF(merged);
+  if (handleCFF(merged) === false && !(mission && !mission.done)) {
+    Object.assign(CFFQ, snap, { on: true, stage: 2, t0: sim.now });
+  }
 }
 /* A short echo of just the location, for the T2 readback. Mirrors the strings
    handleCFF builds; kept deliberately terse because it is a readback, not a brief. */
@@ -7860,14 +7871,14 @@ function handleCFF(p) {
       FDC.say('SECOND MISSION ACCEPTED - two on the net. LEAD EVERY TRANSMISSION WITH THE TARGET NUMBER from here, OUT.', { delay: 0.9 });
     } else {
       FDC.say('MUSTANG 12, we are mid-mission. Adjust, fire for effect, or send end of mission, over.', { delay: 1 });
-      return;
+      return false;   // NET14 — every refusal reports itself to the staged queue
     }
   }
   // 60mm precision shoots demand the full 8-digit grid
   if (activeChapter && activeChapter.asset === 'mortar60' &&
       p.method === 'grid' && p.digits && p.digits.length === 6) {
     FDC.say('MUSTANG 12, HELLHOUND — this is a 60 MIKE MIKE precision shoot. Six digits is a neighborhood; I need an ADDRESS. Send 8 digits, ten-meter precision, over.', { delay: 1.1 });
-    return;
+    return false;   // NET14
   }
   // strict net (Volume IV): full format or the call is rejected
   if (activeChapter && activeChapter.strict) {
@@ -7885,7 +7896,7 @@ function handleCFF(p) {
       challenge = 'transmissions end with OVER on this net. The book is not a suggestion tonight. Say again, over.';
     if (challenge) {
       FDC.say('MUSTANG 12, HELLHOUND — STRICT NET: ' + challenge, { delay: 1.1 });
-      return;
+      return false;   // NET14
     }
   }
   // target location -> world point, any method
@@ -7894,7 +7905,7 @@ function handleCFF(p) {
     const kp = (Scenario.kps || []).find(k => k.id === p.kpId);
     if (!kp) {
       FDC.say(`NEGATIVE. There is no known point ${p.kpId} registered on this net. Say again, over.`, { delay: 1 });
-      return;
+      return false;   // NET14
     }
     const az = p.dirMils !== null
       ? (p.dirMils % 6400) / MILS_PER_RAD
@@ -7915,11 +7926,11 @@ function handleCFF(p) {
       FDC.say('MUSTANG 12, HELLHOUND — I cannot resolve a POLAR mission. I do not hold your ' +
               'position. Send a position report first — "POSITION GRID 245 523" — then your ' +
               'call, over.', { delay: 1.1 });
-      return;
+      return false;   // NET14
     }
     if (p.distM < 100 || p.distM > 12000) {
       FDC.say(pick(QUIPS.badGrid), { delay: 1 });
-      return;
+      return false;   // NET14
     }
     /* Resolved from the REPORTED position, not the true one. The FDC only knows
        what it was told; an observer who mis-located himself finds out from the
@@ -7949,13 +7960,13 @@ function handleCFF(p) {
     locStr = `GRID ${p.digits}`;
   } else {
     FDC.say(pick(QUIPS.badGrid), { delay: 1 });
-    return;
+    return false;   // NET14
   }
   const en = worldToEN(cx, cz);
   if (en.e < CONFIG.MAP.originE || en.e >= CONFIG.MAP.originE + 10000 ||
       en.n < CONFIG.MAP.originN || en.n >= CONFIG.MAP.originN + 10000) {
     FDC.say(pick(QUIPS.badGrid), { delay: 1 });
-    return;
+    return false;   // NET14
   }
   // danger-close gate: friendlies inside dangerCloseRadius() demand the
   // proword — 600 m for the battery, tighter for the sixty (F2)
@@ -7965,7 +7976,7 @@ function handleCFF(p) {
   const dcSent = saidDangerClose(p.raw);          // F6 — tolerant of "danger clothes"
   if (minF <= dangerCloseRadius() && !dcSent) {
     FDC.say(pick(QUIPS.dangerClose), { delay: 1.2 });
-    return;
+    return false;   // NET14
   }
   if (dcSent) locStr += ', DANGER CLOSE';
   /* TEMPO2 — an immediate mission is EXEMPT from deliberate-call format notes:
@@ -8111,6 +8122,7 @@ function handleCFF(p) {
                                          // immediates and screens want silence, illum wants light
                                          intent: p.imm || shell === 'smoke' ? 'suppress'
                                                : shell === 'illum' ? 'illum' : 'destroy' });
+  return true;   // NET14 — the call was accepted and the mission is open
 }
 
 /* ---- G25: the safety stops (DOCTRINE.md §67) --------------------------------
