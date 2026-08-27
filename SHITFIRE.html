@@ -9093,20 +9093,27 @@ function showAAR() {
     trace: m.missTrace.slice(),
     notes: m.notes.length,
     ...(m.noDisp ? { noDisp: true } : {}),
-    ...(activeChapter && !m.noDisp ? { stars: gradeMission(m) } : {}) });
-  // campaign star grading (MW2 style): grade, persist best, show in AAR
+    ...(!m.noDisp ? { stars: gradeMission(m) } : {}) });   // UX6 — skirmish grades too
+  // star grading (MW2 style): grade EVERY graded mission, persist chapter bests
   let starsHtml = '';
-  if (activeChapter && m.noDisp) {
+  if (m.noDisp) {
     /* G3 — a mission flown without dispersion is not a measurement of anything,
        so it does not touch the campaign record. Deliberately does NOT record zero
        stars either: that would destroy a previous honest result on this chapter,
        punishing the user for using a test aid the trainer offers them. */
     starsHtml = '<div style="margin-bottom:8px;color:#ffb3a0">NOT GRADED — round dispersion was ' +
-      'disabled (SHIFT+D) during this mission. No stars recorded; your previous best for this ' +
-      'chapter is untouched.</div>';
-  } else if (activeChapter) {
+      'disabled (SHIFT+D) during this mission. No stars recorded' +
+      (activeChapter ? '; your previous best for this chapter is untouched' : '') + '.</div>';
+  } else {
+    /* UX6 — the star row was gated on activeChapter, and every skirmish (the
+       cold boot, [N], all 13 [K] types) has none — so the mode everyone
+       actually plays ended with a reward screen carrying no score. Measured:
+       gradeMission returned 4 on a near-perfect skirmish while the AAR showed
+       nothing. gradeMission runs clean with activeChapter === null; only
+       CAMP.record stays chapter-only, so skirmish never writes campaign
+       progress. */
     const s = gradeMission(m);
-    CAMP.record(activeChapter.id, S.difficulty, s);
+    if (activeChapter) CAMP.record(activeChapter.id, S.difficulty, s);
     const cap = { easy: 3, normal: 4, hard: 5 }[S.difficulty];
     starsHtml = `<div class="aarstars">${starStr(s)}</div>` +
       (s > 0 && s === cap && cap < 5
