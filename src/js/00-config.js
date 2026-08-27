@@ -313,7 +313,13 @@ CONFIG.AMMO = {
   m60:  { he: 96,  smoke: 24, illum: 24 },
 };
 let DIFFICULTY = 'normal';
-let currentType = 'strongpoint';
+/* UX5 — the cold-boot skirmish. newMission(true) never randomises the type, so
+   this IS everyone's first mission. 'strongpoint' put a friendly element ~200 m
+   from the target, so a naive-but-correct first call was refused for the
+   missing DANGER CLOSE proword and (pre-NET14) discarded. 'troops' has no
+   friendlies, no no-strike village, no deadline and no required proword — the
+   one type where the call the cheat sheet teaches works first try. */
+let currentType = 'troops';
 const SCN_META = {
   strongpoint: { name: 'POSITION UNDER ATTACK' },
   troops:      { name: 'TROOPS IN THE OPEN' },
