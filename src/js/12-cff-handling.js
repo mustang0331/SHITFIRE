@@ -363,9 +363,14 @@ function handleCFF(p) {
       ? { keys: ['aperture', 'array', 'adjust', 'effect', 'directed', 'energy'],
           tgt: '7003', read: false, nagged: false }
       : m60
-      ? { keys: ['tube', 'section', 'adjust', 'effect', '60', 'mike', shell === 'he' ? 'he' : shell],
+      /* NET22 — JFIRE Table 4 asterisks "number of rounds (per tube)" as a
+         required MTO element; the sim fired a six-round FFE and never said
+         how many were coming. Battery: six guns (the greet and the unit
+         status both say so) x 1 round = the 6-round volley. The section
+         states its volley total. 'round' joins the readback keys. */
+      ? { keys: ['tube', 'section', 'adjust', 'effect', 'round', '60', 'mike', shell === 'he' ? 'he' : shell],
           tgt: '7002', read: false, nagged: false }
-      : { keys: ['gun', 'battery', 'adjust', 'effect', '155',
+      : { keys: ['gun', 'battery', 'adjust', 'effect', 'round', '155',
                  ...(shell === 'he' ? ['he', 'fuze', fuze.kind] : [shell])],
           tgt: '7001', read: false, nagged: false };
     /* SUGG5 - two concurrent missions cannot share a number: the second slot
@@ -375,8 +380,8 @@ function handleCFF(p) {
     FDC.say(sunNet()
       ? 'MESSAGE TO OBSERVER: ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, TARGET NUMBER ALPHA ALPHA 7003. THANK YOU FOR CHOOSING SUNLAMP, OVER.'
       : m60
-      ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA ${mtoSpec.tgt}, OVER.`
-      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA ${mtoSpec.tgt}, OVER.`,
+      ? `MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, ${CONFIG.BALLISTICS.ffeRounds} ROUNDS, 60 MIKE MIKE ${shell === 'he' ? 'HE' : natureTxt}, TARGET NUMBER ALPHA ALPHA ${mtoSpec.tgt}, OVER.`
+      : `MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 1 ROUND, 155 ${natureTxt}, TARGET NUMBER ALPHA ALPHA ${mtoSpec.tgt}, OVER.`,
             { delay: 1.4 });
   }
   // deviation policy: sloppy-but-safe call format earns a snide remark and
