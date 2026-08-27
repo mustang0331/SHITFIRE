@@ -661,7 +661,7 @@ subsystems unbounded.
 
 ### The gift of this app's camera
 
-SHITFIRE's observer stands on a fixed 15 m tower and never gets closer than ~1500 m to anything —
+SHITFIRE's observer stands on a fixed 300 m tower and never gets closer than ~1500 m to anything —
 max engagement range is 3200 m. The categories that are expensive to fake without an artist
 (vegetation up close, character/vehicle detail) are exactly the categories this camera never sees up
 close. The ceiling therefore lands unusually high *for this specific application* — an FO trainer is

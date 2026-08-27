@@ -10,7 +10,7 @@
 - One `SHITFIRE.html`. No server, no API keys, and **no network at runtime** — Three.js r160 and its addons are vendored in `vendor/` and inlined into the artifact as `data:` URLs, so the shipped file opens and runs fully offline. Players need nothing installed. (Contributors edit source in `src/` and run a small deterministic build script — see [CLAUDE.md](CLAUDE.md); that build step is dev-only and never touches how the shipped file runs.)
 - Voice via the browser Web Speech API (push-to-talk + spoken FDC); **typed input always works without it**.
 - Printable 1:50,000 topo sheets generated from the same heightfield as the 3D world — print one and do real mapwork alongside the sim.
-- OP watchtower (+50 ft) raises the observer's eye height, feeding every line-of-sight check. Every mission logs to a **TLOG** transcript (comms, parse classification, impacts, AAR outcome), exportable as text/JSON from the mission menu, for reviewing or correcting FDC dialogue.
+- OP watchtower (+300 m) raises the observer's eye height, feeding every line-of-sight check. Every mission logs to a **TLOG** transcript (comms, parse classification, impacts, AAR outcome), exportable as text/JSON from the mission menu, for reviewing or correcting FDC dialogue.
 
 <p align="center">
   <img src="docs/screenshots/observing.png" width="32%" alt="Observing from the OP, radio net open, FDC on the line" />

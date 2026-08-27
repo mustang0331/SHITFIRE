@@ -15,7 +15,7 @@ function findOP() {
 }
 const OP = { x: 0, z: 0, h: 0 };
 const eye = { x: 0, y: 0, z: 0 };
-// OP watchtower: the FO observes from a raised platform (+50 ft) so volcano
+// OP watchtower: the FO observes from a raised platform (+300 m) so volcano
 // terrain features don't mask the low ground. Eye height drives every LOS
 // check, so lasing and crest-masking all inherit the elevation.
 const towerMeshes = [];
