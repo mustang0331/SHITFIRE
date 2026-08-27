@@ -125,6 +125,18 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
+  /* UX9 — an open surface owns the keyboard. Every hotkey used to fire
+     straight through a modal: with the AAR up, B/M/H/U all took effect behind
+     it and [N] silently destroyed the finished run (newMission clears
+     mission, MISSIONS, cffq and FPF with no confirmation — note SHIFT+D was
+     deliberately shift-guarded for being destructive, and [N] never was).
+     Escape stays above this guard so it always closes; each surface keeps
+     only its own keys. */
+  {
+    const SURF = [[aarEl, 'nk'], [menuEl, 'kn'], [briefEl, ''], [libEl, 'p'], [mapEl, 'm']];
+    for (const [el, own] of SURF)
+      if (el.classList.contains('on') && !own.includes(k)) return;
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) startPTT();
@@ -148,7 +160,12 @@ document.addEventListener('keydown', e => {
     if (!CONFIG.VOICE.ttsEnabled && 'speechSynthesis' in window) speechSynthesis.cancel();
     log('', `FDC voice ${CONFIG.VOICE.ttsEnabled ? 'ON' : 'OFF'}.`, 'sys');
   }
-  else if (k === 'n') newMission(false);
+  else if (k === 'n') {
+    // UX9 — a live mission is a run someone may care about; ask before wiping it
+    if (mission && !mission.done &&
+        !confirm('Abandon the mission in progress and start a new one?')) return;
+    newMission(false);
+  }
   /* G3 — SHIFT+D, not plain D. This is a test aid that removes the difficulty
      from the trainer, so it should take deliberate intent to hit and should never
      be reachable by a stray keypress while flying a graded chapter. Also
