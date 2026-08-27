@@ -164,9 +164,14 @@
   #aarbox .verdict { font-size: 21px; letter-spacing: .2em; margin: 8px 0 12px; }
   #aarbox .pass { color: #a8e08a; }
   #aarbox .fail { color: #e08a7a; }
-  #aarbox table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  #aarbox td { padding: 2.5px 0; }
+  /* GFX7 — fixed layout: auto let a long value squeeze the label column until
+     labels wrapped and the two columns visually merged. */
+  #aarbox table { width: 100%; border-collapse: collapse; margin-bottom: 10px;
+    table-layout: fixed; }
+  #aarbox td { padding: 3px 0; vertical-align: top; }
+  #aarbox td:first-child { width: 44%; padding-right: 16px; }
   #aarbox td:last-child { text-align: right; color: #ffe9a8; }
+  #aarbox tr + tr td { border-top: 1px solid rgba(207,224,189,.10); }
   #aarbox ul { margin: 4px 0 10px; padding-left: 18px; color: #d8b08a; }
   #aarbox .foot { color: #8fa387; font-style: italic;
     position: sticky; bottom: 0; z-index: 1; background: #0f130c;

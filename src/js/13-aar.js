@@ -145,8 +145,14 @@ function renderShotPlot(cv, m) {
     ctx.setLineDash([]);
     ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2.6;
     ctx.strokeRect(ap.x - 9, ap.y - 9, 18, 18);
+    /* GFX7 — a SMALL initial location error puts SENT on top of TARGET, and
+       the label's stroke halo ate "TAR": the plot broke precisely on the runs
+       where the student did well. Push the label clear when the two anchor
+       points nearly coincide. */
+    const near = Math.hypot(ap.x - tp.x, ap.y - tp.y) < 40;
     label(`SENT${m.aimErr0 !== null ? ' (' + Math.round(m.aimErr0) + ' m off)' : ''}`,
-          ap.x + 14, ap.y - 9, '#ffe9a8');
+          near ? tp.x - 62 : ap.x + 14,
+          near ? tp.y + 34 : ap.y - 9, '#ffe9a8');
   }
 
   // adjusting rounds: numbered, joined in sequence
