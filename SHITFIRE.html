@@ -132,6 +132,15 @@
     letter-spacing: .1em; color: #ffe9a8; background: rgba(10,13,8,.9);
     border: 1px solid #7d8f5f; }
   #plock.on { display: block; }
+  /* UX8 — the hint yields to whatever claimed its corner or the screen.
+     It overprinted the mil card into mush at every viewport (same corner,
+     z 6 vs auto), sat inside the cheat sheet's footprint, competed with
+     every modal, and advertised SPACE/ENTER/ESC to touch devices that have
+     none. :has() needs Chrome 105+; older engines just keep today's overlap. */
+  body:has(#milcard.on) #hint, body:has(#cheat.on) #hint,
+  body:has(#aar.on) #hint, body:has(#menu.on) #hint,
+  body:has(#library.on) #hint, body:has(#title.on) #hint { display: none; }
+  body.touch #hint { display: none; }
   /* GFX4 — surface + raised ink: 1.77:1 over sand -> 6.61:1 measured. */
   #hint { position: fixed; right: 12px; bottom: 12px; font-size: 11.5px;
     color: #b9c9a4; text-align: right; pointer-events: none; line-height: 1.6;
@@ -168,13 +177,19 @@
   #lase { margin-top: 6px; color: #ffe9a8; font-size: 13px; min-height: 17px; }
 
   /* AAR */
+  /* UX8 — .72 scrim: at .5 the radio panel and hint read at full contrast
+     BEHIND the reward screen, two competing text columns at the one moment
+     that should own the eye. */
   #aar { position: fixed; inset: 0; display: none; align-items: center;
-    justify-content: center; background: rgba(0,0,0,.5); z-index: 10; }
+    justify-content: center; background: rgba(0,0,0,.72); z-index: 10; }
   #aar.on { display: flex; }
   /* UX3 — the box scrolls, and now SAYS so: a real scrollbar, and the exit
      keys ride a sticky footer instead of sitting a viewport below the fold
      (measured footVisible:false at every resolution tested, incl. 3440x1440). */
-  #aarbox { width: 620px; max-width: 92vw; max-height: 94vh; overflow-y: auto;
+  /* UX12 — clamp() instead of fixed pixels: the AAR was 18% of an ultrawide
+     and its 880x550 shot plot rendered into 566 CSS px on every monitor ever
+     made. The prose column stays readable; the plot finally breathes. */
+  #aarbox { width: clamp(560px, 46vw, 980px); max-width: 92vw; max-height: 94vh; overflow-y: auto;
     padding: 20px 26px 0; font-size: 13.5px; line-height: 1.6;
     scrollbar-width: thin; scrollbar-color: #5f7150 rgba(10,13,8,.6); }
   #aarbox::-webkit-scrollbar { width: 10px; }
@@ -223,8 +238,8 @@
   #menu { position: fixed; inset: 0; display: none; align-items: center;
     justify-content: center; background: rgba(0,0,0,.5); z-index: 11; }
   #menu.on { display: flex; }
-  #menubox { width: 680px; max-width: 92vw; padding: 18px 24px; font-size: 13px;
-    max-height: 92vh; overflow-y: auto; }
+  #menubox { width: clamp(620px, 48vw, 900px); max-width: 92vw; padding: 18px 24px; font-size: 13px;
+    max-height: 92vh; overflow-y: auto; }   /* UX12 */
   #menubox h2 { margin: 0 0 10px; font-size: 16px; letter-spacing: .15em; color: #dfe8c8; }
   #menubox .mlabel { font-size: 11px; letter-spacing: .14em; color: #8fa387; margin: 6px 0 4px; }
   #menubox .mrow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
