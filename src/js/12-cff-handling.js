@@ -640,7 +640,37 @@ function handleAdjust(p) {
     const nz = a.z - Math.cos(otAz) * p.corr.add + Math.sin(otAz) * p.corr.right;
     let danger = null;
     const declaredDC = mission.gridStr.includes('DANGER CLOSE');
-    if (!declaredDC) {
+    if (declaredDC) {
+      /* NET23 — the proximity gate used to switch OFF entirely when DANGER
+         CLOSE was declared: a 940 m correction on a DC mission with friendlies
+         196 m out fired without comment, on exactly the mission type where
+         JFIRE mandates creeping fire ("no adjustment greater than 100 m ...
+         used exclusively during danger close"). Two checks now stand on DC:
+         (1) creeping fire — a >100 m correction is challenged once and noted
+         once; the identical resend overrides, same contract as the unsafe
+         gate below. (2) proximity still challenges, but only a correction
+         that moves the aim TOWARD friendlies inside the radius — a bold
+         first correction away from them is doctrine, not danger. */
+      const corrMag = Math.hypot(p.corr.right, p.corr.add);
+      const keyDC = p.corr.right + ',' + p.corr.add;
+      if (corrMag > 100 && mission.creepKey !== keyDC) {
+        mission.creepKey = keyDC;
+        if (!mission.creepNoted) {
+          mission.creepNoted = true;
+          mission.notes.push(`Danger close demands creeping fire — corrections of 100 m or less; a ${Math.round(corrMag)} m correction was sent.`);
+        }
+        FDC.say('MUSTANG, this is DANGER CLOSE — we CREEP. One hundred meters or less, from the safe side. Send it smaller, or send it again as-is and own it, over.', { delay: 1 });
+        return;
+      }
+      if (corrMag > 100) FDC.say('Sent as-is. On your head, MUSTANG, out.', { delay: 1 });
+      mission.creepKey = null;
+      let dNew = Infinity, dOld = Infinity;
+      for (const f of friendlyPositions()) {
+        dNew = Math.min(dNew, dist2(nx, nz, f.x, f.z));
+        dOld = Math.min(dOld, dist2(a.x, a.z, f.x, f.z));
+      }
+      if (dNew < dOld && dNew < dangerCloseRadius() * 0.5) danger = 'the friendly position';
+    } else {
       for (const f of friendlyPositions())
         if (dist2(nx, nz, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius) + 50) {
           danger = 'the friendly position'; break;
