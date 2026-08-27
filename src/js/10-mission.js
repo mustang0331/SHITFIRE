@@ -681,6 +681,15 @@ function handleTofQuery() {
 }
 function handleFire() {
   if (!mission || mission.done) { noMissionReply(); return; }   // NET4
+  /* NET28 — under CHECK FIRING the laid round must STAY laid. This handler
+     used to consume pendingFire and set released before fireAdjustRound's own
+     hold gate refused — so the latch was spent, the FDC said "FIRE, OUT" and
+     then refused, and the NEXT correction fired immediately without waiting
+     for FIRE while amc was still on. Refuse first; touch nothing. */
+  if (mission.checkFire) {
+    FDC.say('NEGATIVE — WE ARE CHECK FIRING. CANCEL CHECK FIRING, THEN SAY FIRE, OVER.', { delay: 0.9 });
+    return;
+  }
   if (!mission.pendingFire) {
     FDC.say(mission.amc
       ? 'NOTHING IS LAID AND WAITING, MUSTANG. Send your correction first, over.'

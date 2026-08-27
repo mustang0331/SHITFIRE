@@ -654,6 +654,17 @@ function handleAdjust(p) {
 
 function handleEOM(p) {
   if (!mission) { noMissionReply(); return; }   // NET4
+  /* NET26 — only the first block below was guarded on mission.done; a SECOND
+     end of mission on a closed mission re-ran everything after it: applied a
+     "refinement" to the GRADED aimpoint (verified: aim moved [-2850,750] ->
+     [-2984,929] post-close), filed a duplicate target number at a point never
+     adjusted onto, and re-scheduled the AAR (on a chapter: re-graded and
+     re-recorded). Acknowledge and stop. The SUGG5 twin path re-binds mission
+     to the survivor at close, so this guard correctly tests the CURRENT one. */
+  if (mission.done) {
+    FDC.say('MUSTANG 12, that mission is already closed. The net is yours when you have new traffic, out.', { delay: 0.9 });
+    return;
+  }
   // strict net: end of mission carries surveillance (RREMS terms)
   if (activeChapter && activeChapter.strict && !mission.done && !mission.eomChallenged &&
       mission.intent !== 'illum' &&   // 12h — there is no BDA for light
@@ -964,6 +975,12 @@ function dispatchParsed(p) {
         } else {
           FDC.say('REPEAT, OUT.', { delay: 1 }); fireForEffect();
         }
+      } else if (mission && !mission.done) {
+        /* NET27 — a mission IS open, but rounds are in flight or a hold is
+           on (SHOT / FIRE FOR EFFECT / AT MY COMMAND / CHECK FIRING…). The
+           old else answered "there is no fire mission open" — a lie — and
+           three of those tripped the lost-observer rant mid-volley. */
+        FDC.say(pick(QUIPS.inFlight), { delay: 1 });
       } else { noMissionReply(); sysHint(); }   // NET4
       break;
     case 'eom': handleEOM(p); break;
