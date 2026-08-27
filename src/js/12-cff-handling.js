@@ -26,7 +26,7 @@ const CFFQ = { on: false, stage: 0, warno: 'none', loc: null,
                raw: '', toks: [], t0: 0 };
 function cffqReset() {
   CFFQ.on = false; CFFQ.stage = 0; CFFQ.warno = 'none'; CFFQ.loc = null;
-  CFFQ.raw = ''; CFFQ.toks = [];
+  CFFQ.raw = ''; CFFQ.toks = []; CFFQ.kpId = null;   // NET15
 }
 function cffqAdd(p) {                       // fold a transmission's text in
   CFFQ.raw = (CFFQ.raw ? CFFQ.raw + ' ' : '') + (p.raw || '');
@@ -850,7 +850,32 @@ function onPlayerMessage(raw) {
     // mid-mission it is the command to shift into effect; with no mission running
     // it can only be a warning order, and only here is that knowable.
     if (p.type === 'adjust' && p.ffe && !p.any) { cffqStart('ffe', p); return; }
+    /* NET15 — JFIRE Table 9 names the known point in TRANSMISSION 1 ("adjust
+       fire, shift AA7733, over") and T2 then carries direction and the shifts
+       WITHOUT repeating it. A shift announcement with nothing else is that T1:
+       start the queue and remember the KP instead of firing a zero-offset
+       mission at the known point itself. */
+    if (!CFFQ.on && p.type === 'cff' && p.method === 'shift' &&
+        !p.sRight && !p.sAdd && p.dirMils === null && !p.desc) {
+      cffqStart(p.warno !== 'none' ? p.warno : 'adjust', p);
+      CFFQ.kpId = p.kpId;
+      return;
+    }
     if (CFFQ.on) {
+      /* NET15 — T2 of a declared shift: "DIRECTION 2340, RIGHT 110, ADD 400"
+         parses as a correction (and its direction would count as a stray
+         number); with a KP on file it IS the location. Rebuild it as one. */
+      if (CFFQ.kpId && CFFQ.stage === 1 && p.type === 'adjust' && p.any && !p.ffe) {
+        const mDir = (p.raw || '').match(/\bdirection\s+(\d+)\b/);
+        const sUD = (p.raw || '').match(/\b(up|down)\s+(\d+)\b/);
+        const synth = { type: 'cff', method: 'shift', warno: 'none', kpId: CFFQ.kpId,
+                        sRight: p.corr.right || 0, sAdd: p.corr.add || 0,
+                        dirMils: mDir ? parseInt(mDir[1]) : null,
+                        vertM: sUD ? (sUD[1] === 'up' ? 1 : -1) * parseInt(sUD[2]) : null,
+                        desc: '', raw: p.raw, toks: p.toks };
+        cffqLocation(synth, locEchoOf(synth));
+        return;
+      }
       // T2: a location with no warning order of its own, while a call is open.
       if (p.type === 'cff' && CFFQ.stage === 1 && p.warno === 'none') {
         if (p.desc) { cffqComplete(p.desc, p); return; }   // T2 and T3 in one, fine

@@ -384,7 +384,10 @@
   <table>
     <tr><td><b>Grid</b></td><td>"Grid 123 456, over." — 6-digit std (100 m); 60mm wants 8. <b>OT DIRECTION before your first correction — the FDC refuses corrections without it.</b></td></tr>
     <tr><td><b>Polar</b></td><td><b>POS REP first</b> ("POSITION GRID 245 523") — then "Direction 1650, distance 2100, down 40, over." Dir nearest 10 mils &middot; dist nearest 100 m &middot; up/down only if &ge;35 m</td></tr>
-    <tr><td><b>Shift</b></td><td>"Shift BREWERY, direction 2340, right 110, add 400, up 55, over." Lateral nearest 10 m &middot; range nearest 100 m</td></tr>
+    <!-- NET15 — teach JFIRE Table 9's shape now the parser takes it: KP in
+         transmission 1, never repeated in transmission 2. The one-line
+         combined form still works for speed. -->
+    <tr><td><b>Shift</b></td><td>Name the KP in your warning order &mdash; "adjust fire, <b>shift AB1001</b>, over" (or "shift BREWERY") &mdash; then "Direction 2340, right 110, add 400, up 55, over." Lateral nearest 10 m &middot; range nearest 100 m</td></tr>
   </table>
   <div class="dim">Your HUD reads MAG; the net and map are GRID. GRID = MAG + 124 mils (7&deg; E).</div>
   <h3>CORRECTIONS — deviation &rarr; range &rarr; HOB, in the OT frame</h3>

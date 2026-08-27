@@ -384,7 +384,10 @@
   <table>
     <tr><td><b>Grid</b></td><td>"Grid 123 456, over." — 6-digit std (100 m); 60mm wants 8. <b>OT DIRECTION before your first correction — the FDC refuses corrections without it.</b></td></tr>
     <tr><td><b>Polar</b></td><td><b>POS REP first</b> ("POSITION GRID 245 523") — then "Direction 1650, distance 2100, down 40, over." Dir nearest 10 mils &middot; dist nearest 100 m &middot; up/down only if &ge;35 m</td></tr>
-    <tr><td><b>Shift</b></td><td>"Shift BREWERY, direction 2340, right 110, add 400, up 55, over." Lateral nearest 10 m &middot; range nearest 100 m</td></tr>
+    <!-- NET15 — teach JFIRE Table 9's shape now the parser takes it: KP in
+         transmission 1, never repeated in transmission 2. The one-line
+         combined form still works for speed. -->
+    <tr><td><b>Shift</b></td><td>Name the KP in your warning order &mdash; "adjust fire, <b>shift AB1001</b>, over" (or "shift BREWERY") &mdash; then "Direction 2340, right 110, add 400, up 55, over." Lateral nearest 10 m &middot; range nearest 100 m</td></tr>
   </table>
   <div class="dim">Your HUD reads MAG; the net and map are GRID. GRID = MAG + 124 mils (7&deg; E).</div>
   <h3>CORRECTIONS — deviation &rarr; range &rarr; HOB, in the OT frame</h3>
@@ -7684,7 +7687,12 @@ function parseMessage(raw) {
     if (k.name)
       tS = tS.replace(new RegExp('\\b(?:known point\\s+|kp\\s+)?' + k.name.toLowerCase() + '\\b'),
                       'known point ' + k.id);
-  const mShift = tS.match(/\b(?:from|shift)\s+(?:known point\s+|kp\s+|a\s?b\s+)?(\d{4})\b/);
+  /* NET15 — JFIRE Table 9's own forms were rejected: `SHIFT AB1001` (one
+     token after normalize), `SHIFT TARGET AA7733` (the manual's example
+     wording), and the spoken "SHIFT ALPHA BRAVO 1001" (folded to ab1001 by
+     NET20). The two-letter alternative is anchored DIRECTLY to the digits so
+     ordinary words before a number ("shift to 1001") cannot match it. */
+  const mShift = tS.match(/\b(?:from|shift)\s+(?:target\s+)?(?:known point\s+|kp\s+|a\s?b\s+|[a-z]{2}(?=\d{4}\b))?(\d{4})\b/);
   if (mShift) {
     const warno = ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none');
     let sRight = 0, sAdd = 0;
@@ -7868,7 +7876,7 @@ const CFFQ = { on: false, stage: 0, warno: 'none', loc: null,
                raw: '', toks: [], t0: 0 };
 function cffqReset() {
   CFFQ.on = false; CFFQ.stage = 0; CFFQ.warno = 'none'; CFFQ.loc = null;
-  CFFQ.raw = ''; CFFQ.toks = [];
+  CFFQ.raw = ''; CFFQ.toks = []; CFFQ.kpId = null;   // NET15
 }
 function cffqAdd(p) {                       // fold a transmission's text in
   CFFQ.raw = (CFFQ.raw ? CFFQ.raw + ' ' : '') + (p.raw || '');
@@ -8692,7 +8700,32 @@ function onPlayerMessage(raw) {
     // mid-mission it is the command to shift into effect; with no mission running
     // it can only be a warning order, and only here is that knowable.
     if (p.type === 'adjust' && p.ffe && !p.any) { cffqStart('ffe', p); return; }
+    /* NET15 — JFIRE Table 9 names the known point in TRANSMISSION 1 ("adjust
+       fire, shift AA7733, over") and T2 then carries direction and the shifts
+       WITHOUT repeating it. A shift announcement with nothing else is that T1:
+       start the queue and remember the KP instead of firing a zero-offset
+       mission at the known point itself. */
+    if (!CFFQ.on && p.type === 'cff' && p.method === 'shift' &&
+        !p.sRight && !p.sAdd && p.dirMils === null && !p.desc) {
+      cffqStart(p.warno !== 'none' ? p.warno : 'adjust', p);
+      CFFQ.kpId = p.kpId;
+      return;
+    }
     if (CFFQ.on) {
+      /* NET15 — T2 of a declared shift: "DIRECTION 2340, RIGHT 110, ADD 400"
+         parses as a correction (and its direction would count as a stray
+         number); with a KP on file it IS the location. Rebuild it as one. */
+      if (CFFQ.kpId && CFFQ.stage === 1 && p.type === 'adjust' && p.any && !p.ffe) {
+        const mDir = (p.raw || '').match(/\bdirection\s+(\d+)\b/);
+        const sUD = (p.raw || '').match(/\b(up|down)\s+(\d+)\b/);
+        const synth = { type: 'cff', method: 'shift', warno: 'none', kpId: CFFQ.kpId,
+                        sRight: p.corr.right || 0, sAdd: p.corr.add || 0,
+                        dirMils: mDir ? parseInt(mDir[1]) : null,
+                        vertM: sUD ? (sUD[1] === 'up' ? 1 : -1) * parseInt(sUD[2]) : null,
+                        desc: '', raw: p.raw, toks: p.toks };
+        cffqLocation(synth, locEchoOf(synth));
+        return;
+      }
       // T2: a location with no warning order of its own, while a call is open.
       if (p.type === 'cff' && CFFQ.stage === 1 && p.warno === 'none') {
         if (p.desc) { cffqComplete(p.desc, p); return; }   // T2 and T3 in one, fine

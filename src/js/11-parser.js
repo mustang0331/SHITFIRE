@@ -334,7 +334,12 @@ function parseMessage(raw) {
     if (k.name)
       tS = tS.replace(new RegExp('\\b(?:known point\\s+|kp\\s+)?' + k.name.toLowerCase() + '\\b'),
                       'known point ' + k.id);
-  const mShift = tS.match(/\b(?:from|shift)\s+(?:known point\s+|kp\s+|a\s?b\s+)?(\d{4})\b/);
+  /* NET15 — JFIRE Table 9's own forms were rejected: `SHIFT AB1001` (one
+     token after normalize), `SHIFT TARGET AA7733` (the manual's example
+     wording), and the spoken "SHIFT ALPHA BRAVO 1001" (folded to ab1001 by
+     NET20). The two-letter alternative is anchored DIRECTLY to the digits so
+     ordinary words before a number ("shift to 1001") cannot match it. */
+  const mShift = tS.match(/\b(?:from|shift)\s+(?:target\s+)?(?:known point\s+|kp\s+|a\s?b\s+|[a-z]{2}(?=\d{4}\b))?(\d{4})\b/);
   if (mShift) {
     const warno = ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none');
     let sRight = 0, sAdd = 0;
