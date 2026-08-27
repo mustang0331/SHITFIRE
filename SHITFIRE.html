@@ -8849,6 +8849,14 @@ function onPlayerMessage(raw) {
      collapses so the reply to this transmission lands within ~5 s (author-set,
      2026-08-27). Already-scheduled lines still deliver at their old times. */
   FDC.lastT = Math.min(FDC.lastT, sim.now + 5);
+  /* NET25 — a transmission sent DURING the scripted opening (greet + SALUTE,
+     ~25 s of queued traffic) was processed silently: the queue advanced but
+     every audible reply sat behind the monologue, so an eager first-timer saw
+     a dead radio and three correct transmissions "produce nothing." When the
+     queue is still busy, an instant system line — printed synchronously,
+     bypassing the say-queue — tells them they were heard. */
+  if (FDC.lastT - sim.now > 2.5)
+    log('', 'Net is mid-transmission — your traffic is copied. Stand by.', 'sys');
   squelch();
   /* BUILD4/NET9 — no length limit existed anywhere between the box and the
      parser: ~15 kB pasted on a cold start overflowed the stack (silently —
