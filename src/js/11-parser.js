@@ -107,7 +107,16 @@ function parseMessage(raw) {
      safety prowords: CHECK FIRING stops guns no matter how it is addressed. */
   const mRoute = t.match(/^target\s+(?:number\s+)?([a-z]{2})\s*(\d{4})\b[\s,]*(.+)$/);
   if (mRoute) {
-    const inner = parseMessage(mRoute[3]);
+    /* BUILD4 — the remainder used to recurse once per leading prefix, so a
+       pasted "target aa1234 " x1200 overflowed the stack cold-start (the NET9
+       silent-death signature; JIT-warmed runs survived the same input, which
+       is why it never reproduced for the author) and x5000 froze the tab.
+       Consume every REPEATED prefix iteratively first — stacked target
+       numbers carry no meaning beyond the first — then recurse exactly once. */
+    let rest = mRoute[3], mMore;
+    while ((mMore = rest.match(/^target\s+(?:number\s+)?[a-z]{2}\s*\d{4}\b[\s,]*(.+)$/)))
+      rest = mMore[1];
+    const inner = parseMessage(rest);
     if (inner.type !== 'unknown' && inner.type !== 'empty')
       return { type: 'routed', tgtNum: (mRoute[1] + mRoute[2]).toUpperCase(),
                inner, raw: t, toks };

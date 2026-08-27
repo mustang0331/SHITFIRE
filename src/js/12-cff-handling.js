@@ -874,8 +874,28 @@ function onPlayerMessage(raw) {
      2026-08-27). Already-scheduled lines still deliver at their old times. */
   FDC.lastT = Math.min(FDC.lastT, sim.now + 5);
   squelch();
+  /* BUILD4/NET9 — no length limit existed anywhere between the box and the
+     parser: ~15 kB pasted on a cold start overflowed the stack (silently —
+     the NET9 dead-air signature) and ~70 kB froze the tab. No real
+     transmission approaches this; refuse loudly without parsing. */
+  if (raw.length > 1000) {
+    log(CONFIG.FDC.obs, raw.slice(0, 120).toUpperCase() + ' …', 'obs');
+    FDC.say('MUSTANG, that transmission is longer than my enlistment. Say it like traffic, over.', { delay: 0.8 });
+    TLOG.add('syserr', '', 'oversize transmission refused', { len: raw.length });
+    return;
+  }
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
-  const p = parseMessage(raw);
+  /* NET9 — the guard this row always specified: a throw anywhere below is
+     LOUD (net line + TLOG syserr) instead of silent dead air. BUILD4 finally
+     produced a reproducible throw to test it against. */
+  let p;
+  try {
+    p = parseMessage(raw);
+  } catch (err) {
+    log('', `TRANSMISSION FAILED IN THE PARSER (${err && err.message ? err.message : err}) — the net is still up; say again. Report this line.`, 'sys');
+    TLOG.add('syserr', '', 'parseMessage threw', { err: String(err && err.message || err) });
+    return;
+  }
   TLOG.add('parse', '', raw, { ptype: p.type, method: p.method || null,
     warno: p.warno || null, ffe: !!p.ffe });
   // tutorial intercept: steps may consume the message; noMission tutorials

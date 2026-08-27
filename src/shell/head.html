@@ -344,7 +344,10 @@
          it opened a working mission ~3 km off target and even cleared the
          danger-close gate BECAUSE it was nowhere near the friendlies. A copied
          example must fail loudly, not succeed wrongly. -->
-    <input id="txinput" autocomplete="off" spellcheck="false"
+    <!-- BUILD4 — maxlength: no real transmission needs 300 chars, and the
+         parser's paste pathology started at ~15 kB. onPlayerMessage carries
+         its own cap for the voice/QA paths. -->
+    <input id="txinput" autocomplete="off" spellcheck="false" maxlength="300"
       placeholder='e.g. "adjust fire, grid 123 456, infantry in the open, over" — use YOUR target grid'>
   </form>
 </div>

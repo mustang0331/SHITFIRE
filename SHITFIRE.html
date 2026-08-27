@@ -344,7 +344,10 @@
          it opened a working mission ~3 km off target and even cleared the
          danger-close gate BECAUSE it was nowhere near the friendlies. A copied
          example must fail loudly, not succeed wrongly. -->
-    <input id="txinput" autocomplete="off" spellcheck="false"
+    <!-- BUILD4 — maxlength: no real transmission needs 300 chars, and the
+         parser's paste pathology started at ~15 kB. onPlayerMessage carries
+         its own cap for the voice/QA paths. -->
+    <input id="txinput" autocomplete="off" spellcheck="false" maxlength="300"
       placeholder='e.g. "adjust fire, grid 123 456, infantry in the open, over" — use YOUR target grid'>
   </form>
 </div>
@@ -7532,7 +7535,16 @@ function parseMessage(raw) {
      safety prowords: CHECK FIRING stops guns no matter how it is addressed. */
   const mRoute = t.match(/^target\s+(?:number\s+)?([a-z]{2})\s*(\d{4})\b[\s,]*(.+)$/);
   if (mRoute) {
-    const inner = parseMessage(mRoute[3]);
+    /* BUILD4 — the remainder used to recurse once per leading prefix, so a
+       pasted "target aa1234 " x1200 overflowed the stack cold-start (the NET9
+       silent-death signature; JIT-warmed runs survived the same input, which
+       is why it never reproduced for the author) and x5000 froze the tab.
+       Consume every REPEATED prefix iteratively first — stacked target
+       numbers carry no meaning beyond the first — then recurse exactly once. */
+    let rest = mRoute[3], mMore;
+    while ((mMore = rest.match(/^target\s+(?:number\s+)?[a-z]{2}\s*\d{4}\b[\s,]*(.+)$/)))
+      rest = mMore[1];
+    const inner = parseMessage(rest);
     if (inner.type !== 'unknown' && inner.type !== 'empty')
       return { type: 'routed', tgtNum: (mRoute[1] + mRoute[2]).toUpperCase(),
                inner, raw: t, toks };
@@ -8822,8 +8834,28 @@ function onPlayerMessage(raw) {
      2026-08-27). Already-scheduled lines still deliver at their old times. */
   FDC.lastT = Math.min(FDC.lastT, sim.now + 5);
   squelch();
+  /* BUILD4/NET9 — no length limit existed anywhere between the box and the
+     parser: ~15 kB pasted on a cold start overflowed the stack (silently —
+     the NET9 dead-air signature) and ~70 kB froze the tab. No real
+     transmission approaches this; refuse loudly without parsing. */
+  if (raw.length > 1000) {
+    log(CONFIG.FDC.obs, raw.slice(0, 120).toUpperCase() + ' …', 'obs');
+    FDC.say('MUSTANG, that transmission is longer than my enlistment. Say it like traffic, over.', { delay: 0.8 });
+    TLOG.add('syserr', '', 'oversize transmission refused', { len: raw.length });
+    return;
+  }
   log(CONFIG.FDC.obs, raw.toUpperCase(), 'obs');
-  const p = parseMessage(raw);
+  /* NET9 — the guard this row always specified: a throw anywhere below is
+     LOUD (net line + TLOG syserr) instead of silent dead air. BUILD4 finally
+     produced a reproducible throw to test it against. */
+  let p;
+  try {
+    p = parseMessage(raw);
+  } catch (err) {
+    log('', `TRANSMISSION FAILED IN THE PARSER (${err && err.message ? err.message : err}) — the net is still up; say again. Report this line.`, 'sys');
+    TLOG.add('syserr', '', 'parseMessage threw', { err: String(err && err.message || err) });
+    return;
+  }
   TLOG.add('parse', '', raw, { ptype: p.type, method: p.method || null,
     warno: p.warno || null, ffe: !!p.ffe });
   // tutorial intercept: steps may consume the message; noMission tutorials
