@@ -625,15 +625,36 @@ function genScenario(type, seed) {
       // hard standoff from every hut (winnable by precision, failed by haste)
       const vil = WORLD.villages[Math.floor(rng() * WORLD.villages.length)] ||
                   { x: OP.x + 2000, z: OP.z, r: 70, huts: [], name: 'NOWHERE' };
+      /* WORLD4 — the ring points each held the 42 m hut standoff, but the
+         GRADED target is their CENTROID, which was never checked: three points
+         at random azimuths around the same circle pull their centroid back
+         toward the village centre — into the huts. Measured over 400 seeds:
+         33% of centroids sat INSIDE hutCollateralR (24 m) and another 43%
+         inside first-round dispersion, while rFull (30 m) exceeds the
+         collateral radius — so getting the doctrinally correct effect required
+         putting steel where the game permanently fails you. The ring now draws
+         from ONE ~70-degree arc of the perimeter (seeded), so the centroid
+         stays on the edge, and both the centroid and the fallback points get
+         the same hut check the ring points always had. */
       const ring = [];
+      const arc0 = rng() * Math.PI * 2;
       for (let tries = 0; tries < 600 && ring.length < 3; tries++) {
-        const az = rng() * Math.PI * 2, r = vil.r * (0.9 + rng() * 0.5);
+        const az = arc0 + (rng() - 0.5) * 1.2, r = vil.r * (0.9 + rng() * 0.5);
         const x = vil.x + Math.sin(az) * r, z = vil.z - Math.cos(az) * r;
         if (H(x, z) < 1.5) continue;
         if (vil.huts.some(hh => dist2(x, z, hh.x, hh.z) < 42)) continue;
         ring.push({ x, z });
+        if (ring.length === 3) {
+          const cx = (ring[0].x + ring[1].x + ring[2].x) / 3;
+          const cz = (ring[0].z + ring[1].z + ring[2].z) / 3;
+          if (vil.huts.some(hh => dist2(cx, cz, hh.x, hh.z) < 42)) ring.length = 0;
+        }
       }
-      while (ring.length < 3) ring.push({ x: vil.x + vil.r + 40 + ring.length * 15, z: vil.z });
+      while (ring.length < 3) {
+        const fx = vil.x + vil.r + 40 + ring.length * 15, fz = vil.z;
+        ring.push(vil.huts.some(hh => dist2(fx, fz, hh.x, hh.z) < 42)
+          ? { x: vil.x, z: vil.z - vil.r - 40 - ring.length * 15 } : { x: fx, z: fz });
+      }
       S.enemy = { x: (ring[0].x + ring[1].x + ring[2].x) / 3,
                   z: (ring[0].z + ring[1].z + ring[2].z) / 3 };
       S.occupied = { kind: 'village', name: vil.name, x: vil.x, z: vil.z, ring };
