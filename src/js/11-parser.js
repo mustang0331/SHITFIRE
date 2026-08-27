@@ -115,6 +115,20 @@ function parseMessage(raw) {
   if (t.includes('cancel at my command')) return { type: 'amc', on: false, raw: t, toks };
   if (t.includes('do not load')) return { type: 'donotload', raw: t, toks };
   if (t.includes('cannot observe')) return { type: 'cannotobserve', raw: t, toks };
+  /* NET24 — three prowords the sim's own cards print, all previously answered
+     with the gibberish quip: REQUEST SPLASH (JFIRE Table 3, CHEATSHEET §7),
+     standalone RECORD AS TARGET (the [H] PROWORDS row — it only worked riding
+     on END OF MISSION, which is matched above), and MARK (DOCTRINE.md's
+     method-of-engagement list). MARK is held to the near-bare transmission so
+     a description containing the word cannot be swallowed. */
+  if (t.includes('request splash')) return { type: 'reqsplash', raw: t, toks };
+  // standalone ONLY — riding on END OF MISSION it is RREMS and belongs to the
+  // eom branch below, which this test must not shadow. (indexOf, not includes:
+  // tools/parser-order.js locates the real eom branch by its includes-marker.)
+  if (t.includes('record as target') && t.indexOf('end of mission') === -1)
+    return { type: 'recordtgt', raw: t, toks };
+  if (/^(?:hellhound\s+|hacksaw\s+|fires\s+|this\s+is\s+|mustang\s+|\d+\s+)*mark(?:\s+center(?:\s+of)?\s+sector)?(?:\s+(?:over|out))?$/.test(t))
+    return { type: 'mark', raw: t, toks };
   const mTot = t.match(/\btime on target\s+(\d+)\b/);
   if (mTot) return { type: 'tot', sec: parseInt(mTot[1]), raw: t, toks };
   if (t.includes('time on target')) return { type: 'tot', sec: 0, raw: t, toks };

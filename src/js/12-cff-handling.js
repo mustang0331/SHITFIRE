@@ -1019,6 +1019,26 @@ function dispatchParsed(p) {
     case 'fire': handleFire(); break;
     case 'donotload': handleDoNotLoad(); break;
     case 'cannotobserve': handleCannotObserve(); break;
+    /* NET24 — prowords the cards print, answered flatly instead of mocked. */
+    case 'reqsplash':
+      FDC.say(mission && !mission.done
+        ? 'SPLASH is standard on this net, MUSTANG — you will hear it five seconds out, over.'
+        : 'Nothing is in the air to splash for. Send the call first, over.', { delay: 0.9 });
+      break;
+    case 'recordtgt':
+      if (mission && mission.rounds && mission.rounds.length) {
+        const tnR = nextFreeTgtNum();
+        RECTGT[tnR] = { x: mission.aim.x, z: mission.aim.z, t: sim.now };
+        mission.recorded = true;
+        FDC.say(`RECORDED AS TARGET ${tnR}, OUT.`, { delay: 1.0 });
+        log('', `Target ${tnR} is on file at ${gridOf(mission.aim.x, mission.aim.z)}.`, 'sys');
+      } else {
+        FDC.say('Nothing worth recording yet — adjust onto something first, over.', { delay: 0.9 });
+      }
+      break;
+    case 'mark':
+      FDC.say('NEGATIVE — no marking rounds on this net. Orient off the spot report and your map sheet, over.', { delay: 0.9 });
+      break;
     case 'tot': handleTimeOnTarget(p.sec); break;
     case 'suppresstgt': handleSuppressTarget(p); break;
     case 'prioritytgt': handlePriorityTarget(p); break;   // SUGG2
