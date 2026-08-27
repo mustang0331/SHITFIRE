@@ -271,21 +271,41 @@ function parseMessage(raw) {
   // grid extraction
   const gi = toks.indexOf('grid');
   let digits = '';
+  let gridEnd = -1;   // NET16 — index one past the tokens actually taken as the grid
   if (gi >= 0) {
-    for (let i = gi + 1; i < toks.length && /^\d+$/.test(toks[i]); i++) digits += toks[i];
+    /* NET16 — normalize() turns number WORDS into digits, so a description
+       beginning with a number was swallowed into the grid: "GRID 245 523,
+       TWO TRUCKS IN THE OPEN" walked to digits=2455232 — refused as a bad
+       grid, with the FDC blaming a grid that was perfect, and the sim's own
+       SALUTE cue ("TWO SOFT-SKIN TRUCKS") is exactly what players echo back.
+       Cap the run at the first token prefix totalling a valid grid length
+       (6/8/10); an unsplittable run still falls through whole and is refused
+       exactly as before. */
+    const runs = [];
+    for (let i = gi + 1; i < toks.length && /^\d+$/.test(toks[i]); i++) runs.push(toks[i]);
+    let take = runs.length;
+    for (let i = 0, len = 0; i < runs.length; i++) {
+      len += runs[i].length;
+      if (len === 6 || len === 8 || len === 10) { take = i + 1; break; }
+      if (len > 10) break;
+    }
+    digits = runs.slice(0, take).join('');
+    gridEnd = gi + 1 + take;
   }
   /* An immediate call is shouted under fire, and the observer routinely drops the
      word "grid" — a real transcript has "IMMEDIATE SUPPRESSION 253535 OUT", which
      used to parse as nothing at all. Accept a bare 6/8-digit run when the
      transmission is already unambiguously an immediate mission. */
   if (!digits && imm)
-    for (const w of toks)
-      if (/^\d+$/.test(w) && (w.length === 6 || w.length === 8)) { digits = w; break; }
+    for (let i = 0; i < toks.length; i++)
+      if (/^\d+$/.test(toks[i]) && (toks[i].length === 6 || toks[i].length === 8)) {
+        digits = toks[i]; gridEnd = i + 1; break;   // NET16 — desc starts past it
+      }
   if (digits) {
     const warno = imm ? 'ffe' : (ffe ? 'ffe' : (t.includes('adjust fire') ? 'adjust' : 'none'));
-    // description: words after the grid digit run, up to a trailing proword
-    let di = gi + 1;
-    while (di < toks.length && /^\d+$/.test(toks[di])) di++;
+    // description: words after the TAKEN grid tokens (NET16 — a number that
+    // opens the description stays in the description), up to a trailing proword
+    let di = gridEnd;
     const stop = new Set(['over', 'out', 'break']);
     const descToks = [];
     for (let i = di; i < toks.length && !stop.has(toks[i]); i++) descToks.push(toks[i]);
