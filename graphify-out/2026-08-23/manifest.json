@@ -1,0 +1,482 @@
+{
+  ".githooks/pre-commit": {
+    "mtime": 1785382557.593617,
+    "seen": 1787461042.5899336,
+    "ast_hash": "ac3823951116f67f3d4a43ee0437e75a",
+    "semantic_hash": ""
+  },
+  "src/js/00-config.js": {
+    "mtime": 1785723751.6583793,
+    "seen": 1787461042.589941,
+    "ast_hash": "b7897b6229c6d19d6c532affd16b415f",
+    "semantic_hash": ""
+  },
+  "src/js/01-math-terrain.js": {
+    "mtime": 1785734553.4471567,
+    "seen": 1787461042.5899487,
+    "ast_hash": "dca1da6824cf3cc92f64e3be329072e5",
+    "semantic_hash": ""
+  },
+  "src/js/02-scene.js": {
+    "mtime": 1785489692.5138664,
+    "seen": 1787461042.5899522,
+    "ast_hash": "be75c77f0435f47b27c0024037e78907",
+    "semantic_hash": ""
+  },
+  "src/js/03-op-battery.js": {
+    "mtime": 1785382051.3884947,
+    "seen": 1787461042.5899553,
+    "ast_hash": "dc192cc27ed9bd386455d0512c0332f5",
+    "semantic_hash": ""
+  },
+  "src/js/04-world.js": {
+    "mtime": 1785488937.1429904,
+    "seen": 1787461042.5899587,
+    "ast_hash": "3cf76282a7caebc7a1b67f2e14e1da36",
+    "semantic_hash": ""
+  },
+  "src/js/05-units-scenario.js": {
+    "mtime": 1785723014.268277,
+    "seen": 1787461042.589962,
+    "ast_hash": "89d46ec8f8617d431cfe3d083598066e",
+    "semantic_hash": ""
+  },
+  "src/js/06-clock-comms.js": {
+    "mtime": 1785734112.2215972,
+    "seen": 1787461042.589965,
+    "ast_hash": "a57edd4d9d7060e3f8fd98c0a1239009",
+    "semantic_hash": ""
+  },
+  "src/js/07-voice-spot-audio.js": {
+    "mtime": 1785488984.7670012,
+    "seen": 1787461042.5899684,
+    "ast_hash": "9792d932a8dfcc1490a87b22cd336f47",
+    "semantic_hash": ""
+  },
+  "src/js/08-burst-optics.js": {
+    "mtime": 1785724992.6501503,
+    "seen": 1787461042.590028,
+    "ast_hash": "90795d08d21e2b13da4ce036b51786c0",
+    "semantic_hash": ""
+  },
+  "src/js/09-camera.js": {
+    "mtime": 1785723793.7202265,
+    "seen": 1787461042.5900419,
+    "ast_hash": "31291462a998f79e816fb97041e9bef9",
+    "semantic_hash": ""
+  },
+  "src/js/10-mission.js": {
+    "mtime": 1785734112.2215972,
+    "seen": 1787461042.5900466,
+    "ast_hash": "174b41997348e361a05227bb14700d41",
+    "semantic_hash": ""
+  },
+  "src/js/11-parser.js": {
+    "mtime": 1785733596.7293477,
+    "seen": 1787461042.5900505,
+    "ast_hash": "dce376e60454ddb538bf8231930923f7",
+    "semantic_hash": ""
+  },
+  "src/js/12-cff-handling.js": {
+    "mtime": 1785733638.9931698,
+    "seen": 1787461042.5900536,
+    "ast_hash": "65f89f7370ed1f9d2e3bc73a86edd15c",
+    "semantic_hash": ""
+  },
+  "src/js/13-aar.js": {
+    "mtime": 1785722282.8454924,
+    "seen": 1787461042.5900567,
+    "ast_hash": "1d9d979ca17da6e9a706306dfa259d27",
+    "semantic_hash": ""
+  },
+  "src/js/14-map-library.js": {
+    "mtime": 1785382051.5020092,
+    "seen": 1787461042.5900598,
+    "ast_hash": "af2eacdc7395c7656426c7bdb6861645",
+    "semantic_hash": ""
+  },
+  "src/js/15-campaign-menu.js": {
+    "mtime": 1785730769.8991299,
+    "seen": 1787461042.5900629,
+    "ast_hash": "a93cefbe4aa8f964684d01af53cffcde",
+    "semantic_hash": ""
+  },
+  "src/js/16-input.js": {
+    "mtime": 1785730769.8984194,
+    "seen": 1787461042.590066,
+    "ast_hash": "cd02e0a156d768f9f9efd1a1d69cbb17",
+    "semantic_hash": ""
+  },
+  "src/js/17-loop-boot.js": {
+    "mtime": 1785730769.9006941,
+    "seen": 1787461042.590098,
+    "ast_hash": "522897b81fccc3d113dab6bf8c558652",
+    "semantic_hash": ""
+  },
+  "src/manifest.json": {
+    "mtime": 1785382051.5336463,
+    "seen": 1787461042.5901027,
+    "ast_hash": "6ba8c212ac051b2c2593a4925b57bb99",
+    "semantic_hash": ""
+  },
+  "tools/build.js": {
+    "mtime": 1785470436.2063515,
+    "seen": 1787461042.590106,
+    "ast_hash": "bd0b00dbc9184846059c4f4d6bffc108",
+    "semantic_hash": ""
+  },
+  "tools/lint.js": {
+    "mtime": 1785383045.4893875,
+    "seen": 1787461042.5901089,
+    "ast_hash": "80fb617f901b1152be350029d6757e53",
+    "semantic_hash": ""
+  },
+  "tools/mastermap-collect.mjs": {
+    "mtime": 1785807407.38653,
+    "seen": 1787461042.590118,
+    "ast_hash": "b4871bdf5383dd99891751ae88c895cb",
+    "semantic_hash": ""
+  },
+  "tools/mastermap_render.py": {
+    "mtime": 1785892259.2552247,
+    "seen": 1787461042.590121,
+    "ast_hash": "d6b8cba38b1671e481e01591cc4e1d43",
+    "semantic_hash": ""
+  },
+  "tools/package.json": {
+    "mtime": 1785383046.5285614,
+    "seen": 1787461042.5901241,
+    "ast_hash": "9366c692b9eb538273332bf045d4e937",
+    "semantic_hash": ""
+  },
+  "tools/parser-order.js": {
+    "mtime": 1785474600.730877,
+    "seen": 1787461042.5901268,
+    "ast_hash": "7d34f871d53c167d3abac01f6d5e7dfc",
+    "semantic_hash": ""
+  },
+  "tools/perflegibility.js": {
+    "mtime": 1785467161.6982694,
+    "seen": 1787461042.5901299,
+    "ast_hash": "9442e367e73c63e6e09c4eab438aaaaf",
+    "semantic_hash": ""
+  },
+  "tools/perfprobe.js": {
+    "mtime": 1785466644.226157,
+    "seen": 1787461042.5901334,
+    "ast_hash": "665750b651a2671403ef54f485b64fe4",
+    "semantic_hash": ""
+  },
+  "tools/perfsweep.js": {
+    "mtime": 1785467930.8019667,
+    "seen": 1787461042.590137,
+    "ast_hash": "36da4792296320ca4abd8b23212241dc",
+    "semantic_hash": ""
+  },
+  "tools/replay.js": {
+    "mtime": 1785383166.036589,
+    "seen": 1787461042.59014,
+    "ast_hash": "7236b941fc90d23c40d73c133b5a15c0",
+    "semantic_hash": ""
+  },
+  "tools/serve.js": {
+    "mtime": 1785463264.795773,
+    "seen": 1787461042.590143,
+    "ast_hash": "5763406c0f4e70c3ca282533af20f09c",
+    "semantic_hash": ""
+  },
+  "tools/shots.js": {
+    "mtime": 1785382357.741598,
+    "seen": 1787461042.5901453,
+    "ast_hash": "81dcdedff19f47e3ab6b2da3814af0d0",
+    "semantic_hash": ""
+  },
+  "tools/syntaxgate.ps1": {
+    "mtime": 1785379140.7185392,
+    "seen": 1787461042.5901477,
+    "ast_hash": "3f816a485231c6b1272694143b81da45",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/objects/Sky.js": {
+    "mtime": 1785382281.060649,
+    "seen": 1787461042.5901506,
+    "ast_hash": "e0837a6c438513000837ce5a38fa5256",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/postprocessing/EffectComposer.js": {
+    "mtime": 1785406253.0502675,
+    "seen": 1787461042.5901535,
+    "ast_hash": "eccf8177035031b3ec0d083845fcb332",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/postprocessing/MaskPass.js": {
+    "mtime": 1785406253.207332,
+    "seen": 1787461042.5901563,
+    "ast_hash": "10b721db9f8e218a2d4a282b41528b64",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/postprocessing/Pass.js": {
+    "mtime": 1785406253.1246467,
+    "seen": 1787461042.5901594,
+    "ast_hash": "a5ec37ce3b9f333fa1a69afb1610806e",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/postprocessing/RenderPass.js": {
+    "mtime": 1785406253.366876,
+    "seen": 1787461042.590162,
+    "ast_hash": "89aaff345346ed478d50393d688d46e3",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/postprocessing/ShaderPass.js": {
+    "mtime": 1785406253.284779,
+    "seen": 1787461042.5901647,
+    "ast_hash": "f145da648ed568b0ca51d1e7495d2f6d",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/postprocessing/UnrealBloomPass.js": {
+    "mtime": 1785406253.4572647,
+    "seen": 1787461042.5901675,
+    "ast_hash": "a60d73789dc4b65866a1f6cacf7e025a",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/shaders/CopyShader.js": {
+    "mtime": 1785406253.561179,
+    "seen": 1787461042.5901704,
+    "ast_hash": "6088e45f7638804f9f7039ab358d8424",
+    "semantic_hash": ""
+  },
+  "vendor/three/addons/shaders/LuminosityHighPassShader.js": {
+    "mtime": 1785406253.6449306,
+    "seen": 1787461042.590173,
+    "ast_hash": "05b8a6dd34714c2f01d040e53bb3d50a",
+    "semantic_hash": ""
+  },
+  "vendor/three/three.module.min.js": {
+    "mtime": 1785470223.2825754,
+    "seen": 1787461042.5901754,
+    "ast_hash": "4d8e72afd9639e074547992bce6a3de3",
+    "semantic_hash": ""
+  },
+  ".claude/agents/docs.md": {
+    "mtime": 1785467658.4487927,
+    "seen": 1787461042.5901797,
+    "ast_hash": "a494679eaa1c6a414e658b19fefda872",
+    "semantic_hash": ""
+  },
+  ".claude/agents/research.md": {
+    "mtime": 1785467673.6157553,
+    "seen": 1787461042.590182,
+    "ast_hash": "965282e640cc6d3133c298912d3cef12",
+    "semantic_hash": ""
+  },
+  "BALLISTICS_RESEARCH.md": {
+    "mtime": 1785328487.7000847,
+    "seen": 1787461042.5901892,
+    "ast_hash": "d2a81c525b63895671b266cd3ad02004",
+    "semantic_hash": ""
+  },
+  "CHEATSHEET.md": {
+    "mtime": 1785466704.0741684,
+    "seen": 1787461042.5901923,
+    "ast_hash": "5de19f8dbe993f0f016c2224abaa6c90",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1785467639.5223322,
+    "seen": 1787461042.590196,
+    "ast_hash": "ba0a09dcc362a70647e1780cc5e86191",
+    "semantic_hash": ""
+  },
+  "DIALOGUE_REVISIONS.md": {
+    "mtime": 1785474183.8357346,
+    "seen": 1787461042.590201,
+    "ast_hash": "8c7aabe5c297270d4269f432ee32f7f9",
+    "semantic_hash": ""
+  },
+  "DOCTRINE.md": {
+    "mtime": 1785404731.3306518,
+    "seen": 1787461042.5902042,
+    "ast_hash": "01b9bd5275f2966df65530ae6e5478a7",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/ARCHITECTURE.md": {
+    "mtime": 1785330834.6326907,
+    "seen": 1787461042.5902078,
+    "ast_hash": "7b5968e80d10761a96d22055591c38d1",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/CONTENT_INVENTORY.md": {
+    "mtime": 1785331078.6336992,
+    "seen": 1787461042.590212,
+    "ast_hash": "b9853800b4eaf77a7b092d970cc6bdd2",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/ENGINE_CHOICE.md": {
+    "mtime": 1785330778.1223707,
+    "seen": 1787461042.5902157,
+    "ast_hash": "2f227adb32b586ab1330bb8229a231ed",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/PARITY_TESTING.md": {
+    "mtime": 1785330890.15073,
+    "seen": 1787461042.5902193,
+    "ast_hash": "b4b2f79cac1483b638096cdde18b909d",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/PORT_PLAN.md": {
+    "mtime": 1785330952.9479487,
+    "seen": 1787461042.5902228,
+    "ast_hash": "9c28f2712c16bb8fb3ae3d014d26615c",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/README.md": {
+    "mtime": 1785330983.502616,
+    "seen": 1787461042.5902267,
+    "ast_hash": "c1ae89c648e16ab21a6ec33fcb478b5f",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/reference/DOCTRINE.md": {
+    "mtime": 1785330799.2573187,
+    "seen": 1787461042.59023,
+    "ast_hash": "18fc68b7ca921a2ca23519fe9f96887d",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/reference/NARRATIVE.md": {
+    "mtime": 1785330848.5541575,
+    "seen": 1787461042.5902336,
+    "ast_hash": "bb0ef2aae2181ae7e91080ba68a8e499",
+    "semantic_hash": ""
+  },
+  "ENGINE_PORT/reference/TLO.md": {
+    "mtime": 1785330908.878661,
+    "seen": 1787461042.590237,
+    "ast_hash": "716dda96ca4f8c040793aa958f2254fe",
+    "semantic_hash": ""
+  },
+  "GRAPHICS.md": {
+    "mtime": 1785465033.0641167,
+    "seen": 1787461042.59024,
+    "ast_hash": "f88311916e47c762bb3b4c3e0744a9c0",
+    "semantic_hash": ""
+  },
+  "KOFA_KING_VALLEY_FO_HEIGHTMAP.md": {
+    "mtime": 1785362030.1537695,
+    "seen": 1787461042.590243,
+    "ast_hash": "59001bb828938aa0ae43598d194bcc03",
+    "semantic_hash": ""
+  },
+  "NARRATIVE.md": {
+    "mtime": 1785475249.871391,
+    "seen": 1787461042.590247,
+    "ast_hash": "945f644f24618b169621d7ffc1dedc49",
+    "semantic_hash": ""
+  },
+  "PLAYBOOK.md": {
+    "mtime": 1785465975.7619526,
+    "seen": 1787461042.5902505,
+    "ast_hash": "746e560dde53e08b37491538ada916de",
+    "semantic_hash": ""
+  },
+  "QUICKSTART.md": {
+    "mtime": 1785466778.3013866,
+    "seen": 1787461042.590254,
+    "ast_hash": "0c460ea95f5a589d5d9b1b4473e8c347",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1785906104.9227126,
+    "seen": 1787461042.590258,
+    "ast_hash": "31ed07071f6d743a02eb280329130713",
+    "semantic_hash": ""
+  },
+  "ROADMAP.md": {
+    "mtime": 1786241401.4782913,
+    "seen": 1787461042.5902622,
+    "ast_hash": "5aad926f08dc312963f5b3d2df242aa8",
+    "semantic_hash": ""
+  },
+  "SHITFIRE.html": {
+    "mtime": 1785734685.1505692,
+    "seen": 1787461042.5902672,
+    "ast_hash": "a580882d915f4f456f24a6a2b16f17ca",
+    "semantic_hash": ""
+  },
+  "SPEC.md": {
+    "mtime": 1785466711.4484234,
+    "seen": 1787461042.5902712,
+    "ast_hash": "9adaf07c2d39409d4028efdbf6734ed1",
+    "semantic_hash": ""
+  },
+  "TLO.md": {
+    "mtime": 1785466737.4187715,
+    "seen": 1787461042.5902753,
+    "ast_hash": "d0fb9b055f5f6f7920a67f1b73ad4864",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1787362893.9624245,
+    "seen": 1787461042.5902793,
+    "ast_hash": "5131b32e0af9c28c9e2adf50f50b851f",
+    "semantic_hash": ""
+  },
+  "src/shell/head.html": {
+    "mtime": 1785730769.8396895,
+    "seen": 1787461042.590283,
+    "ast_hash": "5a3b4d4cdde5e884b8adb54a16384f0d",
+    "semantic_hash": ""
+  },
+  "src/shell/tail.html": {
+    "mtime": 1785381967.4468877,
+    "seen": 1787461042.5902865,
+    "ast_hash": "6ad4ea15127078e6949350f7e3821449",
+    "semantic_hash": ""
+  },
+  "vendor/three/README.md": {
+    "mtime": 1785470438.1265426,
+    "seen": 1787461042.5902908,
+    "ast_hash": "8b2dc86b0440fd30e81d6f29400362c3",
+    "semantic_hash": ""
+  },
+  "KOFA_KING_VALLEY_FO_HEIGHTMAP.png": {
+    "mtime": 1785362011.9397676,
+    "seen": 1787461042.5902944,
+    "ast_hash": "139158df67a815cabfd9d9d30c597416",
+    "semantic_hash": ""
+  },
+  "MASTER_MAP.png": {
+    "mtime": 1785892261.9470978,
+    "seen": 1787461042.5902982,
+    "ast_hash": "1e8aadad529eaa232e98fa2f6fb2875b",
+    "semantic_hash": ""
+  },
+  "docs/screenshots/binos-reticle.png": {
+    "mtime": 1785899957.570841,
+    "seen": 1787461042.5903018,
+    "ast_hash": "c0799c44c7a222e69c783e7d58c2d6df",
+    "semantic_hash": ""
+  },
+  "docs/screenshots/cover-social.png": {
+    "mtime": 1785906362.3741233,
+    "seen": 1787461042.5903056,
+    "ast_hash": "b54b76d72b5fb646c1703de1e9dded95",
+    "semantic_hash": ""
+  },
+  "docs/screenshots/cover.png": {
+    "mtime": 1785906077.145055,
+    "seen": 1787461042.5903096,
+    "ast_hash": "acf0349493cf1bc3b80e38858e0fb818",
+    "semantic_hash": ""
+  },
+  "docs/screenshots/observing.png": {
+    "mtime": 1785899957.5330815,
+    "seen": 1787461042.5903134,
+    "ast_hash": "b967821ecd47a412e35c19028d80c367",
+    "semantic_hash": ""
+  },
+  "docs/screenshots/tactical-map.png": {
+    "mtime": 1785899957.6114311,
+    "seen": 1787461042.5903175,
+    "ast_hash": "a606291f179eb9071d56a477407b5981",
+    "semantic_hash": ""
+  }
+}

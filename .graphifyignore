@@ -1,0 +1,13 @@
+# graphify corpus excludes. gitignore syntax; merged with .gitignore.
+# Added 2026-08-23: three.module.min.js alone was 1962 of 2878 nodes (68%) and
+# every top "community hub" was a mangled one-letter name from it.
+
+# Vendored third-party code — not ours, and the minified bundle swamps the graph.
+vendor/
+
+# Any minified or bundled output.
+*.min.js
+
+# Single-file build artifact (tools/build.js output) — inlines all of src/js,
+# so indexing it double-counts the whole codebase.
+SHITFIRE.html

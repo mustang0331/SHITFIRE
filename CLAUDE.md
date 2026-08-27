@@ -118,3 +118,34 @@ from a spec. The rules below still govern every row that gets born.
    and one writer per `src/` module.
 6. If a row turns out to be two things, **split the row in ROADMAP.md first**, then build.
 - Review diffs before merging. If a row gets messy, `git restore .` and re-prompt narrower — a clean partial beats a broken whole.
+
+## Context Navigation (Graphify)
+Code-structure graph: `graphify-out/graph.json` — 921 nodes, 1178 edges, 54 communities.
+Built locally via AST (0 tokens). Community report in `graphify-out/GRAPH_REPORT.md`.
+`.graphifyignore` keeps `vendor/`, `*.min.js` and the built `SHITFIRE.html` out of the
+corpus — before it, minified three.js was 68% of the graph and every hub was noise.
+
+### 3-Layer Query Rule
+1. **First:** query `graphify-out/graph.json` for code structure and connections
+2. **Second:** query the Obsidian vault at `C:\Users\conno\ClaudeVault` for decisions, progress, context
+3. **Third:** only read raw code files when editing, or when layers 1–2 lack the answer
+
+### Rebuilding
+- After structural changes: `graphify update .` (or `/graphify . --update` inside Claude Code)
+- The graph is persistent — do NOT rebuild every session
+- Never manually edit `graphify-out/` contents
+- `graphify-out/cache/` is gitignored; keep `graph.json` and `GRAPH_REPORT.md` versioned
+
+### Vault
+Session memory lives in the vault. Open with `/resume`, close with `/save`.
+
+## Vault context
+
+@C:/Users/conno/ClaudeVault/shitfire/shitfire-index.md
+@C:/Users/conno/ClaudeVault/shitfire/architecture/shitfire-architecture.md
+
+If those imports did not resolve, read them directly. Decisions, session history and
+open loops for this project live in `C:\Users\conno\ClaudeVault\shitfire\`; cross-cutting
+logs in `C:\Users\conno\ClaudeVault\logs\`. Repo docs (ROADMAP/SPEC/DOCTRINE) stay the
+source of truth for *what ships*; the vault records *why* and *what happened*.
+Open with `/resume`, close with `/save`. Never commit the vault.
