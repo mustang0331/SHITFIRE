@@ -3,6 +3,10 @@
 // impl:false rows are story chapters whose mechanics land in stages 10-11
 // (tutorials, strict mode, 60mm, village raid, epilogue) — shown but not
 // playable, and skipped by the sequential-unlock chain.
+/* UX11 — volume gates lowered 6/14/24/32 -> 4/9/15/20 (author ruling
+   2026-08-27): the old ladder needed 8 flawless missions to reach the
+   Epilogue, so a good evening of play never saw a single unlock. Lowering
+   only ever UNLOCKS more on an existing save; nothing can re-lock. */
 const CAMPAIGN = [
   { id: 'F',  tab: 'FWD', name: 'FOREWORD — THE SCHOOLHOUSE', need: 0, tseed: 1337, chapters: [
     { id: 'F.1', title: 'EYES BEFORE GUNS', blurb: 'optics, mils, laser', impl: true, type: 'wreck', seed: 51,
@@ -60,7 +64,7 @@ const CAMPAIGN = [
       story: 'HELLHOUND has read your file aloud to the gun crews, twice, doing voices. Today the standard is the FULL format, correct, fast — par is tight and the guns are bored. Prove the schoolhouse took.',
       outro: 'HELLHOUND, grudging: "Log shows a professional worked this net today. I have started an investigation."' },
   ]},
-  { id: 'V2', tab: 'II', name: 'VOLUME II — THE RIDGE LINE', need: 6, tseed: 9021, chapters: [
+  { id: 'V2', tab: 'II', name: 'VOLUME II — THE RIDGE LINE', need: 4, tseed: 9021, chapters: [
     { id: '2.1', title: 'NUMBERS ON A COMPASS', blurb: 'polar — dead laser, estimate by mil relation', impl: true, type: 'troops', seed: 201, par: 330, method: 'polar', noLaser: true,
       story: 'A new island — coral ridges, dead ground, terrain that hides things. The map is in a crate somewhere and the rangefinder battery died in the surf, so today YOU are the instrument: POLAR, off your own position. Direction from the compass. Distance by MIL RELATION — measure a known object in the reticle, size over mils times a thousand. [R] for the card.',
       outro: 'Direction and distance out of a reticle and a memory. That is the oldest trick in the trade.' },
@@ -90,7 +94,7 @@ const CAMPAIGN = [
         'Light FIRST, killer. Send a normal call with ILLUMINATION in it. Adjust the flare in big steps — hundreds, not tens — until the attackers are lit.',
         'When you can SEE them: "SHELL HE, OVER" — same mission, new nature — then walk steel onto them under the light. No two flares burn the same, so when the light starts to die, send SHELL ILLUMINATION again and buy more — do not wait for the dark. Doctrine calls the whole dance COORDINATED ILLUMINATION.' ] },
   ]},
-  { id: 'V3', tab: 'III', name: 'VOLUME III — THUNDER RUN', need: 14, tseed: 5150, chapters: [
+  { id: 'V3', tab: 'III', name: 'VOLUME III — THUNDER RUN', need: 9, tseed: 5150, chapters: [
     { id: '3.1', title: 'ROLLING STOCK', blurb: 'convoy — lead it, or catch the pit stop', impl: true, type: 'convoy', seed: 301, par: 420,
       story: 'The big push is on and everything on this island is moving. An enemy column is running the coast road. Intel says they stop for fuel — columns always stop. Lead a moving target, or ambush a sitting one. Choose.',
       outro: 'Burning trucks on a coast road: the war\'s most honest progress report.' },
@@ -122,7 +126,7 @@ const CAMPAIGN = [
   /* TEMPO1 — the whole volume runs under an overcast: black sand, grey light.
      Overcast is full diffuse daylight (elev 40), so the strict/danger-close
      chapters keep their target discrimination; only the mood changes. */
-  { id: 'V4', tab: 'IV', name: 'VOLUME IV — BLACK SAND', need: 24, tseed: 66600, palette: 'black', tod: 'overcast', chapters: [
+  { id: 'V4', tab: 'IV', name: 'VOLUME IV — BLACK SAND', need: 15, tseed: 66600, palette: 'black', tod: 'overcast', chapters: [
     { id: '4.1', title: 'STRICT NET', blurb: 'doctrine enforced — full format or silence', impl: true, type: 'strongpoint', seed: 401, par: 360, strict: true,
       story: 'A black-sand fortress island, and a new FDC posture: STRICT NET. Full format or the net stays silent — callsigns, warning order, location, description, OVER, correct rounding, real surveillance. The book, verbatim, under fire.',
       outro: 'The net stayed clean. Doctrine is just courtesy under fire.' },
@@ -149,7 +153,7 @@ const CAMPAIGN = [
         'Plan while it is QUIET, killer. A target on each phase line — "PLAN TARGET, GRID …" costs nothing and files the data. PRIORITY TARGET the line you expect to fight on.',
         'When they cross a line: "FIRE TARGET AB####" — two words, rounds now. Walk fire down YOUR OWN planned axis as they come. A series or a group of the lines works too. The full call is for people who did not plan.' ] },
   ]},
-  { id: 'EP', tab: 'EPI', name: 'EPILOGUE — SUNBURN', need: 32, tseed: 1337, chapters: [
+  { id: 'EP', tab: 'EPI', name: 'EPILOGUE — SUNBURN', need: 20, tseed: 1337, chapters: [
     /* 11a — the Epilogue opens. Humor dial at 11, readback sacred: the FDC
        runs the mission absolutely deadpan; the jokes live in the briefing,
        the coach lines and the fiction — never in place of doctrine. */
@@ -261,7 +265,14 @@ function gradeMission(m) {
     if (assessEffect().outcome !== 'destroyed') return 0;
   } else {
     const a = assessEffect();
-    if (a.outcome === 'none') return 0;
+    /* UX11 — the star floor is 1, not 0, for a mission properly closed with
+       RREMS (author ruling 2026-08-27). A fumbling first-timer 351 m off at
+       3 km — an ordinary beginner result — used to score literally zero with
+       nothing recorded, making the curve bimodal 0-or-4. Running the format,
+       correcting, and closing out IS the skill this trainer teaches; the
+       auto-fails (fratricide/collateral/overrun) still return 0 above, and
+       kaiju keeps its destroy-or-nothing rule. */
+    if (a.outcome === 'none') return 1;
     if (a.outcome === 'suppressed' && m.intent !== 'suppress') return 1;
   }
   let stars = 1;

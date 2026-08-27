@@ -334,6 +334,13 @@ const SCN_META = {
   occupied:    { name: 'OCCUPIED SETTLEMENT — NO-STRIKE ADJACENT' },  // WORLD2
   qfp:         { name: 'QUICK FIRE PLAN — H-HOUR' },                  // SUGG8
   twin:        { name: 'TWO TARGETS — TRAFFIC BY NUMBER' },            // SUGG5
+  /* UX11 — the Epilogue types join the skirmish rotation (author ruling
+     2026-08-27). They were chapter-only, gated behind 32 cumulative stars =
+     8 flawless missions, so the most shareable content in the app was
+     invisible to anyone who had not played for weeks. Both generators are
+     self-contained (no chapter OPT reads — verified). */
+  chow:        { name: 'THE GREAT CHOW RAID — DANGER CLOSE' },         // 11a
+  kaiju:       { name: 'CLAWS OUT — MOVING HARD TARGET' },             // 11b
 };
 const KP_NAMES = ['BREWERY', 'LATRINE', 'SAWMILL', 'CHAPEL', 'DERBY', 'ICEBOX'];
 const SCN_TYPES = Object.keys(SCN_META);
