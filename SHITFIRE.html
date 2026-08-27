@@ -7571,6 +7571,22 @@ function normalize(s) {
      pair IMMEDIATELY followed by a 4-digit run into the written form. Gated on
      the digits so the qfp avenue names (ALPHA/BRAVO/CHARLIE, no digits after)
      are untouched. */
+  /* NET12 — a direction announced MAGNETIC was silently taken as grid: the
+     one mistake the boot brief lectures about (GRID = MAG + declination) was
+     accepted without the correction applied. Same contract as the degrees
+     fold below: the announced unit is honoured, once, for every branch. The
+     UNANNOUNCED magnetic send still gets caught by the OT-direction
+     diagnosis, which is where that lesson lives. */
+  for (let i = 1; i < merged.length; i++) {
+    if (/^\d+$/.test(merged[i]) && merged[i - 1] === 'direction') {
+      let j = i + 1;
+      if (merged[j] === 'mils') j++;
+      if (merged[j] === 'magnetic') {
+        merged[i] = String(Math.round((parseInt(merged[i]) + CONFIG.NAV.declEastDeg / 360 * 6400) % 6400));
+        merged.splice(i + 1, j - i);
+      }
+    }
+  }
   /* NET29(c) — JFIRE: "degrees may be transmitted but must be announced."
      The announcement was heard and DISCARDED: "DIRECTION 340 DEGREES" was
      read as 340 mils — a ~5,700 mil error, plotted without complaint. The
@@ -7742,10 +7758,15 @@ function parseMessage(raw) {
      position. The pattern requires a position word IMMEDIATELY before "grid" so
      that a target description like "enemy position on the hill" in a real CFF
      can never trip it. */
-  const mPos = t.match(/\b(?:pos\s*rep|my\s+position|observer\s+position|position)\s+(?:is\s+)?grid\s+((?:\d+\s*)+)/);
+  /* NET10 — "POS REP 244553" was unparseable: the regex demanded the word
+     GRID after the position words, and ch2.1's own brief demands the report.
+     GRID is optional now; without it the digit run must be a full 6+ so a
+     stray "position 200" in prose cannot masquerade as a report. */
+  const mPos = t.match(/\b(?:pos\s*rep|my\s+position|observer\s+position|position)\s+(?:is\s+)?(grid\s+)?((?:\d+\s*)+)/);
   if (mPos && !t.includes('adjust fire') && !t.includes('fire for effect')) {
-    const pd = mPos[1].replace(/\s+/g, '');
-    return { type: 'posrep', digits: pd, raw: t, toks };
+    const pd = mPos[2].replace(/\s+/g, '');
+    if (mPos[1] || pd.length >= 6)
+      return { type: 'posrep', digits: pd, raw: t, toks };
   }
   /* G14/G26 — the IMMEDIATE mission types (DOCTRINE.md §22) are sent as ONE
      transmission: ID + warning order + location, and the FDC sends no MTO. Before
