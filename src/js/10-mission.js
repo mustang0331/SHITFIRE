@@ -384,7 +384,10 @@ function fpfMarkRound(g) {
   const ix = p0.x + err.x, iz = p0.z + err.z;
   schedule(sim.now + CONFIG.FDC.shotDelay + tofFor(p0) - 2, () => {
     ammoSpend('he');   // SUGG7 — marking rounds are real rounds
-    spawnBurst(ix, Math.max(H(ix, iz), 0), iz);
+    /* GFX9 — book first, show second, show guarded (the GFX2 contract). The
+       fratricide check sat DOWNSTREAM of a bare spawnBurst, so a presentation
+       throw would have skipped the one invariant the comment above says is
+       never waived. */
     for (const f of friendlyPositions())
       if (dist2(ix, iz, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius)) {
         FPF.frat = true;
@@ -392,6 +395,11 @@ function fpfMarkRound(g) {
         // not the rant pool: those entries feed failHit's multi-part playback
         FDC.say('CHECK FIRE — THAT MARKING ROUND WAS ON THE FRIENDLIES. The FPF you just adjusted onto our own people is the FPF you will answer for when it fires, over.', { delay: 0.8 });
       }
+    try { spawnBurst(ix, Math.max(H(ix, iz), 0), iz); }
+    catch (err) {
+      log('', `BURST VISUAL FAILED (${err && err.message ? err.message : err}) — the marking round still resolved. Report this line.`, 'sys');
+      TLOG.add('syserr', '', 'burst visual failed (FPF mark)', { err: String(err && err.message || err) });
+    }
   });
 }
 function handlePlanFPF(p) {

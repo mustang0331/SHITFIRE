@@ -3867,16 +3867,30 @@ function updateScenario() {
    inside the position radius is casualties — a COST at grading, never a fail. */
 function enemyVolley(S) {
   const fb = S.fireBase;
-  spawnBurst(S.enemy.x, H(S.enemy.x, S.enemy.z), S.enemy.z, true);   // signature
+  /* GFX9 — same contract as GFX2 in resolveImpact: the model first, the show
+     second, and the show inside a guard. These two sites were bare, and the
+     impact one still had the pre-GFX2 order — a presentation throw here
+     skipped the friendly-casualty count (and, at the signature, the rest of
+     the frame). qaBreakBurst() verified both: the fault logs loudly and the
+     casualties still book. */
+  try { spawnBurst(S.enemy.x, H(S.enemy.x, S.enemy.z), S.enemy.z, true); }   // signature
+  catch (err) {
+    log('', `BURST VISUAL FAILED (${err && err.message ? err.message : err}) — the enemy gun fired regardless. Report this line.`, 'sys');
+    TLOG.add('syserr', '', 'burst visual failed (enemy signature)', { err: String(err && err.message || err) });
+  }
   for (let i = 0; i < 3; i++) {
     const ix = fb.x + gauss(S.rng) * 55, iz = fb.z + gauss(S.rng) * 55;
     schedule(sim.now + S.bty.tof + i * 0.8, () => {
       if (Scenario !== S) return;              // mission changed while in flight
-      spawnBurst(ix, Math.max(H(ix, iz), 0), iz);
-      if (dist2(ix, iz, fb.x, fb.z) < S.friendlies[0].r) {
+      if (dist2(ix, iz, fb.x, fb.z) < S.friendlies[0].r) {   // GFX9 — book first
         S.btyCas++;
         if (S.btyCas === 1)
           log('', 'Rounds inside the friendly position. They are taking casualties down there — kill that gun.', 'sys');
+      }
+      try { spawnBurst(ix, Math.max(H(ix, iz), 0), iz); }
+      catch (err) {
+        log('', `BURST VISUAL FAILED (${err && err.message ? err.message : err}) — the incoming round still counted. Report this line.`, 'sys');
+        TLOG.add('syserr', '', 'burst visual failed (enemy impact)', { err: String(err && err.message || err) });
       }
     });
   }
@@ -6407,7 +6421,10 @@ function fpfMarkRound(g) {
   const ix = p0.x + err.x, iz = p0.z + err.z;
   schedule(sim.now + CONFIG.FDC.shotDelay + tofFor(p0) - 2, () => {
     ammoSpend('he');   // SUGG7 — marking rounds are real rounds
-    spawnBurst(ix, Math.max(H(ix, iz), 0), iz);
+    /* GFX9 — book first, show second, show guarded (the GFX2 contract). The
+       fratricide check sat DOWNSTREAM of a bare spawnBurst, so a presentation
+       throw would have skipped the one invariant the comment above says is
+       never waived. */
     for (const f of friendlyPositions())
       if (dist2(ix, iz, f.x, f.z) < (f.r || CONFIG.MISSION.fratricideRadius)) {
         FPF.frat = true;
@@ -6415,6 +6432,11 @@ function fpfMarkRound(g) {
         // not the rant pool: those entries feed failHit's multi-part playback
         FDC.say('CHECK FIRE — THAT MARKING ROUND WAS ON THE FRIENDLIES. The FPF you just adjusted onto our own people is the FPF you will answer for when it fires, over.', { delay: 0.8 });
       }
+    try { spawnBurst(ix, Math.max(H(ix, iz), 0), iz); }
+    catch (err) {
+      log('', `BURST VISUAL FAILED (${err && err.message ? err.message : err}) — the marking round still resolved. Report this line.`, 'sys');
+      TLOG.add('syserr', '', 'burst visual failed (FPF mark)', { err: String(err && err.message || err) });
+    }
   });
 }
 function handlePlanFPF(p) {
