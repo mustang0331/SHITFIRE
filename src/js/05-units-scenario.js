@@ -256,8 +256,19 @@ function genScenario(type, seed) {
         const az = rng() * Math.PI * 2;
         const r = CONFIG.TERRAIN.islandRadius * Math.sqrt(rng());
         x = Math.sin(az) * r; z = -Math.cos(az) * r;
+        /* WORLD5 — the per-type band is an ADDITIONAL clamp on the island-wide
+           draw. It was silently ignored in spread mode: wreck (a TRAINING
+           target, asked for 1100-2100) measured out to 4194 m over 400 seeds.
+           The band holds for the first 60% of tries, then widens to the
+           skirmish floor/ceiling — NOT a hard wall, because a band with near-
+           zero acceptance on this terrain (wreck's beach requirement) would
+           otherwise collapse every seed onto the fixed fallback point, the
+           exact silent-failure class WORLD3 was. Draw order is unchanged, so
+           chapter seeds (the else branch) are untouched. */
         const d = dist2(x, z, OP.x, OP.z);
-        if (d < M.skirmishRange[0] || d > M.skirmishRange[1]) continue;
+        const bandLo = tries < tryMax * 0.6 ? Math.max(rMin, M.skirmishRange[0]) : M.skirmishRange[0];
+        const bandHi = tries < tryMax * 0.6 ? Math.min(rMax, M.skirmishRange[1]) : M.skirmishRange[1];
+        if (d < bandLo || d > bandHi) continue;
       } else {
         const az = rng() * Math.PI * 2;
         const range = lerp(rMin, rMax, rng());
@@ -284,6 +295,12 @@ function genScenario(type, seed) {
       const ex = c.x + Math.sin(eAz) * eOff, ez = c.z - Math.cos(eAz) * eOff;
       if (H(ex, ez) < 3) continue;
       if (!hasLOS(eye.x, eye.y, eye.z, ex, H(ex, ez) + 2, ez)) continue;
+      /* WORLD6 — the documented invariant ("the floor keeps a random target
+         outside the battery's 600 m danger close of the observer's own
+         tower") was enforced on the point findSpot returned, then the enemy
+         was offset OFF that point unchecked: measured min 571 m over 400
+         seeds. Re-check after the offset. */
+      if (dist2(ex, ez, OP.x, OP.z) < M.skirmishRange[0]) continue;
       compound = c; enemy = { x: ex, z: ez };
     }
     if (!enemy) {
@@ -525,6 +542,10 @@ function genScenario(type, seed) {
         const ox = fb.x + Math.sin(az) * 1100, oz = fb.z - Math.cos(az) * 1100;
         if (H(ox, oz) < 2) continue;
         if (WORLD.villages.some(v => dist2(ox, oz, v.x, v.z) < v.r + 120)) continue;
+        /* WORLD6 — an axis pointed at the OP walks the assault (and the plan)
+           inside the observer's own danger close. The enemy start is the
+           farthest point down the axis, so gating it gates the whole line. */
+        if (dist2(ox, oz, OP.x, OP.z) < M.skirmishRange[0]) continue;
         aAz = az;
       }
       if (aAz === null) aAz = azTo(fb.x, fb.z, OP.x, OP.z) + Math.PI;   // away from the OP
@@ -542,9 +563,17 @@ function genScenario(type, seed) {
           if (H(x, z) < 2) continue;
           if (WORLD.villages.some(v => dist2(x, z, v.x, v.z) < v.r + 120)) continue;
           if (S.avenues.some(a => dist2(a.x, a.z, x, z) < 300)) continue;
+          if (dist2(x, z, OP.x, OP.z) < M.skirmishRange[0]) continue;   // WORLD6 — measured min 164 m pre-fix
           av = { x, z };
         }
-        S.avenues.push(av || { x: fb.x + 550 + k * 90, z: fb.z + (k - 1) * 340 });
+        if (!av) {
+          // WORLD6 — the fixed fallback could also land inside the floor;
+          // place it down the axis AWAY from the OP instead.
+          const awayAz = azTo(OP.x, OP.z, fb.x, fb.z);
+          av = { x: fb.x + Math.sin(awayAz) * (550 + k * 90),
+                 z: fb.z - Math.cos(awayAz) * (550 + k * 90) };
+        }
+        S.avenues.push(av);
       }
       S.assaultAv = Math.floor(rng() * S.avenues.length);
       S.enemy = { x: S.avenues[S.assaultAv].x, z: S.avenues[S.assaultAv].z };
