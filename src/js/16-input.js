@@ -184,6 +184,11 @@ document.addEventListener('keyup', e => {
   if (e.target === txInput) return;
   if (e.code === 'Space') { e.preventDefault(); endPTT(); }
 });
+/* UX10(c) — a blurred window never gets the keyup, so alt-tabbing while
+   slewing the drone left the sensor spinning on a stuck arrow key forever
+   (measured: still moving 8 s after blur). Held-key state dies with focus. */
+window.addEventListener('blur', () => { UAS.keys = {}; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) UAS.keys = {}; });
 /* G3 — one toggle, two entrances (SHIFT+D and the mission-menu button), so the
    HUD flag, the not-graded marking and the TLOG entry can never disagree about
    which state the trainer is in. OFF means every round lands exactly on the

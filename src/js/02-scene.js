@@ -138,6 +138,11 @@ function applyTOD(name) {
   // `var` (not let/const) so this hook is safe to read during the boot-time
   // applyTOD('day') that runs long before the VISION block exists.
   if (visionReady) applyVision();
+  /* UX10(d) — the status strip only refreshed on state/optics changes, so a
+     TOD change left it lying (TOD DAY over a dawn sky in the QA shots). Same
+     boot-safety gate as applyVision: by the time visionReady is true, every
+     binding refreshStatus reads exists. */
+  if (visionReady) refreshStatus();
 }
 var visionReady = false;
 applyTOD('day');

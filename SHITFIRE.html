@@ -87,9 +87,12 @@
   .tbtn:active { background: #39482a; }
 
   /* Push-to-talk indicator */
+  /* UX10(b) — bottom-anchored (applyComms keeps it riding the radio panel's
+     top edge), capped and scrollable so a long live transcript can never
+     swallow the screen, z-level with the panel it annotates. */
   #ptt { position: fixed; left: 12px; bottom: 232px; width: min(600px, 62vw);
     display: none; padding: 8px 12px; font-size: 12.5px; color: #ffb3a0;
-    border-color: #6b3a2e; }
+    border-color: #6b3a2e; max-height: 28vh; overflow-y: auto; z-index: 4; }
   #ptt.on { display: block; }
   #ptt .live { color: #ffd98a; }
 
@@ -1226,6 +1229,11 @@ function applyTOD(name) {
   // `var` (not let/const) so this hook is safe to read during the boot-time
   // applyTOD('day') that runs long before the VISION block exists.
   if (visionReady) applyVision();
+  /* UX10(d) — the status strip only refreshed on state/optics changes, so a
+     TOD change left it lying (TOD DAY over a dawn sky in the QA shots). Same
+     boot-safety gate as applyVision: by the time visionReady is true, every
+     binding refreshStatus reads exists. */
+  if (visionReady) refreshStatus();
 }
 var visionReady = false;
 applyTOD('day');
@@ -4329,8 +4337,13 @@ function applyComms(g) {
   // the PTT banner is about this radio, so it rides with it instead of staying
   // pinned to a corner the panel has since left
   pttEl.style.left = commsGeom.l + 'px';
-  pttEl.style.top = Math.max(0, commsGeom.t - 42) + 'px';
-  pttEl.style.bottom = 'auto';
+  /* UX10(b) — anchored by its BOTTOM to the panel's top edge, so a live
+     transcript grows UPWARD. Anchored by top it grew down: a 162-char
+     transmission overlapped the radio header by 17 px and the panel (z 4)
+     painted over the live transcript — the one thing the banner exists to
+     show. */
+  pttEl.style.top = 'auto';
+  pttEl.style.bottom = Math.max(0, innerHeight - commsGeom.t + 8) + 'px';
   pttEl.style.width = commsGeom.w + 'px';
 }
 function saveComms() {
@@ -4386,6 +4399,10 @@ function log(call, msg, cls) {
   d.innerHTML = call ? `<span class="call">${call}:</span>` : '';
   d.appendChild(document.createTextNode(msg));
   logEl.appendChild(d);
+  /* UX10(e) — the visible log grew unbounded (8 -> 254 divs over 12 missions,
+     each append forcing layout). The TLOG below is the durable record; the
+     panel keeps the last 400 rows. */
+  while (logEl.children.length > 400) logEl.removeChild(logEl.firstChild);
   logEl.scrollTop = logEl.scrollHeight;
   TLOG.add(cls || 'sys', call, msg);
 }
@@ -5966,6 +5983,12 @@ const milcardEl = document.getElementById('milcard');
 const cheatEl = document.getElementById('cheat');   // F3
 function toggleMilCard(force) {
   const on = force !== undefined ? force : !milcardEl.classList.contains('on');
+  /* UX10(a) — [R] with the naked eye was a silent no-op; the hint advertises
+     [R] MIL CARD with no precondition. Same shape as doLase's guard. */
+  if (on && !binos) {
+    log('', 'The mil-relation card is a reticle aid — press [B] to raise the binos first.', 'sys');
+    return;
+  }
   milcardEl.classList.toggle('on', on && binos);
 }
 function doLase() {
@@ -11067,6 +11090,13 @@ function newMission(first, type, chapter) {
       WORLD.villages.map(v => v.name).join(' and ') +
       ' — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. ' +
       'Permanent structures and roads are on the sheet too — use them to orient.', 'sys');
+  /* UX7 — log() auto-scrolls, so by t=0.5 s the line that says WHAT TO DO had
+     scrolled off a 206 px viewport (measured: 0 of 6 orientation lines still
+     visible at t=15 s). The mission statement is therefore repeated as the
+     LAST line of the dump — the one line the panel is guaranteed to be
+     showing when the player first looks down. */
+  if (Scenario.brief)
+    log('', `>>> THE JOB: ${Scenario.brief}`, 'sys');
   FDC.say(pick(QUIPS.greet), { delay: 1.5 });
   // continuity: HELLHOUND remembers your record
   const car = CAMP.data._career;
@@ -11274,6 +11304,11 @@ document.addEventListener('keyup', e => {
   if (e.target === txInput) return;
   if (e.code === 'Space') { e.preventDefault(); endPTT(); }
 });
+/* UX10(c) — a blurred window never gets the keyup, so alt-tabbing while
+   slewing the drone left the sensor spinning on a stuck arrow key forever
+   (measured: still moving 8 s after blur). Held-key state dies with focus. */
+window.addEventListener('blur', () => { UAS.keys = {}; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) UAS.keys = {}; });
 /* G3 — one toggle, two entrances (SHIFT+D and the mission-menu button), so the
    HUD flag, the not-graded marking and the TLOG entry can never disagree about
    which state the trainer is in. OFF means every round lands exactly on the

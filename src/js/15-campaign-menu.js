@@ -622,6 +622,13 @@ function newMission(first, type, chapter) {
       WORLD.villages.map(v => v.name).join(' and ') +
       ' — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. ' +
       'Permanent structures and roads are on the sheet too — use them to orient.', 'sys');
+  /* UX7 — log() auto-scrolls, so by t=0.5 s the line that says WHAT TO DO had
+     scrolled off a 206 px viewport (measured: 0 of 6 orientation lines still
+     visible at t=15 s). The mission statement is therefore repeated as the
+     LAST line of the dump — the one line the panel is guaranteed to be
+     showing when the player first looks down. */
+  if (Scenario.brief)
+    log('', `>>> THE JOB: ${Scenario.brief}`, 'sys');
   FDC.say(pick(QUIPS.greet), { delay: 1.5 });
   // continuity: HELLHOUND remembers your record
   const car = CAMP.data._career;

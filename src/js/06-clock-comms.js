@@ -127,8 +127,13 @@ function applyComms(g) {
   // the PTT banner is about this radio, so it rides with it instead of staying
   // pinned to a corner the panel has since left
   pttEl.style.left = commsGeom.l + 'px';
-  pttEl.style.top = Math.max(0, commsGeom.t - 42) + 'px';
-  pttEl.style.bottom = 'auto';
+  /* UX10(b) — anchored by its BOTTOM to the panel's top edge, so a live
+     transcript grows UPWARD. Anchored by top it grew down: a 162-char
+     transmission overlapped the radio header by 17 px and the panel (z 4)
+     painted over the live transcript — the one thing the banner exists to
+     show. */
+  pttEl.style.top = 'auto';
+  pttEl.style.bottom = Math.max(0, innerHeight - commsGeom.t + 8) + 'px';
   pttEl.style.width = commsGeom.w + 'px';
 }
 function saveComms() {
@@ -184,6 +189,10 @@ function log(call, msg, cls) {
   d.innerHTML = call ? `<span class="call">${call}:</span>` : '';
   d.appendChild(document.createTextNode(msg));
   logEl.appendChild(d);
+  /* UX10(e) — the visible log grew unbounded (8 -> 254 divs over 12 missions,
+     each append forcing layout). The TLOG below is the durable record; the
+     panel keeps the last 400 rows. */
+  while (logEl.children.length > 400) logEl.removeChild(logEl.firstChild);
   logEl.scrollTop = logEl.scrollHeight;
   TLOG.add(cls || 'sys', call, msg);
 }

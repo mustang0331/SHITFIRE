@@ -181,6 +181,12 @@ const milcardEl = document.getElementById('milcard');
 const cheatEl = document.getElementById('cheat');   // F3
 function toggleMilCard(force) {
   const on = force !== undefined ? force : !milcardEl.classList.contains('on');
+  /* UX10(a) — [R] with the naked eye was a silent no-op; the hint advertises
+     [R] MIL CARD with no precondition. Same shape as doLase's guard. */
+  if (on && !binos) {
+    log('', 'The mil-relation card is a reticle aid — press [B] to raise the binos first.', 'sys');
+    return;
+  }
   milcardEl.classList.toggle('on', on && binos);
 }
 function doLase() {

@@ -87,9 +87,12 @@
   .tbtn:active { background: #39482a; }
 
   /* Push-to-talk indicator */
+  /* UX10(b) — bottom-anchored (applyComms keeps it riding the radio panel's
+     top edge), capped and scrollable so a long live transcript can never
+     swallow the screen, z-level with the panel it annotates. */
   #ptt { position: fixed; left: 12px; bottom: 232px; width: min(600px, 62vw);
     display: none; padding: 8px 12px; font-size: 12.5px; color: #ffb3a0;
-    border-color: #6b3a2e; }
+    border-color: #6b3a2e; max-height: 28vh; overflow-y: auto; z-index: 4; }
   #ptt.on { display: block; }
   #ptt .live { color: #ffd98a; }
 
