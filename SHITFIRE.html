@@ -11703,6 +11703,17 @@ window.SHITFIRE = { CONFIG, H, fireMission, applyCorrection, FDC, WORLD,
      (it builds and returns an S, it does not install it). hasLOS rides along
      so a harness can check sight lines the way the scenario generator does. */
   genScenario, hasLOS,
+  /* PORT P0 — parity-capture surface for the engine port (additive, like the
+     hooks above). tools/oracle-capture.js reads the oracle's own PRNG, noise,
+     terrain, ray, spotting, and grid functions directly so the ported sim can
+     be tested against recorded ground truth (ENGINE_PORT/PARITY_TESTING.md).
+     qaSetDem swaps the DEM heightfield in and out so the DEM sampling path is
+     capturable without a file load — pass null to restore procedural terrain.
+     Read-only against gameplay; the setter is capture-scoped and restored in
+     the same synchronous evaluate. */
+  mulberry32, hash2, vnoise, fbm, groundHit, spotBurst, otFactor,
+  worldToEN, enToWorld, gridOf, radToMils,
+  qaSetDem: (n, data) => { DEM = data ? { n, data } : null; },
   /* NET2 — UAS QA: state readout + a setter so a harness can place the
      sensor deterministically. */
   uas: {
