@@ -97,6 +97,45 @@ SHITFIRE.Game/                 ← the Godot (or Unity) project
 | `gradeMission(metrics)` | `Grading.Score(MissionMetrics m) → Stars` |
 | `TLOG` | `TranscriptLog` |
 
+## Addendum — 2026-08-28: the module reality, and the C++ target
+
+The inventory above was measured against the pre-split single `index.html` (4,516 lines). The source is now **18 modules under `src/js/`, ~11,200 lines** (measured at commit `e895666`), and `SCN_META` defines **15 scenario types**, not seven. The transfers-vs-rebuilds classification above still holds; the line counts are historical. The port targets **Unreal Engine 5.8** (see [ENGINE_CHOICE.md](ENGINE_CHOICE.md) *Decision override*), so the core is a **plain C++ static library built `/fp:precise` outside the engine** ([UNREAL_RESEARCH.md](UNREAL_RESEARCH.md) §3a) — the C# structure above maps to it 1:1, namespace `shitfire::`.
+
+Module → what transfers → target namespace:
+
+| Module | Transfers | Namespace |
+|---|---|---|
+| `00-config.js` | `CONFIG` data (THREE imports and GFX render keys do not) | `config` |
+| `01-math-terrain.js` | whole module — PRNG, noise, `H`, rays, grid helpers | `math` + `terrain` |
+| `02-scene.js` | DEM parse/ingestion only (~:471) | `terrain` |
+| `03-op-battery.js` | OP/battery placement scans | `scenario` |
+| `04-world.js` | placement half — roads, facilities, villages, civilians | `scenario` |
+| `05-units-scenario.js` | `genScenario` + placement constraints | `scenario` |
+| `06-clock-comms.js` | sim clock/scheduler, `TLOG`, FDC say-queue + delivery pacing | `sim` + `review` |
+| `07-voice-spot-audio.js` | SALUTE generation, scripted callers | `doctrine` |
+| `08-burst-optics.js` | nothing (its dispersion draw consumes `mission.rng` — stream-order note) | — |
+| `09-camera.js` | nothing | — |
+| `10-mission.js` | whole module — ballistics, mission machine, corrections, impacts | `sim` |
+| `11-parser.js` | whole module | `doctrine` |
+| `12-cff-handling.js` | whole module — FDC rule engine | `doctrine` |
+| `13-aar.js` | verdict/diagnosis assembly (~:364); the plot render does not | `review` |
+| `14-map-library.js` | marching-squares logic only (P5 — out of the current slice) | — |
+| `15-campaign-menu.js` | `CAMPAIGN` data, `gradeMission`, `CAMP` persistence shape | `campaign` |
+| `16-input.js` | nothing | — |
+| `17-loop-boot.js` | nothing (its `window.SHITFIRE` export documents the Core API) | — |
+
+Interfaces to preserve by name, C++ form (the C# table above still governs the shapes):
+
+| Browser | C++ core |
+|---|---|
+| `H(x,z)` | `terrain::HeightField::height(double x, double z)` |
+| `fireMission(...)` | `sim::Mission::fire(...)` |
+| `applyCorrection(otFrameDelta)` | `sim::Mission::applyCorrection(OtDelta)` |
+| `FDC.say(msg)` | `FdcLine` event via `SimCore::drainEvents()` |
+| `Scenario` | `ScenarioState` |
+| `gradeMission(metrics)` | `campaign::grade(MissionMetrics) → Stars` |
+| `TLOG` | `review::TranscriptLog` |
+
 ## Three decisions worth making early
 
 **Fixed-point or double?** JavaScript numbers are IEEE-754 doubles. Use `double` in Core for anything feeding the PRNG stream or impact math. Using `float` will silently break bit-parity with the browser oracle and cost days of confusion.
