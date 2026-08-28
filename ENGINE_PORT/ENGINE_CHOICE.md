@@ -1,5 +1,7 @@
 # ENGINE_CHOICE.md — Which Engine, and Why
 
+**Status (2026-08-28): overridden.** The build targets **Unreal Engine 5.8** by author's call — see *Decision override* at the end of this file and [UNREAL_RESEARCH.md](UNREAL_RESEARCH.md). The analysis below is preserved as the record of the original evaluation, with two rows corrected where the 2026 re-test refuted them.
+
 **Recommendation: Godot 4.x with C#.** Unity is the defensible alternative if institutional distribution or XR breadth becomes a hard requirement. Unreal is the wrong tool for this specific product.
 
 This document exists so the decision is made once, on stated criteria, and not re-litigated halfway through the port.
@@ -26,10 +28,10 @@ Note what is absent: no networking, no character animation, no physics simulatio
 | Deterministic sim control | **Strong** — easy to keep sim off the frame clock | Strong | Strong but the engine is opinionated |
 | Heightfield + custom ray queries | Fine — plain code, no physics needed | Fine | Fine |
 | Language fit for porting ~1,900 lines of JS logic | **C# is the closest sane target**; GDScript also viable | C# — identical benefit | C++/Blueprint — highest friction |
-| Headless/unit testing of the sim core | **Strong** — a plain C# class library tests with zero engine | Good (needs care to keep logic out of `MonoBehaviour`) | Poor |
+| Headless/unit testing of the sim core | **Strong** — a plain C# class library tests with zero engine | Good (needs care to keep logic out of `MonoBehaviour`) | ~~Poor~~ **Strong** *(corrected 2026-08-28: Low-Level Tests — standalone Catch2 executables, no editor — are first-class in UE 5.8, and an engine-external sim library tests with zero engine either way; UNREAL_RESEARCH.md §1)* |
 | Print/PDF export | Weak natively — needs a library or an external step | Weak — same | Weak — same |
 | Speech I/O | None native — platform/plugin work | None native — more prebuilt options exist | None native |
-| Licensing / cost | **MIT, free, no revenue terms, no seat cost** | Free tier with terms; policy history is a governance risk | Royalty model above threshold |
+| Licensing / cost | **MIT, free, no revenue terms, no seat cost** | Free tier with terms; policy history is a governance risk | ~~Royalty model above threshold~~ **No cost for a free trainer** *(corrected 2026-08-28: EULA §4(a)(ii) — no royalty on a product that generates no revenue; seat fees waived under $1M trailing revenue; the real obligation is no GPL/CC-BY-SA code in the product, §6(c); UNREAL_RESEARCH.md §2)* |
 | Distribution to a barracks laptop | Small binary, trivial | Larger, fine | Very large |
 | Team ramp for a solo/small dev | **Low** | Moderate | High |
 
@@ -51,6 +53,10 @@ These follow the product regardless of which engine is picked, and each needs an
 - **Speech synthesis.** `SpeechSynthesis` disappears too. Options: platform TTS (Windows SAPI via `System.Speech`), a bundled engine (Piper is small and good), or — the option worth serious consideration — **pre-recorded voice lines**. The FDC's dialogue is a finite, authored set of pools; recording them yields a dramatically better HELLHOUND than any TTS, and the quip pools are already structured as discrete lines. The cost is losing dynamic readback of arbitrary grids, which can be solved by splicing recorded digits.
 - **Printable map sheets.** Losing the browser print dialog is a genuine regression. Plan: render the sheet to a high-resolution image in-engine and either write a PDF with a small library (e.g. `PdfSharpCore`) or hand off to the OS print dialog. **This must be scheduled, not assumed** — it is a graded training feature per [reference/TLO.md](reference/TLO.md) ELO F.2.
 - **The single-file, zero-install property dies.** Today the trainer is one HTML file that runs on any machine with a browser and no permission from anyone. A game engine build is an executable that some environments will not permit. If "runs on a locked-down barracks laptop" is a real requirement, keep the browser version alive as the low-friction distribution channel (see [PORT_PLAN.md](PORT_PLAN.md), "Keeping the browser build alive").
+
+## Decision override — 2026-08-27 (author's call)
+
+**Engine: Unreal Engine 5.8**, chosen by the author knowingly against this document's recommendation, for the P0–P4 playable-slice port (stages in [PORT_PLAN.md](PORT_PLAN.md); the Unreal-specific map is [UNREAL_RESEARCH.md](UNREAL_RESEARCH.md)). Two of the rejection reasons were re-tested in 2026 and corrected in the table above (headless testing, licensing). The remaining reasons **stand** — above all the C++ ramp cost for a solo dev and the 2D/vector-document weakness — and must be re-examined before any P5 (cartography/print) or P7 (speech) work; the slice deliberately avoids those areas. This section exists so the override is on the record once, on stated terms, and is not re-litigated mid-port — the same discipline the original decision claimed for itself.
 
 ## What is explicitly out of scope for the port
 

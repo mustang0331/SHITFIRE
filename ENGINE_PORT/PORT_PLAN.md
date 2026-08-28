@@ -4,6 +4,8 @@ Same discipline as the browser build's BUILD ORDER: **ship stage N working and c
 
 Each stage lists its work, its **exit criteria** (objective, checkable — not "feels done"), and what it deliberately leaves undone.
 
+> **2026-08-28:** the port is underway as a **P0–P4 slice targeting Unreal Engine 5.8** on branch `unreal-port` (author's override — see [ENGINE_CHOICE.md](ENGINE_CHOICE.md) *Decision override*). P5–P8 are unscheduled. P5's "print/PDF has no free answer" is since answered in [UNREAL_RESEARCH.md](UNREAL_RESEARCH.md) §5: render the sheet to a high-res render target → PNG now, wrap in a PDF via libharu later.
+
 ---
 
 ## P0 — Freeze the oracle *(do this before writing any engine code)*
