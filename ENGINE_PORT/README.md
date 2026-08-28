@@ -19,6 +19,7 @@ Recommended engine: **Godot 4 with C#**, because this product's real burdens are
 | [PARITY_TESTING.md](PARITY_TESTING.md) | How to prove the port is correct rather than hoping it is — three levels of automated parity against the browser oracle |
 | [PORT_PLAN.md](PORT_PLAN.md) | Staged migration P0–P8 with objective exit criteria per stage |
 | [CONTENT_INVENTORY.md](CONTENT_INVENTORY.md) | Every piece of content the port must carry: campaign chapters and seeds, scenario templates, world features, dialogue pools, tunables, and what must be authored fresh |
+| [UNREAL_RESEARCH.md](UNREAL_RESEARCH.md) | 2026-08 research (10 agent reports, synthesized): re-test of the Unreal rejection, the concrete UE path if chosen, engine-independent findings (speech stack, assets, parity/float traps, agent build tooling). Deep dives in [research/](research/). **Read before starting any engine build.** |
 | [reference/](reference/) | The engine-agnostic specifications that transfer unchanged — doctrine, campaign narrative, training objectives |
 
 ## The three rules that matter most
