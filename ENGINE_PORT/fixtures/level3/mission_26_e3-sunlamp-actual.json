@@ -1,0 +1,595 @@
+{
+ "meta": {
+  "chapter": "E.3",
+  "difficulty": "normal",
+  "notes": "The space cannon: same six elements, ten-digit grid honored to the meter.",
+  "scenarioSeed": 503,
+  "scenarioType": "bunker",
+  "seedMission": 503,
+  "seedTerrain": 1337,
+  "skirmish": null
+ },
+ "playbook": "26-e3-sunlamp",
+ "result": {
+  "dur": 63,
+  "outcome": "neutralized",
+  "rounds": 1,
+  "stars": 4,
+  "verdict": "PASS — TARGET NEUTRALIZED"
+ },
+ "tlog": [
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "Light: DUSK.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "CHAPTER E.3 — SUNLAMP ACTUAL (NORMAL). Dug-in bunker reported on high ground, grid bearing ~3700 mils. The effect bands are tight — put it on the roof.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "Par time for full stars: 5:00.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "MET: wind from 1300 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 245 554, ground elev 262 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"ICEBOX\" grid 235 563 (grid brg 5549) · AB1002 \"BREWERY\" grid 230 574 (grid brg 5727). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages HIKE and MOVA and FAVANGO — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": ">>> THE JOB: Dug-in bunker reported on high ground, grid bearing ~3700 mils. The effect bands are tight — put it on the roof.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "diff": "normal",
+   "form": "salute",
+   "kind": "spot",
+   "msg": "SOUTH OF THE RADIO MAST, WITHIN TWO THOUSAND METRES OF IT",
+   "scn": "bunker",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "This net has seen career-enders, mercy kills, and one observer who called fire on his own foxhole by accident. Let us find out which one you are, over.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.3",
+   "kind": "obs",
+   "msg": "SUNLAMP ACTUAL, THIS IS MUSTANG 12, ADJUST FIRE, GRID 2368753625, BUNKER COMPLEX, OVER",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": "grid",
+   "msg": "sunlamp actual, this is mustang 12, adjust fire, grid 2368753625, bunker complex, over",
+   "ptype": "cff",
+   "seed": 503,
+   "state": "OBSERVING",
+   "t": 33.2,
+   "warno": "adjust"
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "SHEAF: CONVERGED (inferred) — small hard target — every piece on the same point.",
+   "seed": 503,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "FUZE: DELAY (inferred) — hard/overhead-cover target — penetrate, then burst.",
+   "seed": 503,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, SUNLAMP ACTUAL — I HAVE A SPOT REPORT FOR YOU, RELAYED FROM BATTALION S-TWO, WHO WERE VERY PLEASED WITH THEMSELVES. SALUTE FORMAT. STAND BY, OVER.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 34
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: It is a SPACE CANNON, killer, and it still wants the six elements in three transmissions. Doctrine does not care where the tube is parked.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 34.1
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "SIZE: ONE FORTIFIED POSITION, SQUAD SIZE. ACTIVITY: DUG IN AND OBSERVING. THEY ARE NOT GOING ANYWHERE. LOCATION: SOUTH OF THE RADIO MAST, WITHIN TWO THOUSAND METRES OF IT, OVER.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 36.9
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, SUNLAMP ACTUAL, ADJUST FIRE, GRID 2368753625, BUNKER COMPLEX, OUT.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 39.5
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "UNIT: ASSESSED AS THIRD BATTALION REMNANTS, UNCONFIRMED. TIME: 18 MINUTES OLD. EQUIPMENT: AUTOMATIC WEAPON IN A COVERED EMPLACEMENT, OVERHEAD PROTECTION. OVER.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 39.9
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "MESSAGE TO OBSERVER: ONE APERTURE IN ADJUST, FULL ARRAY IN EFFECT, DIRECTED ENERGY, TARGET NUMBER ALPHA ALPHA 7003. THANK YOU FOR CHOOSING SUNLAMP, OVER.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.3",
+   "kind": "obs",
+   "msg": "APERTURE ARRAY ADJUST EFFECT DIRECTED ENERGY TARGET NUMBER ALPHA ALPHA 7003, OVER",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "aperture array adjust effect directed energy target number alpha alpha 7003, over",
+   "ptype": "unknown",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 40.9,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 41
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.3",
+   "kind": "obs",
+   "msg": "DIRECTION 3650, OVER",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 41
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "direction 3650, over",
+   "ptype": "direction",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 41,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: It will ask for a ten-digit grid. It will settle for what you have. Send the call like it is any other gun, because to the book, it is.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 41.2
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "That report has been passed through four radios and two liars. Verify it yourself.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 41.6
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "Solid copy. Somewhere a dead artillery instructor just felt a warm, deeply confused sense of pride.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 42
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "DISCHARGE, OVER.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 46
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "READBACK CORRECT, OUT.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 46.8
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "DIRECTION 3650, OUT.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 47
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "SOLAR EVENT, OVER.",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 60.9
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "dTgt": 31,
+   "kind": "impact",
+   "msg": "adjust round 1",
+   "seed": 503,
+   "state": "SHOT",
+   "t": 65.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.3",
+   "kind": "obs",
+   "msg": "DROP 50, FIRE FOR EFFECT, OVER",
+   "seed": 503,
+   "state": "ADJUSTING",
+   "t": 66.1
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "ffe": true,
+   "kind": "parse",
+   "method": null,
+   "msg": "drop 50, fire for effect, over",
+   "ptype": "adjust",
+   "seed": 503,
+   "state": "ADJUSTING",
+   "t": 66.1,
+   "warno": null
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "DROP 50, FIRE FOR EFFECT, OUT.",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 67.2
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 3 mils RIGHT of target, spotting OVER. OT range 2031 m → OT factor 2. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 67.4
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "Copy FIRE FOR EFFECT. Six guns, one grid, zero fucking sympathy.",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 68
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "DISCHARGE, OVER.",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 72
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "SOLAR EVENT, OVER.",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 86.8
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "dTgt": 50,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 91.8
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "dTgt": 44,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 92.3
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "dTgt": 52,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 92.6
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "dTgt": 47,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 93.3
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "dTgt": 47,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 93.6
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "dTgt": 47,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 503,
+   "state": "FIRE FOR EFFECT",
+   "t": 94.4
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 503,
+   "state": "EOM?",
+   "t": 96.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.3",
+   "kind": "obs",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OVER",
+   "seed": 503,
+   "state": "EOM?",
+   "t": 96.9
+  },
+  {
+   "call": "",
+   "ch": "E.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "end of mission, target neutralized, over",
+   "ptype": "eom",
+   "seed": 503,
+   "state": "EOM?",
+   "t": 96.9,
+   "warno": null
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 503,
+   "state": "AAR",
+   "t": 97
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "Rounds complete. Whatever stood there is now a fine mist and somebody else's paperwork.",
+   "seed": 503,
+   "state": "AAR",
+   "t": 98.2
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, mission is complete. Send end of mission with your BDA, over.",
+   "seed": 503,
+   "state": "AAR",
+   "t": 99.8
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OUT.",
+   "seed": 503,
+   "state": "AAR",
+   "t": 101
+  },
+  {
+   "call": "SUNLAMP ACTUAL",
+   "ch": "E.3",
+   "kind": "fdc",
+   "msg": "Good effect. Well, hell — the observer can actually observe.",
+   "seed": 503,
+   "state": "AAR",
+   "t": 102.2
+  },
+  {
+   "aimErr0": 1,
+   "bdaClaim": "neutralized",
+   "bracketed": false,
+   "call": "",
+   "ch": "E.3",
+   "corrEff": null,
+   "dur": 63,
+   "effPct": 40,
+   "firstMiss": 31,
+   "fuze": "delay",
+   "fuzeSrc": "inferred",
+   "intent": "destroy",
+   "kind": "aar",
+   "msg": "PASS — TARGET NEUTRALIZED",
+   "notes": 0,
+   "outcome": "neutralized",
+   "rounds": 1,
+   "seed": 503,
+   "sheaf": "converged",
+   "sheafSrc": "inferred",
+   "stars": 4,
+   "state": "AAR",
+   "t": 103.8,
+   "tInit": 3,
+   "trace": [
+    31
+   ]
+  }
+ ],
+ "what": "scripted mission transcript — playbook 26-e3-sunlamp"
+}

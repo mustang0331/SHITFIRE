@@ -1,0 +1,182 @@
+{
+ "meta": {
+  "chapter": "F.1",
+  "difficulty": "normal",
+  "notes": "Foreword tutorial: look-around, binos, two laser hits 300+ m apart. No fire mission (guns cold).",
+  "scenarioSeed": 51,
+  "scenarioType": "wreck",
+  "seedMission": 51,
+  "seedTerrain": 1337,
+  "skirmish": null
+ },
+ "playbook": "01-f1-eyes",
+ "result": null,
+ "tlog": [
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "CHAPTER F.1 — EYES BEFORE GUNS (NORMAL). Training target: a derelict landing craft on the beach, grid bearing ~1600 mils. It cannot shoot back. Neither could the last observer.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "MET: wind from 1300 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 245 554, ground elev 262 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"CHAPEL\" grid 235 555 (grid brg 4853) · AB1002 \"DERBY\" grid 256 558 (grid brg 1225). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages HIKE and MOVA and FAVANGO — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": ">>> THE JOB: Training target: a derelict landing craft on the beach, grid bearing ~1600 mils. It cannot shoot back. Neither could the last observer.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "diff": "normal",
+   "form": "salute",
+   "kind": "spot",
+   "msg": "NORTH OF GRAVEYARD, WITHIN TWO THOUSAND METRES OF IT",
+   "scn": "wreck",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.1",
+   "kind": "fdc",
+   "msg": "This net has seen career-enders, mercy kills, and one observer who called fire on his own foxhole by accident. Let us find out which one you are, over.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: First lesson is free: LOOK AROUND. Drag your eyes across the whole horizon — mouse or stick. The heading readout up top is in mils, 6400 to a circle. Go.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 32.7
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Adequate. Now glass up — press [B]. The reticle is graduated in mils; you will measure the world with it.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 33.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.1",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND FIRES — I HAVE A SPOT REPORT FOR YOU, RELAYED FROM THE OBSERVER YOU RELIEVED, WHO IS NOW ASLEEP. SALUTE FORMAT. STAND BY, OVER.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 34
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Now LASE — put the reticle on any piece of this island and press [L]. Range and grid come straight back. That laser is worth more than you are.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 34.9
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Again — a DIFFERENT spot, three hundred meters or more from the first. An observer confirms. He does not assume.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 36.6
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.1",
+   "kind": "fdc",
+   "msg": "SIZE: ONE DERELICT LANDING CRAFT. ACTIVITY: STATIC. ABANDONED. DEEPLY UNTHREATENING. LOCATION: NORTH OF GRAVEYARD, WITHIN TWO THOUSAND METRES OF IT, OVER.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 36.9
+  },
+  {
+   "call": "",
+   "ch": "F.1",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Eyes, glass, laser. That is the whole instrument. Tomorrow we find out if the brain is attached.",
+   "seed": 51,
+   "state": "OBSERVING",
+   "t": 37.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.1",
+   "kind": "fdc",
+   "msg": "UNIT: IRREGULARS. THEY ARE NOT WEARING ANYBODY'S UNIFORM. TIME: 15 MINUTES OLD. EQUIPMENT: NONE. IT IS SCRAP, AND IT IS YOURS. OVER.",
+   "seed": 51,
+   "state": "AAR",
+   "t": 39.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.1",
+   "kind": "fdc",
+   "msg": "That report has been passed through four radios and two liars. Verify it yourself.",
+   "seed": 51,
+   "state": "AAR",
+   "t": 41.6
+  }
+ ],
+ "what": "scripted mission transcript — playbook 01-f1-eyes"
+}

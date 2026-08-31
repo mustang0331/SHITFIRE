@@ -1,0 +1,731 @@
+{
+ "meta": {
+  "chapter": "4.2",
+  "difficulty": "normal",
+  "notes": "60mm mortar section (HACKSAW), 8-digit ten-meter grid.",
+  "scenarioSeed": 402,
+  "scenarioType": "troops",
+  "seedMission": 402,
+  "seedTerrain": 66600,
+  "skirmish": null
+ },
+ "playbook": "20-ch42-60mm",
+ "result": {
+  "dur": 80,
+  "outcome": "neutralized",
+  "rounds": 1,
+  "stars": 4,
+  "verdict": "PASS — TARGET NEUTRALIZED"
+ },
+ "tlog": [
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Deploying to a new island — new map sheets are in the library [P].",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Light: OVERCAST.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "CHAPTER 4.2 — TEN METERS (NORMAL). Enemy infantry in the open, reported grid bearing ~5500 mils from your OP. A gift. Do not waste it.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "ASSET: 60mm mortar section, callsign HACKSAW FIRES — address THEM, not HELLHOUND; strict net will bounce the wrong callsign. 8-digit grids (10 m precision) required. Tighter dispersion, tighter target.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Par time for full stars: 5:30.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "MET: wind from 1000 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 245 553, ground elev 264 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"BREWERY\" grid 255 547 (grid brg 2135) · AB1002 \"LATRINE\" grid 260 527 (grid brg 2675). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages KEPA and TAHINGO and FANO — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": ">>> THE JOB: Enemy infantry in the open, reported grid bearing ~5500 mils from your OP. A gift. Do not waste it.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "diff": "normal",
+   "form": "salute",
+   "kind": "spot",
+   "msg": "NORTHEAST OF THE AMMO DEPOT, WITHIN TWO THOUSAND METRES OF IT",
+   "scn": "troops",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "HACKSAW FIRES up. Somewhere on this miserable rock is a grid square that luck itself gave up on. Point me at it, over.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.2",
+   "kind": "obs",
+   "msg": "HACKSAW FIRES, THIS IS MUSTANG 12, ADJUST FIRE, GRID 22465707, TROOPS IN THE OPEN, OVER",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": "grid",
+   "msg": "hacksaw fires, this is mustang 12, adjust fire, grid 22465707, troops in the open, over",
+   "ptype": "cff",
+   "seed": 402,
+   "state": "OBSERVING",
+   "t": 33.2,
+   "warno": "adjust"
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "SHEAF: OPEN (inferred) — personnel target — bursts one effective width apart.",
+   "seed": 402,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "FUZE: PD (default) — standard method of engagement — point detonating (quick).",
+   "seed": 402,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HACKSAW FIRES — I HAVE A SPOT REPORT FOR YOU, RELAYED FROM A RECON PATROL THAT WENT HOME AN HOUR AGO. SALUTE FORMAT. STAND BY, OVER.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 34
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "SIZE: SQUAD PLUS — EIGHT OR MORE DISMOUNTS. ACTIVITY: INFANTRY IN THE OPEN, NO OVERHEAD COVER. LOCATION: NORTHEAST OF THE AMMO DEPOT, WITHIN TWO THOUSAND METRES OF IT, OVER.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 36.9
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HACKSAW FIRES, ADJUST FIRE, GRID 22465707, TROOPS IN THE OPEN, OUT.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 39.5
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "UNIT: ASSESSED AS THIRD BATTALION REMNANTS, UNCONFIRMED. TIME: 8 MINUTES OLD. EQUIPMENT: SMALL ARMS AND PACKS. NO VEHICLES SEEN. OVER.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 39.9
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "MESSAGE TO OBSERVER: ONE TUBE IN ADJUST, SECTION IN EFFECT, 6 ROUNDS, 60 MIKE MIKE HE, TARGET NUMBER ALPHA ALPHA 7002, OVER.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.2",
+   "kind": "obs",
+   "msg": "TUBE SECTION ADJUST EFFECT ROUND 60 MIKE HE TARGET NUMBER ALPHA ALPHA 7002, OVER",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "tube section adjust effect round 60 mike he target number alpha alpha 7002, over",
+   "ptype": "unknown",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 40.9,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 41
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.2",
+   "kind": "obs",
+   "msg": "DIRECTION 5500, OVER",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 41
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "direction 5500, over",
+   "ptype": "direction",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 41,
+   "warno": null
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "That report has been passed through four radios and two liars. Verify it yourself.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 41.6
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 44.9
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "READBACK CORRECT, OUT.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 46.8
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "DIRECTION 5500, OUT.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 47
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 54.9
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 40,
+   "kind": "impact",
+   "msg": "adjust round 1",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 59.9
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "The infantry heard that one — they are moving and going flat.",
+   "seed": 402,
+   "state": "SHOT",
+   "t": 59.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.2",
+   "kind": "obs",
+   "msg": "RIGHT 50, FIRE FOR EFFECT, OVER",
+   "seed": 402,
+   "state": "ADJUSTING",
+   "t": 60
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "ffe": true,
+   "kind": "parse",
+   "method": null,
+   "msg": "right 50, fire for effect, over",
+   "ptype": "adjust",
+   "seed": 402,
+   "state": "ADJUSTING",
+   "t": 60,
+   "warno": null
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "RIGHT 50, FIRE FOR EFFECT, OUT.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 61
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 15 mils LEFT of target, spotting SHORT. OT range 2695 m → OT factor 3. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 61.4
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "Copy FIRE FOR EFFECT. Six guns, one grid, zero fucking sympathy.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 61.8
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 65.8
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 75.8
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 58,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 80.8
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 53,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 81.1
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 53,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 81.5
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 60,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 82.3
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 54,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 82.8
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 51,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 83.2
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Target is SUPPRESSED — heads down, not casualties, and it wears off. Your call: continue the mission (send a correction, or REPEAT for another volley) or close with \"END OF MISSION, TARGET SUPPRESSED\" if suppression is all you needed.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 85.4
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.2",
+   "kind": "obs",
+   "msg": "LEFT 60, REPEAT, OVER",
+   "seed": 402,
+   "state": "EOM?",
+   "t": 85.7
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "left 60, repeat, over",
+   "ptype": "adjust",
+   "seed": 402,
+   "state": "EOM?",
+   "t": 85.7,
+   "warno": null
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 85.8
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, they are heads-down, not dead — that is suppression, and it expires. Continue the mission or send end of mission, your call, over.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 87.2
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "LEFT 60, REPEAT, OUT.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 88.2
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 92.2
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 102.2
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 5,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 107.2
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 6,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 107.9
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 9,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 108.6
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 5,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 109.4
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 7,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 110.3
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "dTgt": 12,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 402,
+   "state": "FIRE FOR EFFECT",
+   "t": 111
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 402,
+   "state": "EOM?",
+   "t": 113.4
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.2",
+   "kind": "obs",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OVER",
+   "seed": 402,
+   "state": "EOM?",
+   "t": 113.4
+  },
+  {
+   "call": "",
+   "ch": "4.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "end of mission, target neutralized, over",
+   "ptype": "eom",
+   "seed": 402,
+   "state": "EOM?",
+   "t": 113.4,
+   "warno": null
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 402,
+   "state": "AAR",
+   "t": 113.6
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "Rounds complete. I have looked upon that smoke and found it good.",
+   "seed": 402,
+   "state": "AAR",
+   "t": 114.8
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, mission is complete. Send end of mission with your BDA, over.",
+   "seed": 402,
+   "state": "AAR",
+   "t": 116.4
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OUT.",
+   "seed": 402,
+   "state": "AAR",
+   "t": 117.6
+  },
+  {
+   "call": "HACKSAW FIRES",
+   "ch": "4.2",
+   "kind": "fdc",
+   "msg": "Target neutralized. Mark this day, MUSTANG. It will not come again.",
+   "seed": 402,
+   "state": "AAR",
+   "t": 118.8
+  },
+  {
+   "aimErr0": 5,
+   "bdaClaim": "neutralized",
+   "bracketed": false,
+   "call": "",
+   "ch": "4.2",
+   "corrEff": null,
+   "dur": 80,
+   "effPct": 11,
+   "firstMiss": 40,
+   "fuze": "pd",
+   "fuzeSrc": "default",
+   "intent": "destroy",
+   "kind": "aar",
+   "msg": "PASS — TARGET NEUTRALIZED",
+   "notes": 0,
+   "outcome": "neutralized",
+   "rounds": 1,
+   "seed": 402,
+   "sheaf": "open",
+   "sheafSrc": "inferred",
+   "stars": 4,
+   "state": "AAR",
+   "t": 120.4,
+   "tInit": 3,
+   "trace": [
+    40
+   ]
+  }
+ ],
+ "what": "scripted mission transcript — playbook 20-ch42-60mm"
+}

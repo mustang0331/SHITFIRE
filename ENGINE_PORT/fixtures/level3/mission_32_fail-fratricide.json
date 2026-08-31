@@ -1,0 +1,884 @@
+{
+ "meta": {
+  "chapter": "1.3",
+  "difficulty": "normal",
+  "notes": "Deliberate fratricide: a correction walked onto the friendly strongpoint, failure recorded, mission still finished and closed (fail is not end). Also the disastrous-run coverage item (0 stars).",
+  "scenarioSeed": 103,
+  "scenarioType": "strongpoint",
+  "seedMission": 103,
+  "seedTerrain": 1337,
+  "skirmish": null
+ },
+ "playbook": "32-fail-fratricide",
+ "result": {
+  "dur": 117,
+  "outcome": "destroyed",
+  "rounds": 3,
+  "stars": 0,
+  "verdict": "FAIL — FRATRICIDE"
+ },
+ "tlog": [
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "CHAPTER 1.3 — HOLD THE LINE (NORMAL). Friendly strongpoint, grid 246 571 (grid bearing ~0000 mils), is under assault. Locate the attackers pressing it and destroy them without hitting the friendlies.",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "Par time for full stars: 6:00.",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "MET: wind from 1300 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 245 554, ground elev 262 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"LATRINE\" grid 245 534 (grid brg 3185) · AB1002 \"SAWMILL\" grid 230 564 (grid brg 5401). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages HIKE and MOVA and FAVANGO — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": ">>> THE JOB: Friendly strongpoint, grid 246 571 (grid bearing ~0000 mils), is under assault. Locate the attackers pressing it and destroy them without hitting the friendlies.",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "diff": "normal",
+   "form": "salute",
+   "kind": "spot",
+   "msg": "EAST OF THE VILLAGE OF HIKE, WITHIN TWO THOUSAND METRES OF IT",
+   "scn": "strongpoint",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "This net has seen career-enders, mercy kills, and one observer who called fire on his own foxhole by accident. Let us find out which one you are, over.",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "HELLHOUND FIRES, THIS IS MUSTANG 12, ADJUST FIRE, GRID 247573, DANGER CLOSE, SQUAD ASSAULTING THE STRONGPOINT, OVER",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": "grid",
+   "msg": "hellhound fires, this is mustang 12, adjust fire, grid 247573, danger close, squad assaulting the strongpoint, over",
+   "ptype": "cff",
+   "seed": 103,
+   "state": "OBSERVING",
+   "t": 33.2,
+   "warno": "adjust"
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "SHEAF: OPEN (inferred) — personnel target — bursts one effective width apart.",
+   "seed": 103,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "FUZE: PD (default) — standard method of engagement — point detonating (quick).",
+   "seed": 103,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND FIRES — I HAVE A SPOT REPORT FOR YOU, RELAYED FROM A RECON PATROL THAT WENT HOME AN HOUR AGO. SALUTE FORMAT. STAND BY, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 34
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SIZE: SQUAD PLUS — EIGHT OR MORE DISMOUNTS AND TWO LIGHT VEHICLES. ACTIVITY: ASSAULTING A FRIENDLY STRONGPOINT. LOCATION: EAST OF THE VILLAGE OF HIKE, WITHIN TWO THOUSAND METRES OF IT, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 36.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND FIRES, ADJUST FIRE, GRID 247 573, DANGER CLOSE, SQUAD ASSAULTING THE STRONGPOINT, OUT.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 39.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "UNIT: UNIDENTIFIED. MIXED KIT, MIXED DISCIPLINE. TIME: 6 MINUTES OLD. EQUIPMENT: SMALL ARMS, ONE CREW-SERVED WEAPON, TWO SOFT-SKIN TRUCKS. OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 39.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 1 ROUND, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "GUN BATTERY ADJUST EFFECT ROUND 155 HE FUZE PD TARGET NUMBER ALPHA ALPHA 7001, OVER",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "gun battery adjust effect round 155 he fuze pd target number alpha alpha 7001, over",
+   "ptype": "unknown",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 40.9,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 41
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "DIRECTION 100, OVER",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 41
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "direction 100, over",
+   "ptype": "direction",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 41,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "That report has been passed through four radios and two liars. Verify it yourself.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 41.6
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 44.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "READBACK CORRECT, OUT.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 46.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "DIRECTION 0100, OUT.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 47
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 55
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 148,
+   "kind": "impact",
+   "msg": "adjust round 1",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 60
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "LEFT 120, DROP 210, OVER",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 60
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "left 120, drop 210, over",
+   "ptype": "adjust",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 60,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "MUSTANG, this is DANGER CLOSE — we CREEP. One hundred meters or less, from the safe side. Send it smaller, or send it again as-is and own it, over.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 61
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 74 mils RIGHT of target, spotting SHORT. OT range 1870 m → OT factor 2. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 61.5
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "LEFT 120, DROP 210, OVER",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 64.2
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "left 120, drop 210, over",
+   "ptype": "adjust",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 64.2,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "Sent as-is. On your head, MUSTANG, out.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 65.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "I am NOT sending that. Plot it, son. Your correction lands on the friendly position. You have one radio and you are currently using it for manslaughter. Say again, over.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 66.2
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "LEFT 120, DROP 210, DANGER CLOSE, OVER",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 68.3
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "left 120, drop 210, danger close, over",
+   "ptype": "adjust",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 68.3,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "MUSTANG, this is DANGER CLOSE — we CREEP. One hundred meters or less, from the safe side. Send it smaller, or send it again as-is and own it, over.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 69.3
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "LEFT 120, DROP 210, DANGER CLOSE, OVER",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 72.5
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "left 120, drop 210, danger close, over",
+   "ptype": "adjust",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 72.5,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "Sent as-is. On your head, MUSTANG, out.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 73.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "Fine. Your call, your name on it, your conscience. Shifting fire — and I hope to hell you can live with it.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 74.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "LEFT 120, DROP 210, OUT.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 75.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "The fire direction computer just sighed out loud, MUSTANG. Round your numbers like a professional. Firing anyway.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 76.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 80.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 90.8
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 210,
+   "kind": "impact",
+   "msg": "adjust round 2",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 95.8
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "This mission is now a FAILURE — permanently, no stars, and the AAR will say why. But the target is still in the fight and the mission is still yours: adjust, get effect, and close it out with END OF MISSION.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 95.8
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 96.1
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "RIGHT 90, ADD 200, OVER",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 96.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "right 90, add 200, over",
+   "ptype": "adjust",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 96.1,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "CHECK FIRE. CHECK FIRE.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 96.8
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 62 mils LEFT of target, spotting SHORT. OT range 1870 m → OT factor 2. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 97.3
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "MUSTANG, you walked artillery onto our own infantry. There are two kinds of people in this war — those who read grids, and casualties. Today you manufactured the second kind out of the first.",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 99
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "RIGHT 90, ADD 200, OVER",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 100.3
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "right 90, add 200, over",
+   "ptype": "adjust",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 100.3,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "When this is over, you and I will have a conversation about maps, and you will not enjoy it. END OF MISSION. Get off my net.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 101.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "MUSTANG, this is DANGER CLOSE — we CREEP. One hundred meters or less, from the safe side. Send it smaller, or send it again as-is and own it, over.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 102.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "Sent as-is. On your head, MUSTANG, out.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 103.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "RIGHT 90, ADD 200, OUT.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 104.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "A bold correction. Somewhere out there a map is being held upside down, and I believe I know exactly by whom.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 105.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 109.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 119.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 20,
+   "kind": "impact",
+   "msg": "adjust round 3",
+   "seed": 103,
+   "state": "SHOT",
+   "t": 124.1
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "FIRE FOR EFFECT, OVER",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 124.4
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": true,
+   "kind": "parse",
+   "method": null,
+   "msg": "fire for effect, over",
+   "ptype": "adjust",
+   "seed": 103,
+   "state": "ADJUSTING",
+   "t": 124.4,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "FIRE FOR EFFECT, OUT.",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 125.4
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 7 mils RIGHT of target, spotting OVER. OT range 1870 m → OT factor 2. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 125.6
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 129.4
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 139.4
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 47,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 144.4
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 19,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 145.3
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 6,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 145.6
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 53,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 146.5
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 50,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 147.1
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "dTgt": 5,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 103,
+   "state": "FIRE FOR EFFECT",
+   "t": 147.6
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "1.3",
+   "kind": "obs",
+   "msg": "END OF MISSION, TARGET DESTROYED, OVER",
+   "seed": 103,
+   "state": "EOM?",
+   "t": 150
+  },
+  {
+   "call": "",
+   "ch": "1.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "end of mission, target destroyed, over",
+   "ptype": "eom",
+   "seed": 103,
+   "state": "EOM?",
+   "t": 150,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 103,
+   "state": "AAR",
+   "t": 150.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, mission is complete. Send end of mission with your BDA, over.",
+   "seed": 103,
+   "state": "AAR",
+   "t": 151.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "1.3",
+   "kind": "fdc",
+   "msg": "END OF MISSION, TARGET DESTROYED, OUT.",
+   "seed": 103,
+   "state": "AAR",
+   "t": 153
+  },
+  {
+   "aimErr0": 53,
+   "bdaClaim": "destroyed",
+   "bracketed": false,
+   "call": "",
+   "ch": "1.3",
+   "corrEff": 24,
+   "dur": 117,
+   "effPct": 39,
+   "firstMiss": 148,
+   "fuze": "pd",
+   "fuzeSrc": "default",
+   "intent": "destroy",
+   "kind": "aar",
+   "msg": "FAIL — FRATRICIDE",
+   "notes": 1,
+   "outcome": "destroyed",
+   "rounds": 3,
+   "seed": 103,
+   "sheaf": "open",
+   "sheafSrc": "inferred",
+   "stars": 0,
+   "state": "AAR",
+   "t": 154.6,
+   "tInit": 3,
+   "trace": [
+    148,
+    210,
+    20
+   ]
+  }
+ ],
+ "what": "scripted mission transcript — playbook 32-fail-fratricide"
+}

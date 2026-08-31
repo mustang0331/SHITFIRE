@@ -1,0 +1,703 @@
+{
+ "meta": {
+  "chapter": "E.2",
+  "difficulty": "normal",
+  "notes": "Moving hard target: measured lead, fuze delay, repeated volleys.",
+  "scenarioSeed": 502,
+  "scenarioType": "kaiju",
+  "seedMission": 502,
+  "seedTerrain": 1337,
+  "skirmish": null
+ },
+ "playbook": "25-e2-kaiju",
+ "result": {
+  "dur": 93,
+  "outcome": "destroyed",
+  "rounds": 3,
+  "stars": 3,
+  "verdict": "PASS — TARGET DESTROYED"
+ },
+ "tlog": [
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "Light: DAWN.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "CHAPTER E.2 — CLAWS OUT (NORMAL). A crab, dark red, approximately the size of a church, is wading ashore toward the village of HIKE from grid 227 580. It is a MOVING TARGET — lead it. It is also a crab. The village is NO-STRIKE as always. Stop it before landfall; nobody will discuss this afterwards.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "Par time for full stars: 7:00.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "MET: wind from 1300 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 245 554, ground elev 262 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"DERBY\" grid 254 561 (grid brg 0960) · AB1002 \"ICEBOX\" grid 239 573 (grid brg 6072). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages HIKE and MOVA and FAVANGO — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": ">>> THE JOB: A crab, dark red, approximately the size of a church, is wading ashore toward the village of HIKE from grid 227 580. It is a MOVING TARGET — lead it. It is also a crab. The village is NO-STRIKE as always. Stop it before landfall; nobody will discuss this afterwards.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "This net has seen career-enders, mercy kills, and one observer who called fire on his own foxhole by accident. Let us find out which one you are, over.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND — nobody has sent us a thing. No patrol report, no overlay, no cue. Start glassing and tell me what is out there, over.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 34
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: It is a MOVING TARGET, killer. Lead it like the convoy: fire where it is GOING to be, not where it makes you feel things.",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 34.1
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.2",
+   "kind": "obs",
+   "msg": "HELLHOUND FIRES, THIS IS MUSTANG 12, ADJUST FIRE, GRID 227580, HARD STRUCTURE MOBILE, FUZE DELAY, OVER",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 34.2
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": "grid",
+   "msg": "hellhound fires, this is mustang 12, adjust fire, grid 227580, hard structure mobile, fuze delay, over",
+   "ptype": "cff",
+   "seed": 502,
+   "state": "OBSERVING",
+   "t": 34.2,
+   "warno": "adjust"
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "SHEAF: CONVERGED (inferred) — small hard target — every piece on the same point.",
+   "seed": 502,
+   "state": "MISSION SENT",
+   "t": 34.2
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "FUZE: DELAY (requested) — FUZE DELAY requested in the call.",
+   "seed": 502,
+   "state": "MISSION SENT",
+   "t": 34.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND FIRES, ADJUST FIRE, GRID 227 580, HARD STRUCTURE MOBILE, OUT.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 35.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 1 ROUND, 155 HE, FUZE DELAY, TARGET NUMBER ALPHA ALPHA 7001, OVER.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 36.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "Solid copy. Somewhere a dead artillery instructor just felt a warm, deeply confused sense of pride.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 38
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 38.4
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.2",
+   "kind": "obs",
+   "msg": "GUN BATTERY ADJUST EFFECT ROUND 155 HE FUZE DELAY TARGET NUMBER ALPHA ALPHA 7001, OVER",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 38.4
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "gun battery adjust effect round 155 he fuze delay target number alpha alpha 7001, over",
+   "ptype": "unknown",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 38.4,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 38.4
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.2",
+   "kind": "obs",
+   "msg": "DIRECTION 5780, OVER",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 38.4
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "direction 5780, over",
+   "ptype": "direction",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 38.4,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "Congratulations, you have drawn first blood in the war against plankton. Firing.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 39
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Big does not mean soft. That shell is a hard structure — FUZE DELAY pays, and you will need sustained effect. Volley, correct, REPEAT.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 41.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 43
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "READBACK CORRECT, OUT.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 44.3
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "DIRECTION 5780, OUT.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 44.4
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 53
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 116,
+   "kind": "impact",
+   "msg": "adjust round 1",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 58
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.2",
+   "kind": "obs",
+   "msg": "RIGHT 90, ADD 100, OVER",
+   "seed": 502,
+   "state": "ADJUSTING",
+   "t": 58.5
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "right 90, add 100, over",
+   "ptype": "adjust",
+   "seed": 502,
+   "state": "ADJUSTING",
+   "t": 58.5,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "RIGHT 90, ADD 100, OUT.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 59.5
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 31 mils LEFT of target, spotting SHORT. OT range 3114 m → OT factor 3. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 59.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "Shifting. If persistence were the same thing as accuracy, MUSTANG, you would already have a medal and a nickname.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 60.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 64.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 74.5
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 202,
+   "kind": "impact",
+   "msg": "adjust round 2",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 79.5
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.2",
+   "kind": "obs",
+   "msg": "LEFT 80, DROP 200, OVER",
+   "seed": 502,
+   "state": "ADJUSTING",
+   "t": 79.5
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "left 80, drop 200, over",
+   "ptype": "adjust",
+   "seed": 502,
+   "state": "ADJUSTING",
+   "t": 79.5,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 28 mils RIGHT of target, spotting OVER. OT range 3068 m → OT factor 3. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 81
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "Bracket established. Cut your correction in half each round from here and you will be in effect before I finish this cigarette.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 81.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "LEFT 80, DROP 200, OUT.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 82.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 86.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 96.9
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 39,
+   "kind": "impact",
+   "msg": "adjust round 3",
+   "seed": 502,
+   "state": "SHOT",
+   "t": 101.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.2",
+   "kind": "obs",
+   "msg": "DROP 50, FIRE FOR EFFECT, OVER",
+   "seed": 502,
+   "state": "ADJUSTING",
+   "t": 102.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "ffe": true,
+   "kind": "parse",
+   "method": null,
+   "msg": "drop 50, fire for effect, over",
+   "ptype": "adjust",
+   "seed": 502,
+   "state": "ADJUSTING",
+   "t": 102.1,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "DROP 50, FIRE FOR EFFECT, OUT.",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 103.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 1 mils RIGHT of target, spotting OVER. OT range 3021 m → OT factor 3. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 103.4
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 107.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 117.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 46,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 122.1
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 71,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 122.7
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 17,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 123.4
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 32,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 123.9
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 35,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 124.6
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "dTgt": 44,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 502,
+   "state": "FIRE FOR EFFECT",
+   "t": 125.2
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 502,
+   "state": "EOM?",
+   "t": 127.8
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.2",
+   "kind": "obs",
+   "msg": "END OF MISSION, TARGET DESTROYED, OVER",
+   "seed": 502,
+   "state": "EOM?",
+   "t": 127.8
+  },
+  {
+   "call": "",
+   "ch": "E.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "end of mission, target destroyed, over",
+   "ptype": "eom",
+   "seed": 502,
+   "state": "EOM?",
+   "t": 127.8,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 502,
+   "state": "AAR",
+   "t": 127.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "That grid square has been redecorated down to the bedrock.",
+   "seed": 502,
+   "state": "AAR",
+   "t": 129
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, mission is complete. Send end of mission with your BDA, over.",
+   "seed": 502,
+   "state": "AAR",
+   "t": 130.6
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "END OF MISSION, TARGET DESTROYED, OUT.",
+   "seed": 502,
+   "state": "AAR",
+   "t": 131.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.2",
+   "kind": "fdc",
+   "msg": "Target destroyed. Somewhere a recruiter is taking credit for this and has never once met you.",
+   "seed": 502,
+   "state": "AAR",
+   "t": 133
+  },
+  {
+   "aimErr0": 4,
+   "bdaClaim": "destroyed",
+   "bracketed": true,
+   "call": "",
+   "ch": "E.2",
+   "corrEff": 3,
+   "dur": 93,
+   "effPct": 109,
+   "firstMiss": 116,
+   "fuze": "delay",
+   "fuzeSrc": "requested",
+   "intent": "destroy",
+   "kind": "aar",
+   "msg": "PASS — TARGET DESTROYED",
+   "notes": 0,
+   "outcome": "destroyed",
+   "rounds": 3,
+   "seed": 502,
+   "sheaf": "converged",
+   "sheafSrc": "inferred",
+   "stars": 3,
+   "state": "AAR",
+   "t": 134.6,
+   "tInit": 4,
+   "trace": [
+    116,
+    202,
+    39
+   ]
+  }
+ ],
+ "what": "scripted mission transcript — playbook 25-e2-kaiju"
+}

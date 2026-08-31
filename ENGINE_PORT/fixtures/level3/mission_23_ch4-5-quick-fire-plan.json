@@ -1,0 +1,771 @@
+{
+ "meta": {
+  "chapter": "4.5",
+  "difficulty": "normal",
+  "notes": "Defense in depth: plan a target while quiet, make it priority, bring it down in two words at H-hour.",
+  "scenarioSeed": 405,
+  "scenarioType": "qfp",
+  "seedMission": 405,
+  "seedTerrain": 66600,
+  "skirmish": null
+ },
+ "playbook": "23-ch45-qfp",
+ "result": {
+  "dur": 81,
+  "outcome": "neutralized",
+  "rounds": 0,
+  "stars": 4,
+  "verdict": "PASS — TARGET NEUTRALIZED"
+ },
+ "tlog": [
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Deploying to a new island — new map sheets are in the library [P].",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Light: OVERCAST.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "CHAPTER 4.5 — DIG IN (NORMAL). WARNING ORDER. A counterattack on the position at grid 257 574 (grid bearing ~0500 mils) steps off at H-HOUR, canalized down the draw from the southeast. PHASE LINES on the axis — RED near grid 261 567, WHITE near 260 569, BLUE near 258 572. Plan targets in DEPTH while it is quiet; when they cross RED, two words open the fight.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Par time for full stars: 10:00.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "MET: wind from 1000 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 245 553, ground elev 264 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"CHAPEL\" grid 265 575 (grid brg 0747) · AB1002 \"DERBY\" grid 244 569 (grid brg 6314). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages KEPA and TAHINGO and FANO — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": ">>> THE JOB: WARNING ORDER. A counterattack on the position at grid 257 574 (grid bearing ~0500 mils) steps off at H-HOUR, canalized down the draw from the southeast. PHASE LINES on the axis — RED near grid 261 567, WHITE near 260 569, BLUE near 258 572. Plan targets in DEPTH while it is quiet; when they cross RED, two words open the fight.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "HELLHOUND FIRES up. Somewhere on this miserable rock is a grid square that luck itself gave up on. Point me at it, over.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND — nobody has sent us a thing. No patrol report, no overlay, no cue. Start glassing and tell me what is out there, over.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 34
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Plan while it is QUIET, killer. A target on each phase line — \"PLAN TARGET, GRID …\" costs nothing and files the data. PRIORITY TARGET the line you expect to fight on.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 34.1
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.5",
+   "kind": "obs",
+   "msg": "PLAN TARGET, GRID 262565, OVER",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 34.2
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "plan target, grid 262565, over",
+   "ptype": "plantgt",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 34.2,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "AB7505 is on file — no rounds spent. Two words bring it down when they come: \"FIRE TARGET AB7505, OVER\". Make it the PRIORITY TARGET and the guns stay laid on it.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 34.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "TARGET AB7505 PLANNED AT GRID 262 565. DATA IS ON THE GUNS, OUT.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 35.2
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.5",
+   "kind": "obs",
+   "msg": "PRIORITY TARGET AB7505, OVER",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 35.3
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "priority target AB7505, over",
+   "ptype": "prioritytgt",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 35.3,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Priority target set: AB7505. Re-engage it with \"FIRE TARGET AB7505, OVER\" and the rounds come fast — any other filed target waits for the re-lay.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 35.3
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "TARGET AB7505 IS PRIORITY. GUNS ARE LAID AND STANDING BY, OUT.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 36.3
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: When they cross a line: \"FIRE TARGET AB####\" — two words, rounds now. Walk fire down YOUR OWN planned axis as they come. A series or a group of the lines works too. The full call is for people who did not plan.",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 41.2
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "HINT: Send a call for fire — grid: \"adjust fire, grid 123 456, infantry in the open, over\" (with YOUR target grid) — or polar: \"adjust fire, direction 4400, distance 2100, troops in the open, over\".",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 60
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.5",
+   "kind": "obs",
+   "msg": "FIRE TARGET AB7505, OVER",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 125.3
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "fire target AB7505, over",
+   "ptype": "firetgt",
+   "seed": 405,
+   "state": "OBSERVING",
+   "t": 125.3,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "FIRE TARGET AB7505, OUT.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 126
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "FIRE FOR EFFECT. Somewhere on that grid a very bad day is about to get very short.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 126.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 130.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 140.8
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 104,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 145.7
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 99,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 146.6
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 68,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 147.3
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 118,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 147.5
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 133,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 148.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 94,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 148.5
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Target is SUPPRESSED — heads down, not casualties, and it wears off. Your call: continue the mission (send a correction, or REPEAT for another volley) or close with \"END OF MISSION, TARGET SUPPRESSED\" if suppression is all you needed.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 150.7
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.5",
+   "kind": "obs",
+   "msg": "DIRECTION 980, OVER",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 151
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "direction 980, over",
+   "ptype": "direction",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 151,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 151.1
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.5",
+   "kind": "obs",
+   "msg": "RIGHT 80, DROP 100, REPEAT, OVER",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 151.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "right 80, drop 100, repeat, over",
+   "ptype": "adjust",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 151.1,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, you have bought silence, not results. The moment we stop, they get back on their guns. Correct and REPEAT, or close it out, over.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 152.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "DIRECTION 0980, OUT.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 153.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "RIGHT 80, DROP 100, REPEAT, OUT.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 154.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 158.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 168.5
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 81,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 173.5
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 108,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 174.2
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 104,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 174.4
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 97,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 175.2
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 86,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 175.9
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 83,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 176.4
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Target is SUPPRESSED — heads down, not casualties, and it wears off. Your call: continue the mission (send a correction, or REPEAT for another volley) or close with \"END OF MISSION, TARGET SUPPRESSED\" if suppression is all you needed.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 178.6
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.5",
+   "kind": "obs",
+   "msg": "ADD 100, REPEAT, OVER",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 178.8
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "add 100, repeat, over",
+   "ptype": "adjust",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 178.8,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 179
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, they are heads-down, not dead — that is suppression, and it expires. Continue the mission or send end of mission, your call, over.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 180.4
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "ADD 100, REPEAT, OUT.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 181.4
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "Copy FFE. The tubes are happy. The tubes are always happiest right before this part.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 182.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 186.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 196.3
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 62,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 201.2
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 63,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 201.6
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 22,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 202.2
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 37,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 202.9
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 47,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 203.6
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "dTgt": 70,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 405,
+   "state": "FIRE FOR EFFECT",
+   "t": 204.1
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 206.5
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "4.5",
+   "kind": "obs",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OVER",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 206.5
+  },
+  {
+   "call": "",
+   "ch": "4.5",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "end of mission, target neutralized, over",
+   "ptype": "eom",
+   "seed": 405,
+   "state": "EOM?",
+   "t": 206.5,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 405,
+   "state": "AAR",
+   "t": 206.7
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "That grid square has been redecorated down to the bedrock.",
+   "seed": 405,
+   "state": "AAR",
+   "t": 207.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, mission is complete. Send end of mission with your BDA, over.",
+   "seed": 405,
+   "state": "AAR",
+   "t": 209.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OUT.",
+   "seed": 405,
+   "state": "AAR",
+   "t": 210.7
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "4.5",
+   "kind": "fdc",
+   "msg": "A clean kill. I had frankly abandoned all hope of seeing one from you.",
+   "seed": 405,
+   "state": "AAR",
+   "t": 211.9
+  },
+  {
+   "aimErr0": 47,
+   "bdaClaim": "neutralized",
+   "bracketed": false,
+   "call": "",
+   "ch": "4.5",
+   "corrEff": null,
+   "dur": 81,
+   "effPct": 24,
+   "firstMiss": 104,
+   "fuze": "pd",
+   "fuzeSrc": "default",
+   "intent": "destroy",
+   "kind": "aar",
+   "msg": "PASS — TARGET NEUTRALIZED",
+   "notes": 0,
+   "outcome": "neutralized",
+   "rounds": 0,
+   "seed": 405,
+   "sheaf": "circular",
+   "sheafSrc": "default",
+   "stars": 4,
+   "state": "AAR",
+   "t": 213.5,
+   "tInit": 95,
+   "trace": []
+  }
+ ],
+ "what": "scripted mission transcript — playbook 23-ch45-qfp"
+}

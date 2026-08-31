@@ -1,0 +1,195 @@
+{
+ "meta": {
+  "chapter": "F.2",
+  "difficulty": "normal",
+  "notes": "Foreword tutorial: map, library sheet, terrain-association grid of the fuel point landmark.",
+  "scenarioSeed": 52,
+  "scenarioType": "wreck",
+  "seedMission": 52,
+  "seedTerrain": 1337,
+  "skirmish": null
+ },
+ "playbook": "02-f2-map",
+ "result": null,
+ "tlog": [
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "CHAPTER F.2 — THE MAP IS NOT THE TERRITORY (NORMAL). Training target: a derelict landing craft on the beach, grid bearing ~1600 mils. It cannot shoot back. Neither could the last observer.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "MET: wind from 1300 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 245 554, ground elev 262 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"DERBY\" grid 271 566 (grid brg 1164) · AB1002 \"ICEBOX\" grid 218 548 (grid brg 4585). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages HIKE and MOVA and FAVANGO — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": ">>> THE JOB: Training target: a derelict landing craft on the beach, grid bearing ~1600 mils. It cannot shoot back. Neither could the last observer.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "diff": "normal",
+   "form": "loose",
+   "kind": "spot",
+   "msg": "NORTH OF GRAVEYARD, WITHIN TWO THOUSAND METRES OF IT",
+   "scn": "wreck",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.2",
+   "kind": "fdc",
+   "msg": "This net has seen career-enders, mercy kills, and one observer who called fire on his own foxhole by accident. Let us find out which one you are, over.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Map up — press [M]. Roads, tracks, villages, facilities: plotted. Enemy: never. Finding HIM is the job.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 32.7
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Now the real sheet — press [P] and study the full 1:50,000. Print it if you have a printer; this trade is done on paper. Close it when you have the lay of the island.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 33.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.2",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND FIRES — BATTALION S-TWO, WHO WERE VERY PLEASED WITH THEMSELVES REPORTS ACTIVITY IN THIS GENERAL AREA — NORTH OF GRAVEYARD, WITHIN TWO THOUSAND METRES OF IT. STATIC. ABANDONED. DEEPLY UNTHREATENING. 15 MINUTES OLD, OVER.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 34
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Last rep: TERRAIN ASSOCIATION. Find the FUEL PT on your map and send me its six-digit grid — say or type \"grid\" and the number. Do not lase it. Read the paper.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 34.8
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 34.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "F.2",
+   "kind": "obs",
+   "msg": "GRID 269523, OVER",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 34.9
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "ffe": false,
+   "kind": "parse",
+   "method": "grid",
+   "msg": "grid 269523, over",
+   "ptype": "cff",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 34.9,
+   "warno": "none"
+  },
+  {
+   "call": "",
+   "ch": "F.2",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: That is terrain association. You found a thing in the world on a piece of paper. Some officers never manage it.",
+   "seed": 52,
+   "state": "OBSERVING",
+   "t": 34.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.2",
+   "kind": "fdc",
+   "msg": "THAT IS ALL THEY GAVE ME. ONE DERELICT LANDING CRAFT, NONE. IT IS SCRAP, AND IT IS YOURS. NOTHING FINER, OVER.",
+   "seed": 52,
+   "state": "AAR",
+   "t": 36.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "F.2",
+   "kind": "fdc",
+   "msg": "That report has been passed through four radios and two liars. Verify it yourself.",
+   "seed": 52,
+   "state": "AAR",
+   "t": 38.7
+  }
+ ],
+ "what": "scripted mission transcript — playbook 02-f2-map"
+}

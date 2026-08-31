@@ -1,0 +1,529 @@
+{
+ "meta": {
+  "chapter": "E.1",
+  "difficulty": "normal",
+  "notes": "Fire mission on the seagull flock; the cooks are a no-fire line (danger close).",
+  "scenarioSeed": 501,
+  "scenarioType": "chow",
+  "seedMission": 501,
+  "seedTerrain": 1337,
+  "skirmish": null
+ },
+ "playbook": "24-e1-chow",
+ "result": {
+  "dur": 58,
+  "outcome": "neutralized",
+  "rounds": 1,
+  "stars": 4,
+  "verdict": "PASS — TARGET NEUTRALIZED"
+ },
+ "tlog": [
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "Light: DUSK.",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "CHAPTER E.1 — THE GREAT CHOW RAID (NORMAL). The general is grilling at grid 259 554. A seagull flock, several hundred strong, is assaulting the pit from the tideline — massing near grid 257 554. The COOKS are a NO-FIRE line: one round on Private Dombrowski or his potato salad is FRATRICIDE, same rules, no appeals. This close to the pit you WILL say DANGER CLOSE. Destroy the flock.",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "Par time for full stars: 5:00.",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "MET: wind from 1300 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 245 554, ground elev 262 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"CHAPEL\" grid 235 536 (grid brg 3709) · AB1002 \"DERBY\" grid 246 567 (grid brg 0099). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages HIKE and MOVA and FAVANGO — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": ">>> THE JOB: The general is grilling at grid 259 554. A seagull flock, several hundred strong, is assaulting the pit from the tideline — massing near grid 257 554. The COOKS are a NO-FIRE line: one round on Private Dombrowski or his potato salad is FRATRICIDE, same rules, no appeals. This close to the pit you WILL say DANGER CLOSE. Destroy the flock.",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "This net has seen career-enders, mercy kills, and one observer who called fire on his own foxhole by accident. Let us find out which one you are, over.",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.1",
+   "kind": "obs",
+   "msg": "HELLHOUND FIRES, THIS IS MUSTANG 12, ADJUST FIRE, GRID 257554, DANGER CLOSE, TROOPS IN THE OPEN, OVER",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "ffe": false,
+   "kind": "parse",
+   "method": "grid",
+   "msg": "hellhound fires, this is mustang 12, adjust fire, grid 257554, danger close, troops in the open, over",
+   "ptype": "cff",
+   "seed": 501,
+   "state": "OBSERVING",
+   "t": 33.2,
+   "warno": "adjust"
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "SHEAF: OPEN (inferred) — personnel target — bursts one effective width apart.",
+   "seed": 501,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "FUZE: PD (default) — standard method of engagement — point detonating (quick).",
+   "seed": 501,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND — nobody has sent us a thing. No patrol report, no overlay, no cue. Start glassing and tell me what is out there, over.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 34
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Birds are TROOPS IN THE OPEN, killer. The field manual does not have a column for wingspan and I am not going to be the one to write it.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 34.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND FIRES, ADJUST FIRE, GRID 257 554, DANGER CLOSE, TROOPS IN THE OPEN, OUT.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 35.3
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 1 ROUND, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 36.8
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 37.3
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.1",
+   "kind": "obs",
+   "msg": "GUN BATTERY ADJUST EFFECT ROUND 155 HE FUZE PD TARGET NUMBER ALPHA ALPHA 7001, OVER",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 37.3
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "gun battery adjust effect round 155 he fuze pd target number alpha alpha 7001, over",
+   "ptype": "unknown",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 37.3,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 37.4
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.1",
+   "kind": "obs",
+   "msg": "DIRECTION 1610, OVER",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 37.4
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "direction 1610, over",
+   "ptype": "direction",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 37.4,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "And MUSTANG — do try to hit the correct fucking island this time. The reef has suffered enough on your account.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 37.9
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "GUNNY BOTTLECAP: Dombrowski is at the grill. If a correction walks one round onto that man or his salad, it is FRATRICIDE, it goes in the report, and I will read the report AT you.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 41.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 41.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "READBACK CORRECT, OUT.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 43.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "DIRECTION 1610, OUT.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 43.4
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 56.5
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "dTgt": 58,
+   "kind": "impact",
+   "msg": "adjust round 1",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 61.5
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "The infantry heard that one — they are moving and going flat.",
+   "seed": 501,
+   "state": "SHOT",
+   "t": 61.5
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.1",
+   "kind": "obs",
+   "msg": "RIGHT 50, FIRE FOR EFFECT, OVER",
+   "seed": 501,
+   "state": "ADJUSTING",
+   "t": 61.5
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "ffe": true,
+   "kind": "parse",
+   "method": null,
+   "msg": "right 50, fire for effect, over",
+   "ptype": "adjust",
+   "seed": 501,
+   "state": "ADJUSTING",
+   "t": 61.5,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "RIGHT 50, FIRE FOR EFFECT, OUT.",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 62.5
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 47 mils LEFT of target, spotting SHORT. OT range 1235 m → OT factor 1. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 63
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 66.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 81.2
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "dTgt": 48,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 86.3
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "dTgt": 65,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 86.7
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "dTgt": 56,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 87.4
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "dTgt": 68,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 88.1
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "dTgt": 50,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 88.6
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "dTgt": 62,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 501,
+   "state": "FIRE FOR EFFECT",
+   "t": 88.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "E.1",
+   "kind": "obs",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OVER",
+   "seed": 501,
+   "state": "EOM?",
+   "t": 91.3
+  },
+  {
+   "call": "",
+   "ch": "E.1",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "end of mission, target neutralized, over",
+   "ptype": "eom",
+   "seed": 501,
+   "state": "EOM?",
+   "t": 91.3,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 501,
+   "state": "AAR",
+   "t": 91.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, mission is complete. Send end of mission with your BDA, over.",
+   "seed": 501,
+   "state": "AAR",
+   "t": 93.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OUT.",
+   "seed": 501,
+   "state": "AAR",
+   "t": 94.3
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "E.1",
+   "kind": "fdc",
+   "msg": "Clean, logged, and closed. I am almost disappointed I do not get to yell at you tonight.",
+   "seed": 501,
+   "state": "AAR",
+   "t": 95.5
+  },
+  {
+   "aimErr0": 46,
+   "bdaClaim": "neutralized",
+   "bracketed": false,
+   "call": "",
+   "ch": "E.1",
+   "corrEff": null,
+   "dur": 58,
+   "effPct": 15,
+   "firstMiss": 58,
+   "fuze": "pd",
+   "fuzeSrc": "default",
+   "intent": "destroy",
+   "kind": "aar",
+   "msg": "PASS — TARGET NEUTRALIZED",
+   "notes": 0,
+   "outcome": "neutralized",
+   "rounds": 1,
+   "seed": 501,
+   "sheaf": "open",
+   "sheafSrc": "inferred",
+   "stars": 4,
+   "state": "AAR",
+   "t": 97.1,
+   "tInit": 3,
+   "trace": [
+    58
+   ]
+  }
+ ],
+ "what": "scripted mission transcript — playbook 24-e1-chow"
+}

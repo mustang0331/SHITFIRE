@@ -1,0 +1,586 @@
+{
+ "meta": {
+  "chapter": "3.3",
+  "difficulty": "normal",
+  "notes": "Raiders against a no-strike village at first light.",
+  "scenarioSeed": 303,
+  "scenarioType": "raid",
+  "seedMission": 303,
+  "seedTerrain": 5150,
+  "skirmish": null
+ },
+ "playbook": "15-ch33-raid",
+ "result": {
+  "dur": 75,
+  "outcome": "neutralized",
+  "rounds": 1,
+  "stars": 4,
+  "verdict": "PASS — TARGET NEUTRALIZED"
+ },
+ "tlog": [
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Deploying to a new island — new map sheets are in the library [P].",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Light: DAWN.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "CHAPTER 3.3 — UNINVITED GUESTS (NORMAL). Raiders are hitting the civilian village of KELUFA — grid 263 526 area. The huts are NO-STRIKE: one round inside the village fails the mission, full stop. Cut the raiders down without touching it.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Par time for full stars: 6:30.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "MET: wind from 5000 mils at 2 m/s — read your smoke; it will drift downwind. Rounds are not wind-corrected on this net (the FDC applies met).",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Your OP: watchtower at grid 244 553, ground elev 265 m, deck +300 m. Use [B] binos and [L] laser to fix the target ([M] map, [K] mission menu), then send your call for fire — grid, polar, or shift from a known point. Hold [SPACE] to transmit by voice, or type below.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "NAVIGATION: your heading readout is MAGNETIC. The grid, the map sheet and the fire net are GRID. Declination is 7° EAST, so GRID = MAG + 124 mils. Send OT DIRECTION in GRID — [R] has the conversion on the mil card, and the sheet carries the declination diagram.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Known points registered: AB1001 \"CHAPEL\" grid 223 558 (grid brg 5019) · AB1002 \"DERBY\" grid 256 546 (grid brg 2163). Shift example: \"adjust fire, shift known point 1001, right 200, add 400, over\" — the KP name works too (\"shift BREWERY\").",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "NO-STRIKE: civilian villages KELUFA and PARA — plotted on your map sheet. Collateral damage fails the mission, same as fratricide. Permanent structures and roads are on the sheet too — use them to orient.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": ">>> THE JOB: Raiders are hitting the civilian village of KELUFA — grid 263 526 area. The huts are NO-STRIKE: one round inside the village fails the mission, full stop. Cut the raiders down without touching it.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "diff": "normal",
+   "form": "loose",
+   "kind": "spot",
+   "msg": "NORTHWEST OF THE VILLAGE OF KELUFA, WITHIN TWO THOUSAND METRES OF IT",
+   "scn": "raid",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 30.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "HELLHOUND FIRES. The last guy who kept me waiting is a cautionary tale they teach at the schoolhouse now. Do not audition for the sequel. Over.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 31.6
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "3.3",
+   "kind": "obs",
+   "msg": "HELLHOUND FIRES, THIS IS MUSTANG 12, ADJUST FIRE, GRID 263526, RAIDERS IN THE OPEN, OVER",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": "grid",
+   "msg": "hellhound fires, this is mustang 12, adjust fire, grid 263526, raiders in the open, over",
+   "ptype": "cff",
+   "seed": 303,
+   "state": "OBSERVING",
+   "t": 33.2,
+   "warno": "adjust"
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "SHEAF: CIRCULAR (default) — nothing requested, nothing to infer — doctrine default (circular, 100 m).",
+   "seed": 303,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "FUZE: PD (default) — standard method of engagement — point detonating (quick).",
+   "seed": 303,
+   "state": "MISSION SENT",
+   "t": 33.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND FIRES — BATTALION S-TWO, WHO WERE VERY PLEASED WITH THEMSELVES REPORTS ACTIVITY IN THIS GENERAL AREA — NORTHWEST OF THE VILLAGE OF KELUFA, WITHIN TWO THOUSAND METRES OF IT. RAIDING A CIVILIAN VILLAGE. 5 MINUTES OLD, OVER.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 34
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "THAT IS ALL THEY GAVE ME. EIGHT OR MORE DISMOUNTS AND ONE VEHICLE, SMALL ARMS AND ONE ARMED PICKUP. NOTHING FINER, OVER.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 36.9
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "That report has been passed through four radios and two liars. Verify it yourself.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 38.7
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, HELLHOUND FIRES, ADJUST FIRE, GRID 263 526, RAIDERS IN THE OPEN, OUT.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 39.5
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "MESSAGE TO OBSERVER: ONE GUN IN ADJUST, BATTERY IN EFFECT, 1 ROUND, 155 HE, FUZE PD, TARGET NUMBER ALPHA ALPHA 7001, OVER.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "3.3",
+   "kind": "obs",
+   "msg": "GUN BATTERY ADJUST EFFECT ROUND 155 HE FUZE PD TARGET NUMBER ALPHA ALPHA 7001, OVER",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 40.9
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "gun battery adjust effect round 155 he fuze pd target number alpha alpha 7001, over",
+   "ptype": "unknown",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 40.9,
+   "warno": null
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 41
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "3.3",
+   "kind": "obs",
+   "msg": "DIRECTION 2590, OVER",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 41
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "direction 2590, over",
+   "ptype": "direction",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 41,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "Copy all. This had better be worth the powder, son, or I am billing your next of kin for the shells.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 42
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "That grid is close enough to the huts that I can smell the cooking fire on the map. Mind your correction.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 43.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "READBACK CORRECT, OUT.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 46.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "DIRECTION 2590, OUT.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 47
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 47.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 67.6
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "dTgt": 24,
+   "kind": "impact",
+   "msg": "adjust round 1",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 72.6
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "The infantry heard that one — they are moving and going flat.",
+   "seed": 303,
+   "state": "SHOT",
+   "t": 72.6
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "3.3",
+   "kind": "obs",
+   "msg": "FIRE FOR EFFECT, OVER",
+   "seed": 303,
+   "state": "ADJUSTING",
+   "t": 72.8
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "ffe": true,
+   "kind": "parse",
+   "method": null,
+   "msg": "fire for effect, over",
+   "ptype": "adjust",
+   "seed": 303,
+   "state": "ADJUSTING",
+   "t": 72.8,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "FIRE FOR EFFECT, OUT.",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 73.8
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "SPOTTING: burst 7 mils RIGHT of target, spotting OVER. OT range 3312 m → OT factor 3. Deviation = mils × OT factor, to the nearest 10. Range: bracket it.",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 74.1
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "SHOT, OVER.",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 77.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "SPLASH, OVER.",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 98.2
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "dTgt": 67,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 103.2
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "dTgt": 66,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 103.9
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "dTgt": 49,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 104.5
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "dTgt": 75,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 105.1
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "dTgt": 54,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 105.6
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "dTgt": 50,
+   "kind": "impact",
+   "msg": "FFE round",
+   "seed": 303,
+   "state": "FIRE FOR EFFECT",
+   "t": 106.4
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "kind": "sys",
+   "msg": "Net is mid-transmission — your traffic is copied. Stand by.",
+   "seed": 303,
+   "state": "EOM?",
+   "t": 108.7
+  },
+  {
+   "call": "MUSTANG 12",
+   "ch": "3.3",
+   "kind": "obs",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OVER",
+   "seed": 303,
+   "state": "EOM?",
+   "t": 108.7
+  },
+  {
+   "call": "",
+   "ch": "3.3",
+   "ffe": false,
+   "kind": "parse",
+   "method": null,
+   "msg": "end of mission, target neutralized, over",
+   "ptype": "eom",
+   "seed": 303,
+   "state": "EOM?",
+   "t": 108.7,
+   "warno": null
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "ROUNDS COMPLETE, OVER.",
+   "seed": 303,
+   "state": "AAR",
+   "t": 109
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "Rounds complete. Whatever stood there is now a fine mist and somebody else's paperwork.",
+   "seed": 303,
+   "state": "AAR",
+   "t": 110.2
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "MUSTANG 12, mission is complete. Send end of mission with your BDA, over.",
+   "seed": 303,
+   "state": "AAR",
+   "t": 111.8
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "END OF MISSION, TARGET NEUTRALIZED, OUT.",
+   "seed": 303,
+   "state": "AAR",
+   "t": 113
+  },
+  {
+   "call": "HELLHOUND FIRES",
+   "ch": "3.3",
+   "kind": "fdc",
+   "msg": "Target destroyed. Somewhere a recruiter is taking credit for this and has never once met you.",
+   "seed": 303,
+   "state": "AAR",
+   "t": 114.2
+  },
+  {
+   "aimErr0": 46,
+   "bdaClaim": "neutralized",
+   "bracketed": false,
+   "call": "",
+   "ch": "3.3",
+   "corrEff": null,
+   "dur": 75,
+   "effPct": 22,
+   "firstMiss": 24,
+   "fuze": "pd",
+   "fuzeSrc": "default",
+   "intent": "destroy",
+   "kind": "aar",
+   "msg": "PASS — TARGET NEUTRALIZED",
+   "notes": 0,
+   "outcome": "neutralized",
+   "rounds": 1,
+   "seed": 303,
+   "sheaf": "circular",
+   "sheafSrc": "default",
+   "stars": 4,
+   "state": "AAR",
+   "t": 115.8,
+   "tInit": 3,
+   "trace": [
+    24
+   ]
+  }
+ ],
+ "what": "scripted mission transcript — playbook 15-ch33-raid"
+}
