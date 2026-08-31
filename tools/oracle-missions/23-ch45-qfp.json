@@ -1,0 +1,62 @@
+{
+ "id": "23-ch45-qfp",
+ "slug": "ch4-5-quick-fire-plan",
+ "chapter": "4.5",
+ "difficulty": "normal",
+ "notes": "Defense in depth: plan a target while quiet, make it priority, bring it down in two words at H-hour.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 4000
+   }
+  },
+  {
+   "send": "plan target, grid {TGT_GRID6}, over"
+  },
+  {
+   "wait": {
+    "netQuiet": true,
+    "capMs": 90000
+   }
+  },
+  {
+   "send": "priority target {PLANNED_TGT}, over"
+  },
+  {
+   "wait": {
+    "simMs": 90000
+   }
+  },
+  {
+   "send": "fire target {PLANNED_TGT}, over"
+  },
+  {
+   "wait": {
+    "state": [
+     "EOM?",
+     "ADJUSTING"
+    ],
+    "capMs": 300000
+   }
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 18,
+    "ffeWhenM": 80,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

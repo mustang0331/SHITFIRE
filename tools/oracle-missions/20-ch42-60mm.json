@@ -1,0 +1,47 @@
+{
+ "id": "20-ch42-60mm",
+ "slug": "ch4-2-60mm-precision",
+ "chapter": "4.2",
+ "difficulty": "normal",
+ "asset": "mortar60",
+ "notes": "60mm mortar section (HACKSAW), 8-digit ten-meter grid.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "hacksaw fires, this is mustang 12, adjust fire, grid {TGT_GRID8}{DC}, troops in the open, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 12,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

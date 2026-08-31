@@ -1,0 +1,43 @@
+{
+ "id": "09-ch22-shift-night",
+ "slug": "ch2-2-shift-known-point-night",
+ "chapter": "2.2",
+ "difficulty": "normal",
+ "notes": "Shift from the nearest registered known point, after dark.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, {SHIFT_CALL}{DC}, bunker complex, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "adjust": {
+    "maxRounds": 12,
+    "ffeWhenM": 50,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

@@ -1,0 +1,48 @@
+{
+ "id": "02-f2-map",
+ "slug": "f2-tutorial-map",
+ "chapter": "F.2",
+ "difficulty": "normal",
+ "notes": "Foreword tutorial: map, library sheet, terrain-association grid of the fuel point landmark.",
+ "steps": [
+  {
+   "wait": {
+    "tlogMsg": "press \\[M\\]",
+    "capMs": 60000
+   }
+  },
+  {
+   "press": "m"
+  },
+  {
+   "wait": {
+    "tlogMsg": "press \\[P\\]",
+    "capMs": 60000
+   }
+  },
+  {
+   "press": "Escape"
+  },
+  {
+   "press": "p"
+  },
+  {
+   "wait": {
+    "tlogMsg": "six-digit grid",
+    "capMs": 60000
+   }
+  },
+  {
+   "press": "Escape"
+  },
+  {
+   "send": "grid {LANDMARK_GRID6}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 60000
+   }
+  }
+ ]
+}

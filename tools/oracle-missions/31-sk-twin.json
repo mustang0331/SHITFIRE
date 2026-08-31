@@ -1,0 +1,94 @@
+{
+ "id": "31-sk-twin",
+ "slug": "sk-two-targets",
+ "skirmish": "twin",
+ "difficulty": "normal",
+ "notes": "Two targets: main mission closed with routed traffic exercised, then the twin engaged.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, troops in the open, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "target aa7001, direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 10,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TWIN_GRID6}, second element, troops in the open, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "wait": {
+    "roundLanded": 1,
+    "capMs": 150000
+   }
+  },
+  {
+   "wait": {
+    "state": "ADJUSTING",
+    "capMs": 60000
+   }
+  },
+  {
+   "send": "{CORR_TO_TWIN}, fire for effect, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 16,
+    "ffeWhenM": 60,
+    "repeat": true,
+    "plainRepeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

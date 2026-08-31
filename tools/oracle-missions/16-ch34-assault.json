@@ -1,0 +1,46 @@
+{
+ "id": "16-ch34-assault",
+ "slug": "ch3-4-combined-arms",
+ "chapter": "3.4",
+ "difficulty": "normal",
+ "notes": "Combined-arms push, friendlies advancing while rounds are in the air.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, enemy line infantry, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 12,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

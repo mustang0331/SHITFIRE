@@ -1,0 +1,46 @@
+{
+ "id": "17-ch35-interleaved",
+ "slug": "ch3-5-interleaved-friendlies",
+ "chapter": "3.5",
+ "difficulty": "normal",
+ "notes": "Friendlies inside sheaf distances; the discrimination chapter.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, enemy infantry in close contact, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 14,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

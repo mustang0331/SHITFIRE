@@ -1,0 +1,57 @@
+{
+ "id": "01-f1-eyes",
+ "slug": "f1-tutorial-eyes",
+ "chapter": "F.1",
+ "difficulty": "normal",
+ "notes": "Foreword tutorial: look-around, binos, two laser hits 300+ m apart. No fire mission (guns cold).",
+ "steps": [
+  {
+   "wait": {
+    "tlogMsg": "LOOK AROUND",
+    "capMs": 60000
+   }
+  },
+  {
+   "sweep": 10
+  },
+  {
+   "wait": {
+    "tlogMsg": "glass up",
+    "capMs": 60000
+   }
+  },
+  {
+   "press": "b"
+  },
+  {
+   "wait": {
+    "tlogMsg": "Now LASE",
+    "capMs": 60000
+   }
+  },
+  {
+   "lookat": "enemy"
+  },
+  {
+   "press": "l"
+  },
+  {
+   "wait": {
+    "tlogMsg": "DIFFERENT spot",
+    "capMs": 60000
+   }
+  },
+  {
+   "lookat": "landmark"
+  },
+  {
+   "press": "l"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 120000
+   }
+  }
+ ]
+}

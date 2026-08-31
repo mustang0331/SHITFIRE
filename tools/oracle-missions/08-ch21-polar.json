@@ -1,0 +1,51 @@
+{
+ "id": "08-ch21-polar",
+ "slug": "ch2-1-polar-dead-laser",
+ "chapter": "2.1",
+ "difficulty": "normal",
+ "notes": "Dead laser: position report, then a POLAR mission resolved from the reported grid.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "position grid {OP_GRID6}, over"
+  },
+  {
+   "wait": {
+    "simMs": 4000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, {POLAR_CALL}{DC}, troops in the open, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "adjust": {
+    "maxRounds": 12,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+{
+ "id": "21-ch43-hard-bunker",
+ "slug": "ch4-3-no-second-chances",
+ "chapter": "4.3",
+ "difficulty": "hard",
+ "notes": "Hard-only bunker on a tight clock.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 2000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, reinforced bunker, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 12,
+    "ffeWhenM": 50,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

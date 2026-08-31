@@ -1,0 +1,61 @@
+{
+ "id": "12-ch25-illum",
+ "slug": "ch2-5-coordinated-illumination",
+ "chapter": "2.5",
+ "difficulty": "normal",
+ "notes": "Coordinated illumination: flare up first, then shell HE under the light.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, shell illumination, attackers in the open, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "wait": {
+    "roundLanded": 1,
+    "capMs": 150000
+   }
+  },
+  {
+   "wait": {
+    "state": "ADJUSTING",
+    "capMs": 60000
+   }
+  },
+  {
+   "send": "shell he, over"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 12,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

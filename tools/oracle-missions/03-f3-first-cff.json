@@ -1,0 +1,46 @@
+{
+ "id": "03-f3-first-cff",
+ "slug": "f3-first-call-for-fire",
+ "chapter": "F.3",
+ "difficulty": "normal",
+ "notes": "First full call for fire against the training wreck, with Gunny coaching.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 6000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, derelict landing craft on the beach, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 10,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

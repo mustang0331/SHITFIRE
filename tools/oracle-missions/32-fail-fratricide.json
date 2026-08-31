@@ -1,0 +1,87 @@
+{
+ "id": "32-fail-fratricide",
+ "slug": "fail-fratricide",
+ "chapter": "1.3",
+ "difficulty": "normal",
+ "notes": "Deliberate fratricide: a correction walked onto the friendly strongpoint, failure recorded, mission still finished and closed (fail is not end). Also the disastrous-run coverage item (0 stars).",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, squad assaulting the strongpoint, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "wait": {
+    "roundLanded": 1,
+    "capMs": 150000
+   }
+  },
+  {
+   "wait": {
+    "state": "ADJUSTING",
+    "capMs": 60000
+   }
+  },
+  {
+   "send": "{CORR_TO_FRIENDLY}, over",
+   "resendOnRefusal": 2
+  },
+  {
+   "wait": {
+    "roundLanded": 2,
+    "capMs": 200000
+   }
+  },
+  {
+   "ensureFail": {
+    "reason": "fratricide",
+    "maxExtra": 4
+   }
+  },
+  {
+   "wait": {
+    "state": [
+     "ADJUSTING",
+     "EOM?"
+    ],
+    "capMs": 200000
+   }
+  },
+  {
+   "send": "{CORR_TO_TGT}, over",
+   "resendOnRefusal": 90
+  },
+  {
+   "adjust": {
+    "maxRounds": 14,
+    "ffeWhenM": 70,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

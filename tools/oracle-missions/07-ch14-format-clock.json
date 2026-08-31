@@ -1,0 +1,76 @@
+{
+ "id": "07-ch14-format-clock",
+ "slug": "ch1-4-format-on-the-clock",
+ "chapter": "1.4",
+ "difficulty": "normal",
+ "notes": "Full format against a tight par: two corrections, straight to effect.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 2000
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, troops in the open, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "wait": {
+    "roundLanded": 1,
+    "capMs": 150000
+   }
+  },
+  {
+   "wait": {
+    "state": "ADJUSTING",
+    "capMs": 60000
+   }
+  },
+  {
+   "send": "{CORR}, over"
+  },
+  {
+   "wait": {
+    "roundLanded": 2,
+    "capMs": 150000
+   }
+  },
+  {
+   "wait": {
+    "state": "ADJUSTING",
+    "capMs": 60000
+   }
+  },
+  {
+   "send": "{CORR_FFE}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 26,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

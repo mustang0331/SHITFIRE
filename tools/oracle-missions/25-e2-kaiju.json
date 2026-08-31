@@ -1,0 +1,49 @@
+{
+ "id": "25-e2-kaiju",
+ "slug": "e2-kaiju-moving-target",
+ "chapter": "E.2",
+ "difficulty": "normal",
+ "notes": "Moving hard target: measured lead, fuze delay, repeated volleys.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "measureVel": true
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {LEAD_GRID6}, hard structure mobile, fuze delay, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 30,
+    "ffeWhenM": 90,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

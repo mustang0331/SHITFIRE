@@ -1,0 +1,33 @@
+{
+ "id": "18-ch36-immediate",
+ "slug": "ch3-6-immediate-suppression",
+ "chapter": "3.6",
+ "difficulty": "normal",
+ "notes": "The one-transmission call: immediate suppression, grid, out.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 3000
+   }
+  },
+  {
+   "send": "immediate suppression, grid {TGT_GRID6}{DC}, out",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "state": "EOM?",
+    "capMs": 300000
+   }
+  },
+  {
+   "send": "end of mission, target suppressed, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}

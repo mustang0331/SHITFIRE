@@ -1,0 +1,76 @@
+{
+ "id": "04-ch11-five-star",
+ "slug": "ch1-1-troops-five-star",
+ "chapter": "1.1",
+ "difficulty": "hard",
+ "notes": "Five-star attempt on HARD: clean full format, MTO readback, OT direction, two adjusting rounds (the sim's first-round error is a one-shot draw, so the doctrinal correction reflects the miss once before the second correction kills it), FFE, RREMS.",
+ "steps": [
+  {
+   "wait": {
+    "simMs": 2500
+   }
+  },
+  {
+   "send": "hellhound fires, this is mustang 12, adjust fire, grid {TGT_GRID6}{DC}, platoon of infantry in the open, over",
+   "resendOnRefusal": 1
+  },
+  {
+   "wait": {
+    "tlogMsg": "MESSAGE TO OBSERVER",
+    "capMs": 120000
+   }
+  },
+  {
+   "send": "{MTO_READBACK}"
+  },
+  {
+   "send": "direction {OT_DIR}, over"
+  },
+  {
+   "wait": {
+    "roundLanded": 1,
+    "capMs": 150000
+   }
+  },
+  {
+   "wait": {
+    "state": "ADJUSTING",
+    "capMs": 60000
+   }
+  },
+  {
+   "send": "{CORR}, over"
+  },
+  {
+   "wait": {
+    "roundLanded": 2,
+    "capMs": 150000
+   }
+  },
+  {
+   "wait": {
+    "state": "ADJUSTING",
+    "capMs": 60000
+   }
+  },
+  {
+   "send": "{CORR_FFE}, over"
+  },
+  {
+   "adjust": {
+    "maxRounds": 26,
+    "ffeWhenM": 60,
+    "repeat": true
+   }
+  },
+  {
+   "send": "end of mission, target {SURV}, over"
+  },
+  {
+   "wait": {
+    "state": "AAR",
+    "capMs": 240000
+   }
+  }
+ ]
+}
