@@ -1,0 +1,51 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 12,
+  "terrainSeed": 1337,
+  "type": "defense"
+ },
+ "scenario": {
+  "aSpeed": 0.7,
+  "alerted": 0,
+  "brief": "You are the objective. Assault force forming up near grid 240 566, grid bearing ~6000 mils, advancing on YOUR TOWER. Your own position is the friendly element — expect DANGER CLOSE, expect creeping corrections, and do not drop one on yourself. Break the assault before it reaches the wire.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -951.5962772199196,
+   "z": -1610.5462866278388
+  },
+  "everSuppressed": false,
+  "friendlies": [
+   {
+    "r": 80,
+    "x": -440,
+    "z": -460
+   }
+  ],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "BREWERY",
+    "x": 102.29021738899348,
+    "z": 1135.123347947536
+   },
+   {
+    "id": "1002",
+    "name": "LATRINE",
+    "x": -981.724990440504,
+    "z": 578.7388373803867
+   }
+  ],
+  "lastT": null,
+  "overrun": false,
+  "posture": "standing",
+  "seed": 12,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "defense"
+ },
+ "what": "genScenario('defense', 12) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

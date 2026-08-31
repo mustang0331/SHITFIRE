@@ -1,0 +1,74 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 12,
+  "terrainSeed": 1337,
+  "type": "raid"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Raiders are hitting the civilian village of HIKE — grid 229 577 area. The huts are NO-STRIKE: one round inside the village fails the mission, full stop. Cut the raiders down without touching it.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -2010.675559339475,
+   "z": -2783.795932849076
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "BREWERY",
+    "x": 102.29021738899348,
+    "z": 1135.123347947536
+   },
+   {
+    "id": "1002",
+    "name": "LATRINE",
+    "x": -981.724990440504,
+    "z": 578.7388373803867
+   }
+  ],
+  "posture": "standing",
+  "seed": 12,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "raid",
+  "village": {
+   "huts": [
+    {
+     "x": -1979.0812366173936,
+     "z": -2646.890890704292
+    },
+    {
+     "x": -1973.0387307618378,
+     "z": -2629.4265900626697
+    },
+    {
+     "x": -1992.3237934933134,
+     "z": -2657.6893634324665
+    },
+    {
+     "x": -1939.0501633368324,
+     "z": -2617.6598688780864
+    },
+    {
+     "x": -1981.909182023156,
+     "z": -2614.9031440457384
+    },
+    {
+     "x": -1916.6138443959958,
+     "z": -2609.341349369104
+    }
+   ],
+   "name": "HIKE",
+   "r": 70,
+   "x": -1945.5720043806814,
+   "z": -2637.3823314617616
+  }
+ },
+ "what": "genScenario('raid', 12) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

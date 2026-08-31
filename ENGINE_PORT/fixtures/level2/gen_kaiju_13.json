@@ -1,0 +1,85 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 13,
+  "terrainSeed": 1337,
+  "type": "kaiju"
+ },
+ "scenario": {
+  "alerted": 0,
+  "armor": 3,
+  "ashore": false,
+  "brief": "A crab, dark red, approximately the size of a church, is wading ashore toward the village of HIKE from grid 227 580. It is a MOVING TARGET — lead it. It is also a crab. The village is NO-STRIKE as always. Stop it before landfall; nobody will discuss this afterwards.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 2,
+  "enemy": {
+   "x": -2257.233769492199,
+   "z": -3059.8654011433446
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "LATRINE",
+    "x": -1068.2784671669228,
+    "z": 1025.1896171959854
+   },
+   {
+    "id": "1002",
+    "name": "SAWMILL",
+    "x": -1421.8726397023972,
+    "z": 2324.7125806859153
+   }
+  ],
+  "path": {
+   "dx": 0.5936414573552715,
+   "dz": 0.8047296565363484,
+   "len": 465,
+   "sx": -2257.233769492199,
+   "sz": -3059.8654011433446
+  },
+  "posture": "standing",
+  "seed": 13,
+  "speed": 2.1,
+  "suppressedUntil": 0,
+  "t0": 30.064,
+  "tgtClass": "point",
+  "type": "kaiju",
+  "village": {
+   "huts": [
+    {
+     "x": -1979.0812366173936,
+     "z": -2646.890890704292
+    },
+    {
+     "x": -1973.0387307618378,
+     "z": -2629.4265900626697
+    },
+    {
+     "x": -1992.3237934933134,
+     "z": -2657.6893634324665
+    },
+    {
+     "x": -1939.0501633368324,
+     "z": -2617.6598688780864
+    },
+    {
+     "x": -1981.909182023156,
+     "z": -2614.9031440457384
+    },
+    {
+     "x": -1916.6138443959958,
+     "z": -2609.341349369104
+    }
+   ],
+   "name": "HIKE",
+   "r": 70,
+   "x": -1945.5720043806814,
+   "z": -2637.3823314617616
+  }
+ },
+ "what": "genScenario('kaiju', 13) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

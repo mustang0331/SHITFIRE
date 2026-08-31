@@ -1,0 +1,72 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 13,
+  "terrainSeed": 1337,
+  "type": "qfp"
+ },
+ "scenario": {
+  "aSpeed": 0.7,
+  "alerted": 0,
+  "assaultAv": 0,
+  "avenues": [
+   {
+    "x": -1489.822295536534,
+    "z": 2581.8292911831704
+   },
+   {
+    "x": -1148.9017229108038,
+    "z": 2840.4542306867634
+   },
+   {
+    "x": -487.04258698821087,
+    "z": 1739.1033261600835
+   }
+  ],
+  "brief": "WARNING ORDER. An assault on the friendly position at grid 241 529 (grid bearing ~3400 mils) is expected at H-HOUR — the clock is running. Likely avenues of approach: ALPHA near grid 235 524, BRAVO near grid 238 521, CHARLIE near grid 245 532. Build your QUICK FIRE PLAN while it is quiet: \"PLAN TARGET, GRID …\" files a numbered target the guns hold data for — a planned target fires off TWO WORDS when they come. A target of opportunity still costs the full call.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -1489.822295536534,
+   "z": 2581.8292911831704
+  },
+  "everSuppressed": false,
+  "fireBase": {
+   "x": -885.1234844836026,
+   "z": 2092.3464320194794
+  },
+  "friendlies": [
+   {
+    "r": 80,
+    "x": -885.1234844836026,
+    "z": 2092.3464320194794
+   }
+  ],
+  "hHour": 302.7035087440163,
+  "hStarted": false,
+  "kps": [
+   {
+    "id": "1001",
+    "name": "LATRINE",
+    "x": 1233.3040255829605,
+    "z": 109.43718440429393
+   },
+   {
+    "id": "1002",
+    "name": "SAWMILL",
+    "x": -1034.743793670858,
+    "z": 486.1213376729995
+   }
+  ],
+  "lastT": null,
+  "overrun": false,
+  "posture": "standing",
+  "seed": 13,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "qfp"
+ },
+ "what": "genScenario('qfp', 13) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

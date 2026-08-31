@@ -1,0 +1,42 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 11,
+  "terrainSeed": 1337,
+  "type": "wreck"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Training target: a derelict landing craft on the beach, grid bearing ~2300 mils. It cannot shoot back. Neither could the last observer.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": 2529.7462961366036,
+   "z": 1775.936093442325
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "ICEBOX",
+    "x": -490.5933639083999,
+    "z": -1641.8758716413074
+   },
+   {
+    "id": "1002",
+    "name": "BREWERY",
+    "x": 697.2543957329492,
+    "z": -526.3134336531305
+   }
+  ],
+  "posture": "standing",
+  "seed": 11,
+  "suppressedUntil": 0,
+  "tgtClass": "point",
+  "type": "wreck"
+ },
+ "what": "genScenario('wreck', 11) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

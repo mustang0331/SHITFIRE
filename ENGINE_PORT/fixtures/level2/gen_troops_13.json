@@ -1,0 +1,42 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 13,
+  "terrainSeed": 1337,
+  "type": "troops"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Enemy infantry in the open, reported grid bearing ~3400 mils from your OP. A gift. Do not waste it.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -885.1234844836026,
+   "z": 2092.3464320194794
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "LATRINE",
+    "x": -1421.8726397023972,
+    "z": 2324.7125806859153
+   },
+   {
+    "id": "1002",
+    "name": "SAWMILL",
+    "x": 401.8313200291127,
+    "z": -1207.011755569711
+   }
+  ],
+  "posture": "standing",
+  "seed": 13,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "troops"
+ },
+ "what": "genScenario('troops', 13) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

@@ -1,0 +1,52 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 12,
+  "terrainSeed": 1337,
+  "type": "strongpoint"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Friendly strongpoint, grid 239 573 (grid bearing ~6100 mils), is under assault. Locate the attackers pressing it and destroy them without hitting the friendlies.",
+  "compound": {
+   "x": -1041.406129245179,
+   "z": -2342.0537017697025
+  },
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -981.0961553471852,
+   "z": -2164.6545077698793
+  },
+  "everSuppressed": false,
+  "friendlies": [
+   {
+    "r": 80,
+    "x": -1041.406129245179,
+    "z": -2342.0537017697025
+   }
+  ],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "BREWERY",
+    "x": -981.724990440504,
+    "z": 578.7388373803867
+   },
+   {
+    "id": "1002",
+    "name": "LATRINE",
+    "x": 1085.673875524753,
+    "z": 1471.1881697727567
+   }
+  ],
+  "posture": "standing",
+  "seed": 12,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "strongpoint"
+ },
+ "what": "genScenario('strongpoint', 12) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

@@ -1,0 +1,60 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 11,
+  "terrainSeed": 1337,
+  "type": "callin"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "A friendly team is up on your net asking for fire — no grid, no format, just a problem. Get their position, weigh their report against your own glass, and build the call yourself. The FDC still expects doctrine from YOU.",
+  "caller": {
+   "i": 2,
+   "repAz": 5.682510470890174,
+   "repDist": 200,
+   "saidDead": false,
+   "saidThanks": false,
+   "wrong": "dirflip"
+  },
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": 1334.0917565523546,
+   "z": 1209.9347043807693
+  },
+  "everSuppressed": false,
+  "friendlies": [
+   {
+    "r": 80,
+    "x": 1226.34858694487,
+    "z": 1052.6747811239159
+   }
+  ],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "ICEBOX",
+    "x": 103.06775422357487,
+    "z": -1595.837077144073
+   },
+   {
+    "id": "1002",
+    "name": "BREWERY",
+    "x": 653.2814786420568,
+    "z": 122.8254712768312
+   }
+  ],
+  "posture": "standing",
+  "seed": 11,
+  "suppressedUntil": 0,
+  "team": {
+   "x": 1226.34858694487,
+   "z": 1052.6747811239159
+  },
+  "tgtClass": "personnel",
+  "type": "callin"
+ },
+ "what": "genScenario('callin', 11) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

@@ -1,0 +1,50 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 11,
+  "terrainSeed": 1337,
+  "type": "twin"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "TWO elements, both in the open and both yours: infantry near grid 263 537 (grid bearing ~2400 mils) and a second group near grid 259 544 (~2300 mils). The net will hold two missions at once - once the second is up, LEAD EVERY TRANSMISSION WITH ITS TARGET NUMBER (\"TARGET AA7001, LEFT 50, ADD 100, OVER\") or the FDC will bounce it.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": 1334.0917565523546,
+   "z": 1209.9347043807693
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "ICEBOX",
+    "x": -323.74764010861503,
+    "z": 1492.9243345034631
+   },
+   {
+    "id": "1002",
+    "name": "BREWERY",
+    "x": 103.06775422357487,
+    "z": -1595.837077144073
+   }
+  ],
+  "posture": "standing",
+  "seed": 11,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "twinTgt": {
+   "alive": true,
+   "eff": 0,
+   "everSuppressed": false,
+   "suppressedUntil": 0,
+   "x": 913.7163239241534,
+   "z": 596.3625539139318
+  },
+  "type": "twin"
+ },
+ "what": "genScenario('twin', 11) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

@@ -1,0 +1,72 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 12,
+  "terrainSeed": 1337,
+  "type": "qfp"
+ },
+ "scenario": {
+  "aSpeed": 0.7,
+  "alerted": 0,
+  "assaultAv": 1,
+  "avenues": [
+   {
+    "x": -844.3824467852226,
+    "z": -1762.5170147469266
+   },
+   {
+    "x": -1290.5493932245236,
+    "z": -1864.3301539661945
+   },
+   {
+    "x": -1626.052016302911,
+    "z": -2277.453772744471
+   }
+  ],
+  "brief": "WARNING ORDER. An assault on the friendly position at grid 239 573 (grid bearing ~6100 mils) is expected at H-HOUR — the clock is running. Likely avenues of approach: ALPHA near grid 241 567, BRAVO near grid 237 568, CHARLIE near grid 233 572. Build your QUICK FIRE PLAN while it is quiet: \"PLAN TARGET, GRID …\" files a numbered target the guns hold data for — a planned target fires off TWO WORDS when they come. A target of opportunity still costs the full call.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -1290.5493932245236,
+   "z": -1864.3301539661945
+  },
+  "everSuppressed": false,
+  "fireBase": {
+   "x": -1041.406129245179,
+   "z": -2342.0537017697025
+  },
+  "friendlies": [
+   {
+    "r": 80,
+    "x": -1041.406129245179,
+    "z": -2342.0537017697025
+   }
+  ],
+  "hHour": 244.32194888591766,
+  "hStarted": false,
+  "kps": [
+   {
+    "id": "1001",
+    "name": "BREWERY",
+    "x": -2838.8367158592137,
+    "z": -949.8865755497648
+   },
+   {
+    "id": "1002",
+    "name": "LATRINE",
+    "x": 1512.0693151492228,
+    "z": -437.4740658724343
+   }
+  ],
+  "lastT": null,
+  "overrun": false,
+  "posture": "standing",
+  "seed": 12,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "qfp"
+ },
+ "what": "genScenario('qfp', 12) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

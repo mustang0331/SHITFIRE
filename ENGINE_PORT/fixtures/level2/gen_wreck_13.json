@@ -1,0 +1,42 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 13,
+  "terrainSeed": 1337,
+  "type": "wreck"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Training target: a derelict landing craft on the beach, grid bearing ~5300 mils. It cannot shoot back. Neither could the last observer.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -2886.5363467096317,
+   "z": -1684.6971880415267
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "LATRINE",
+    "x": -1780.7333659899748,
+    "z": -1140.8025536305254
+   },
+   {
+    "id": "1002",
+    "name": "SAWMILL",
+    "x": -2312.104369144412,
+    "z": 1508.0580338630198
+   }
+  ],
+  "posture": "standing",
+  "seed": 13,
+  "suppressedUntil": 0,
+  "tgtClass": "point",
+  "type": "wreck"
+ },
+ "what": "genScenario('wreck', 13) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

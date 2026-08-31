@@ -1,0 +1,90 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 13,
+  "terrainSeed": 1337,
+  "type": "occupied"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Enemy element has occupied the village of MOVA — find it on your sheet by name. The huts are NO-STRIKE and the villagers are still in them: one round inside the settlement fails the mission, full stop. The occupiers hold the edge. Cut them off it.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -384.2168111560016,
+   "z": 3358.9697625534204
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "LATRINE",
+    "x": -1760.387270054943,
+    "z": -1242.09223854648
+   },
+   {
+    "id": "1002",
+    "name": "SAWMILL",
+    "x": 418.75863725393333,
+    "z": 953.604653295213
+   }
+  ],
+  "occupied": {
+   "kind": "village",
+   "name": "MOVA",
+   "ring": [
+    {
+     "x": -407.26071144638024,
+     "z": 3346.3170808175896
+    },
+    {
+     "x": -393.35640063771376,
+     "z": 3339.758930913873
+    },
+    {
+     "x": -352.0333213839108,
+     "z": 3390.833275928799
+    }
+   ],
+   "x": -326.0401266224899,
+   "z": 3332.4951501173546
+  },
+  "posture": "dug-in",
+  "seed": 13,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "occupied",
+  "village": {
+   "huts": [
+    {
+     "x": -329.61522469965564,
+     "z": 3298.0627718129626
+    },
+    {
+     "x": -338.9168422672074,
+     "z": 3326.4035817402605
+    },
+    {
+     "x": -315.2883493000157,
+     "z": 3313.9733337495813
+    },
+    {
+     "x": -355.43386210916555,
+     "z": 3309.7638210836426
+    },
+    {
+     "x": -295.1858096696282,
+     "z": 3369.855548651034
+    }
+   ],
+   "name": "MOVA",
+   "r": 70,
+   "x": -326.0401266224899,
+   "z": 3332.4951501173546
+  }
+ },
+ "what": "genScenario('occupied', 13) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

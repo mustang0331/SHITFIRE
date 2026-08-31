@@ -1,0 +1,42 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 12,
+  "terrainSeed": 1337,
+  "type": "troops"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Enemy infantry in the open, reported grid bearing ~6100 mils from your OP. A gift. Do not waste it.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -1041.406129245179,
+   "z": -2342.0537017697025
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "BREWERY",
+    "x": 102.29021738899348,
+    "z": 1135.123347947536
+   },
+   {
+    "id": "1002",
+    "name": "LATRINE",
+    "x": -981.724990440504,
+    "z": 578.7388373803867
+   }
+  ],
+  "posture": "standing",
+  "seed": 12,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "troops"
+ },
+ "what": "genScenario('troops', 12) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

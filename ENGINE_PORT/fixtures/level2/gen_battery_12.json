@@ -1,0 +1,58 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 12,
+  "terrainSeed": 1337,
+  "type": "battery"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Friendly position at grid 239 573 is taking sustained indirect fire. The gun is somewhere out there — find it by its signature and its fall of shot, and silence it. Every volley that lands while you work is friendly casualties on your clock.",
+  "bty": {
+   "next": 15.148680467158556,
+   "period": 34.40754368714988,
+   "tof": 11.007861115271226
+  },
+  "btyCas": 0,
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -1824.7078885977062,
+   "z": -840.0998078460739
+  },
+  "everSuppressed": false,
+  "fireBase": {
+   "x": -1041.406129245179,
+   "z": -2342.0537017697025
+  },
+  "friendlies": [
+   {
+    "r": 80,
+    "x": -1041.406129245179,
+    "z": -2342.0537017697025
+   }
+  ],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "BREWERY",
+    "x": 1479.3673148526598,
+    "z": 84.74818383045545
+   },
+   {
+    "id": "1002",
+    "name": "LATRINE",
+    "x": 130.42291335922891,
+    "z": -2937.509897352601
+   }
+  ],
+  "posture": "dug-in",
+  "seed": 12,
+  "suppressedUntil": 0,
+  "tgtClass": "point",
+  "type": "battery"
+ },
+ "what": "genScenario('battery', 12) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

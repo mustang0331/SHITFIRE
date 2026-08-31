@@ -1,0 +1,51 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 11,
+  "terrainSeed": 1337,
+  "type": "assault"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Friendly infantry advancing from grid 256 547 onto an enemy-held objective, grid bearing ~2200 mils. This WILL be danger close: your call must include the proword DANGER CLOSE, and a short round lands on our own people.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": 1382.5965384997567,
+   "z": 737.0585662328423
+  },
+  "everSuppressed": false,
+  "fAdvAz": 2.1519282652420237,
+  "fAdvMax": 720,
+  "fHold": 180,
+  "fSpeed": 0.7,
+  "fStart": {
+   "x": 630.3389321704533,
+   "z": 242.98519747096816
+  },
+  "friendlies": [],
+  "ft0": 30.064,
+  "kps": [
+   {
+    "id": "1001",
+    "name": "ICEBOX",
+    "x": -732.6600083750684,
+    "z": -1434.2413239750251
+   },
+   {
+    "id": "1002",
+    "name": "BREWERY",
+    "x": -491.7383845610609,
+    "z": 638.6359360028662
+   }
+  ],
+  "posture": "standing",
+  "seed": 11,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "assault"
+ },
+ "what": "genScenario('assault', 11) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

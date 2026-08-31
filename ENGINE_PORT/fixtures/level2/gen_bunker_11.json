@@ -1,0 +1,42 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 11,
+  "terrainSeed": 1337,
+  "type": "bunker"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Dug-in bunker reported on high ground, grid bearing ~2400 mils. The effect bands are tight — put it on the roof.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": 1334.0917565523546,
+   "z": 1209.9347043807693
+  },
+  "everSuppressed": false,
+  "friendlies": [],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "ICEBOX",
+    "x": -1022.887124436892,
+    "z": -1310.771188468786
+   },
+   {
+    "id": "1002",
+    "name": "BREWERY",
+    "x": -323.74764010861503,
+    "z": 1492.9243345034631
+   }
+  ],
+  "posture": "standing",
+  "seed": 11,
+  "suppressedUntil": 0,
+  "tgtClass": "point",
+  "type": "bunker"
+ },
+ "what": "genScenario('bunker', 11) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

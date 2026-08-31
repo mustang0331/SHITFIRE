@@ -1,0 +1,60 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 13,
+  "terrainSeed": 1337,
+  "type": "callin"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "A friendly team is up on your net asking for fire — no grid, no format, just a problem. Get their position, weigh their report against your own glass, and build the call yourself. The FDC still expects doctrine from YOU.",
+  "caller": {
+   "i": 3,
+   "repAz": 4.03190294837005,
+   "repDist": 350,
+   "saidDead": false,
+   "saidThanks": false,
+   "wrong": "dirflip"
+  },
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": -885.1234844836026,
+   "z": 2092.3464320194794
+  },
+  "everSuppressed": false,
+  "friendlies": [
+   {
+    "r": 80,
+    "x": -1147.4685526975786,
+    "z": 2304.7057284653756
+   }
+  ],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "LATRINE",
+    "x": 401.8313200291127,
+    "z": -1207.011755569711
+   },
+   {
+    "id": "1002",
+    "name": "SAWMILL",
+    "x": -130.41448974520443,
+    "z": -2433.1724842180265
+   }
+  ],
+  "posture": "standing",
+  "seed": 13,
+  "suppressedUntil": 0,
+  "team": {
+   "x": -1147.4685526975786,
+   "z": 2304.7057284653756
+  },
+  "tgtClass": "personnel",
+  "type": "callin"
+ },
+ "what": "genScenario('callin', 13) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

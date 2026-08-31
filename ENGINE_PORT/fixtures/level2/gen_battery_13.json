@@ -1,0 +1,58 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 13,
+  "terrainSeed": 1337,
+  "type": "battery"
+ },
+ "scenario": {
+  "alerted": 0,
+  "brief": "Friendly position at grid 241 529 is taking sustained indirect fire. The gun is somewhere out there — find it by its signature and its fall of shot, and silence it. Every volley that lands while you work is friendly casualties on your clock.",
+  "bty": {
+   "next": 12.198152475059032,
+   "period": 31.315409353468567,
+   "tof": 12.38776254444383
+  },
+  "btyCas": 0,
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": 357.30601744003707,
+   "z": 989.8578202017541
+  },
+  "everSuppressed": false,
+  "fireBase": {
+   "x": -885.1234844836026,
+   "z": 2092.3464320194794
+  },
+  "friendlies": [
+   {
+    "r": 80,
+    "x": -885.1234844836026,
+    "z": 2092.3464320194794
+   }
+  ],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "LATRINE",
+    "x": -1760.387270054943,
+    "z": -1242.09223854648
+   },
+   {
+    "id": "1002",
+    "name": "SAWMILL",
+    "x": 665.1272772272378,
+    "z": 1369.720601786508
+   }
+  ],
+  "posture": "dug-in",
+  "seed": 13,
+  "suppressedUntil": 0,
+  "tgtClass": "point",
+  "type": "battery"
+ },
+ "what": "genScenario('battery', 13) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}

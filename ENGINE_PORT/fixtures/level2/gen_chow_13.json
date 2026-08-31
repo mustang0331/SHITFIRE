@@ -1,0 +1,52 @@
+{
+ "meta": {
+  "difficulty": "normal",
+  "seed": 13,
+  "terrainSeed": 1337,
+  "type": "chow"
+ },
+ "scenario": {
+  "alerted": 0,
+  "bbq": {
+   "x": 960,
+   "z": -460
+  },
+  "brief": "The general is grilling at grid 259 554. A seagull flock, several hundred strong, is assaulting the pit from the tideline — massing near grid 260 556. The COOKS are a NO-FIRE line: one round on Private Dombrowski or his potato salad is FRATRICIDE, same rules, no appeals. This close to the pit you WILL say DANGER CLOSE. Destroy the flock.",
+  "difficulty": "normal",
+  "dispersed": 0,
+  "eff": 0,
+  "effScale": 1,
+  "enemy": {
+   "x": 1099.1449790545892,
+   "z": -614.0912017540024
+  },
+  "everSuppressed": false,
+  "friendlies": [
+   {
+    "r": 60,
+    "x": 960,
+    "z": -460
+   }
+  ],
+  "kps": [
+   {
+    "id": "1001",
+    "name": "LATRINE",
+    "x": -834.5417050806416,
+    "z": 418.9048139115131
+   },
+   {
+    "id": "1002",
+    "name": "SAWMILL",
+    "x": -660.3491258386105,
+    "z": -2063.501696734448
+   }
+  ],
+  "posture": "standing",
+  "seed": 13,
+  "suppressedUntil": 0,
+  "tgtClass": "personnel",
+  "type": "chow"
+ },
+ "what": "genScenario('chow', 13) on default terrain — plain-data snapshot (functions/THREE dropped)"
+}
