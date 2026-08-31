@@ -899,6 +899,34 @@ async function runStep(S, step, ctx) {
     // a declared danger-close mission is corrected by creeping fire (<=100 m)
     const creep = !!A.creep || await S.evaluate(() =>
       !!(window.SHITFIRE.mission && window.SHITFIRE.mission.gridStr.includes('DANGER CLOSE')));
+    /* wait for the sent correction to take effect. The dangerous-deviation,
+       creeping-fire and near-village gates each refuse once and accept the
+       IDENTICAL resend; a correction can trip several in sequence (converging
+       on a target next to friendlies does), so resend on a fixed cadence while
+       the refusal state persists. Polls ride the same 512 ms grid as S.until,
+       so an ACCEPTED correction keeps timing identical to a plain wait. */
+    const overrideWait = async (text, prevRounds, refuseState, doneStates, capMs, what, sends0) => {
+      let spent = 0, sinceSend = 0, sends = sends0;
+      while (spent <= capMs) {
+        const n = await S.roundsCount();
+        const st = await S.state();
+        if (n > prevRounds || doneStates.includes(st)) return;
+        if (st === refuseState && sinceSend >= 4096 && sends < 5) {
+          await S.send(text);
+          await S.frames(64);
+          sends++; sinceSend = 0; spent += 64;
+          continue;
+        }
+        await S.frames(STEP_MS);
+        spent += STEP_MS; sinceSend += STEP_MS;
+      }
+      throw new Error(`timed out after ${capMs} sim-ms waiting for ${what}`);
+    };
+    const sendAndOverride = async (text, prevRounds, refuseState, doneStates, capMs, what) => {
+      await S.send(text);
+      await S.frames(64);
+      await overrideWait(text, prevRounds, refuseState, doneStates, capMs, what, 1);
+    };
     for (let guard = 0; guard < maxRounds + 8; guard++) {
       await S.until(async () => ['ADJUSTING', 'EOM?', 'AAR'].includes(await S.state()),
         400_000, 'adjust settle');
@@ -912,32 +940,37 @@ async function runStep(S, step, ctx) {
         const acc = await S.page.evaluate(({ lib, asset }) => { eval(lib);   // eslint-disable-line no-eval
           return accomplishedR(asset); }, { lib: RESOLVER, asset: ctx.asset || null });
         if (acc || !A.repeat || info.rounds >= maxRounds) return;
-        await S.send(A.plainRepeat ? 'repeat, over'
-                                   : await S.resolve('{CORR}, repeat, over', ctx));
-        await S.frames(64);
+        const rep = A.plainRepeat ? 'repeat, over'
+                                  : await S.resolve('{CORR}, repeat, over', ctx);
+        await sendAndOverride(rep, info.rounds, 'EOM?',
+          ['FIRE FOR EFFECT', 'SHOT', 'ADJUSTING', 'AAR'], 300_000, 'repeat volley');
         continue;
       }
       if (info.rounds >= maxRounds) return;
       if (info.miss !== null && info.miss <= ffeAt) {
-        await S.send(await S.resolve(creep ? '{CREEP_FFE}, over' : '{CORR_FFE}, over', ctx));
-        await S.frames(64);
+        const ffeText = await S.resolve(creep ? '{CREEP_FFE}, over' : '{CORR_FFE}, over', ctx);
+        await sendAndOverride(ffeText, info.rounds, 'ADJUSTING',
+          ['FIRE FOR EFFECT', 'SHOT', 'EOM?', 'AAR'], 300_000, 'volley start');
         await S.until(async () => ['EOM?', 'AAR'].includes(await S.state()), 400_000, 'volley');
         continue;
       }
       const text = await S.resolve(creep ? '{CREEP}, over' : '{CORR}, over', ctx);
-      await S.send(text);
-      await S.frames(64);
-      if (creep) {   // a creeping/proximity challenge accepts the identical resend
+      if (creep) {
+        /* preserved shape from the first capture batch: an unconditional beat
+           and one resend before the grid wait (creep missions were captured
+           with this cadence; changing it would move their TLOG stamps) */
+        await S.send(text);
+        await S.frames(64);
         await S.frames(4096);
         const grew = await S.roundsCount() > info.rounds;
         const st2 = await S.state();
         if (st2 === 'ADJUSTING' && !grew) { await S.send(text); await S.frames(64); }
+        await overrideWait(text, info.rounds, 'ADJUSTING',
+          ['EOM?', 'AAR'], 300_000, 'next round', 2);
+      } else {
+        await sendAndOverride(text, info.rounds, 'ADJUSTING',
+          ['EOM?', 'AAR'], 300_000, 'next round');
       }
-      await S.until(async () => {
-        const n = await S.roundsCount();
-        const st3 = await S.state();
-        return n > info.rounds || st3 === 'EOM?' || st3 === 'AAR';
-      }, 300_000, 'next round');
     }
   }
 }
