@@ -50,3 +50,12 @@ graphify-out/.graphify_labels.json.sig
 graphify-out/.graphify_root
 graphify-out/.rebuild.lock
 graphify-out/.graph.html.stale
+
+# Engine port (port/) - build output and future Unreal project transients
+port/build/
+port/unreal/Intermediate/
+port/unreal/Saved/
+port/unreal/DerivedDataCache/
+port/unreal/Binaries/
+port/unreal/.vs/
+port/unreal/*.sln
