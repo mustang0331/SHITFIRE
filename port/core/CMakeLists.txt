@@ -14,6 +14,9 @@ add_library(shitfire_core STATIC
   src/math/noise.cpp
   src/math/mils.cpp
   src/math/grid.cpp
+  src/terrain/heightfield.cpp
+  src/terrain/raymarch.cpp
+  src/terrain/los.cpp
 )
 
 target_include_directories(shitfire_core PUBLIC include)
