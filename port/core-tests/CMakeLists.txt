@@ -20,6 +20,9 @@ endif()
 
 add_executable(shitfire_core_tests
   support/fixtures.cpp
+  level1/prng_test.cpp
+  level1/hash_noise_test.cpp
+  level1/grid_test.cpp
 )
 target_link_libraries(shitfire_core_tests PRIVATE shitfire_core catch2_amalgamated)
 target_include_directories(shitfire_core_tests PRIVATE
@@ -34,3 +37,7 @@ endif()
 # One ctest entry per fixture area, selected by Catch2 tag. Labels gate the
 # tiers: level1 must be green (PRNG bit-exact) before anything merges;
 # level2/level3 arrive in P2+. Tests land with their fixture areas.
+foreach(t prng hash_noise grid)
+  add_test(NAME level1.${t} COMMAND shitfire_core_tests "[${t}]")
+  set_tests_properties(level1.${t} PROPERTIES LABELS "level1")
+endforeach()

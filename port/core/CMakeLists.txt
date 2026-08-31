@@ -10,6 +10,10 @@
 
 add_library(shitfire_core STATIC
   src/math/jsemantics.cpp
+  src/math/prng.cpp
+  src/math/noise.cpp
+  src/math/mils.cpp
+  src/math/grid.cpp
 )
 
 target_include_directories(shitfire_core PUBLIC include)
