@@ -1,4 +1,4 @@
-# OS cruft
+﻿# OS cruft
 Thumbs.db
 Desktop.ini
 .DS_Store
@@ -14,7 +14,7 @@ scratch/
 scratchpad/
 exports/
 
-# Dev tooling (permitted per CLAUDE.md "Dev tooling" — never a runtime dep).
+# Dev tooling (permitted per CLAUDE.md "Dev tooling" â€” never a runtime dep).
 # The tools themselves ARE committed; only their installed deps and output are not.
 tools/node_modules/
 tools/test-results/
@@ -26,7 +26,7 @@ dem/
 *.tif
 *.tiff
 
-# Private working material — local only, never pushed (user direction 2026-08-04)
+# Private working material â€” local only, never pushed (user direction 2026-08-04)
 Dialogue History/
 user_feedback.md
 *.pdf
@@ -34,7 +34,7 @@ user_feedback.md
 NIGHT_RUN_2_NOTES.md
 RESEARCH_NIGHT_RUN.md
 
-# Cover-art drafts — kept locally, not committed (user direction 2026-08-05).
+# Cover-art drafts â€” kept locally, not committed (user direction 2026-08-05).
 # The chosen final ships as docs/screenshots/cover.png; these are working files.
 docs/screenshots/ChatGPT Image*.png
 docs/screenshots/cover-option-*.png
@@ -42,7 +42,7 @@ docs/screenshots/cover-pixel-*.png
 docs/screenshots/cover-art-prompt.md
 docs/screenshots/reference-*.png
 
-# Graphify — AST-generated code graph (graph.json and GRAPH_REPORT.md ARE committed;
+# Graphify â€” AST-generated code graph (graph.json and GRAPH_REPORT.md ARE committed;
 # cache and working files are local only)
 graphify-out/cache/
 graphify-out/.graphify_labels.json
@@ -52,7 +52,7 @@ graphify-out/.rebuild.lock
 graphify-out/.graph.html.stale
 
 # Engine port (port/) - build output and future Unreal project transients
-port/build/
+port/build*/
 port/unreal/Intermediate/
 port/unreal/Saved/
 port/unreal/DerivedDataCache/

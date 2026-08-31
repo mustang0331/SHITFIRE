@@ -8,16 +8,11 @@
 # Hard rules: no exceptions thrown/caught, no file I/O, no engine or platform
 # headers — standard library only. nlohmann/json exists only in core-tests.
 
-add_library(shitfire_core STATIC
-  src/math/jsemantics.cpp
-  src/math/prng.cpp
-  src/math/noise.cpp
-  src/math/mils.cpp
-  src/math/grid.cpp
-  src/terrain/heightfield.cpp
-  src/terrain/raymarch.cpp
-  src/terrain/los.cpp
-)
+# Sources are globbed so parallel porter agents add files without editing this
+# shared list (P2 prep). CONFIGURE_DEPENDS reruns the glob on build.
+file(GLOB_RECURSE SHITFIRE_CORE_SOURCES CONFIGURE_DEPENDS
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+add_library(shitfire_core STATIC ${SHITFIRE_CORE_SOURCES})
 
 target_include_directories(shitfire_core PUBLIC include)
 target_compile_features(shitfire_core PUBLIC cxx_std_20)
