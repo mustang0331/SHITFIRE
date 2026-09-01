@@ -42,7 +42,7 @@ endif()
 # entry whose tagged tests have not landed yet fails until its porter lands
 # them — expected transient during a P2 wave, never at a wave boundary.
 foreach(t prng hash_noise terrain_proc terrain_dem raylos grid
-          spotburst corrections parser_corpus)
+          spotburst corrections parser_corpus grading tlog)
   add_test(NAME level1.${t} COMMAND shitfire_core_tests "[${t}]")
   set_tests_properties(level1.${t} PROPERTIES LABELS "level1")
 endforeach()
