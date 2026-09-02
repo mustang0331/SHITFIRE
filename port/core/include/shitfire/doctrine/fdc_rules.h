@@ -138,6 +138,12 @@ public:
   /* cffqTick — 12-cff-handling.js:39-45 (the 75 s lapse watchdog). */
   void tick();
 
+  /* wave-3 reconciliation: public because the frame loop's idle coaching
+     calls it directly (17-loop-boot.js:108-116) — the SimCore facade drives
+     that check; the internal call sites (handleAdjust/noMissionReply paths)
+     are unchanged. */
+  void sysHint();                                           /* :830 */
+
   /* Rebind on scenario (re)build: clears posRep (expiry), the per-mission
      side table, and the caller/KP source. Null = no scenario. */
   void bindScenario(const scenario::ScenarioState* scn);
@@ -192,7 +198,6 @@ private:
   void handlePosRep(const ParsedMessage& p);   /* 10-mission.js:260-280 */
   void noMissionReply();                                    /* :840 */
   std::string expectedHint() const;                         /* :804 */
-  void sysHint();                                           /* :830 */
   void addNote(const std::string& text);                    /* :854 (net side) */
 
   sim::SheafSpec inferSheaf(const std::string& desc,

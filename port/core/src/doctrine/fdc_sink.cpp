@@ -73,9 +73,19 @@ double FdcMissionSink::sayLine(const sim::FdcLine& line) {
   /* Sanctioned-flavor presence gate (events.h): the sink's own coin. On a
      failed coin the source never called FDC.say (10-mission.js:824/:902), so
      the chain is untouched and no pick() is drawn; the returned time is
-     meaningless and unread. */
-  if (line.gateProbability > 0 && !(flavor_.next() < line.gateProbability))
-    return speaker_.lastT();
+     meaningless and unread.
+     wave-3 reconciliation: decided through IFlavorRng::coin so a replay can
+     reproduce recorded presence (fdc_quips.h FlavorGate note). The only two
+     gate-carrying ids are FfeAckFlavor (0.4, 10:824) and CompleteTailFlavor
+     (0.5, 10:902); predicted air time is what say() would return. */
+  if (line.gateProbability > 0) {
+    const doctrine::FlavorGate g = line.id == sim::FdcLineId::FfeAckFlavor
+                                       ? doctrine::FlavorGate::FfeAck
+                                       : doctrine::FlavorGate::CompleteTail;
+    const double air =
+        std::fmax(speaker_.now(), speaker_.lastT()) + line.delay;
+    if (!flavor_.coin(line.gateProbability, g, air)) return speaker_.lastT();
+  }
 
   using Id = sim::FdcLineId;
   /* The two 3-line rants chain their own delays (10-mission.js:1213-1215). */

@@ -139,18 +139,43 @@ ScenarioState genScenario(const std::string& type, double seed, const GenContext
 WorldXZ pathPoint(const PathState& p, double d);
 WorldXZ pathDir(const PathState& p, double d);
 
+/* wave-3 reconciliation: the live-mission side of updateScenario that the
+   generation-time tick could not carry (its enemyAlive was hardcoded true
+   and no caller could see a latch fire). The facade passes one of these per
+   frame; null keeps the committed generation-time behavior byte-for-byte
+   (level-2 tests pass null).
+   - enemyAlive IN: the mission-owned global (05:897/:953/:992 gates; kaiju
+     05:870 branches on it).
+   - out-flags fire on the tick a latch/branch crosses; the caller owns the
+     consequences the browser put next to them (mission fail bookkeeping
+     05:857-865/:882-889/:972-982/:1012-1019, enemyVolley 05:903,
+     H-hour install mesh + log 05:928-940, caller voice lines 05:918-919).
+   - the qfp H-hour S.rng draws (3 per figure x 8, 05:930-937) ARE taken
+     here when io is non-null — the flagged wave-2 seam closes at the exact
+     source position. */
+struct ScenarioTickIO {
+  bool enemyAlive = true;      /* IN */
+  bool volleyFired = false;    /* battery: enemyVolley(S) fired (05:903) */
+  bool hHourStarted = false;   /* qfp: H-hour crossed this tick (05:927) */
+  bool escapedNow = false;     /* convoy: escape latch crossed (05:857) */
+  bool ashoreNow = false;      /* kaiju: landfall latch crossed (05:882) */
+  bool overrunNow = false;     /* defense/qfp: wire latch crossed (05:972/:1012) */
+  bool callerSaidDead = false; /* callin: saidDead latched this tick (05:918) */
+  bool callerSaidSup = false;  /* callin: saidThanks latched this tick (05:919) */
+};
+
 /* The state-mutating slice of updateScenario (05:815): convoy piecewise
    time->distance + vehicle/enemy positions + escape latch, kaiju wade +
    ashore latch, defense/qfp advance (lastT, enemy toward objective, overrun
-   latch), qfp H-hour trigger (install draws deliberately NOT taken — the
-   troop-mesh install is engine-side; SEAM: wave 2 must draw 3 values per
-   installed figure from S.rng at H-hour, 05:930-937). battery volley timing
-   updates bty.next only — enemyVolley's gauss draws + scheduling live with
-   the mission module (10-mission.js gauss, 05:1028). Mesh-only branches
-   (assault squad, callin figures) have no state to mutate here.
+   latch), qfp H-hour trigger (S.rng install draws taken when io is passed —
+   see ScenarioTickIO). battery volley timing updates bty.next; the fire
+   branch reports through io->volleyFired — enemyVolley's gauss draws +
+   scheduling live with the mission-side caller (10-mission.js gauss,
+   05:1028). Mesh-only branches (assault squad, callin figures) have no
+   state to mutate here.
    scenarioT0 = sim.now at mission start (15-campaign-menu.js:574). */
 void updateScenarioTick(ScenarioState& S, double simNow, double scenarioT0,
-                        const GenContext& ctx);
+                        const GenContext& ctx, ScenarioTickIO* io = nullptr);
 
 /* 04-world.js:1135 updateCivilians, position math only (mesh skipped):
    x = bx + sin(t*0.14 + phase) * wr, z = bz + cos(t*0.11 + phase*1.7) * wr. */

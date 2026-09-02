@@ -9,20 +9,22 @@
    oracle-v1) and updateCivilians (04-world.js:1135). Mesh-driving branches
    (assault squad lerp, callin figures, flames, kp posts) are engine-side.
 
-   SEAMS left for wave 2 / the MISSION porter, called out inline:
+   wave-3 reconciliation: the wave-2 seams below are closed through the
+   optional ScenarioTickIO (scenario_state.h) — live enemyAlive comes IN,
+   latch/branch crossings go OUT, and the qfp H-hour S.rng draws are taken
+   here at the exact source position (05:930-937). A null io preserves the
+   committed generation-time behavior byte-for-byte (level-2 tests pass
+   null): enemyAlive true, no draws, no flags.
    - battery: enemyVolley (05:1028) draws gauss() pairs from S.rng and books
-     btyCas via the scheduler — mission-owned. Here only bty.next advances.
-   - qfp H-hour install (05:930-937) draws 3 values per visible figure from
-     S.rng — the troop meshes are engine-side, but the DRAWS must be taken
-     when wave 2 crosses H-hour or every later S.rng consumer shifts.
-   - suppression inputs (S.suppressedUntil, S.eff, enemyAlive) are mission
-     state; at generation time they hold their initial values, which is all
-     the level-2 fixtures exercise. enemyAlive is true at generation. */
+     btyCas via the scheduler — mission-side; the caller acts on
+     io->volleyFired. Here only bty.next advances.
+   - suppression inputs (S.suppressedUntil, S.eff) are live scenario fields
+     either way; enemyAlive is the mission-owned global (io->enemyAlive). */
 namespace shitfire { namespace scenario {
 
 void updateScenarioTick(ScenarioState& S, double simNow, double scenarioT0,
-                        const GenContext& ctx) {
-  const bool enemyAlive = true;   /* mission-owned; true at generation */
+                        const GenContext& ctx, ScenarioTickIO* io) {
+  const bool enemyAlive = io ? io->enemyAlive : true;   /* mission-owned */
   if (S.type == "convoy") {   /* 05:818 */
     const double raw = *S.speed * (simNow - *S.t0);
     double dHead;
@@ -60,6 +62,7 @@ void updateScenarioTick(ScenarioState& S, double simNow, double scenarioT0,
     }
     if (dHead >= S.path->len && !*S.escaped) {
       S.escaped = true;   /* mission-fail bookkeeping is mission-owned */
+      if (io) io->escapedNow = true;   /* wave-3: caller runs 05:858-865 */
     }
   } else if (S.type == "kaiju") {   /* 05:867 */
     if (enemyAlive) {
@@ -67,7 +70,10 @@ void updateScenarioTick(ScenarioState& S, double simNow, double scenarioT0,
       const WorldXZ q = pathPoint(*S.path, d);
       S.enemy.x = q.x;
       S.enemy.z = q.z;
-      if (d >= S.path->len && !*S.ashore) S.ashore = true;
+      if (d >= S.path->len && !*S.ashore) {
+        S.ashore = true;
+        if (io) io->ashoreNow = true;   /* wave-3: caller runs 05:883-889 */
+      }
     }
   } else if (S.type == "battery" && S.bty) {   /* 05:891 */
     const double tS = simNow - scenarioT0;
@@ -76,17 +82,30 @@ void updateScenarioTick(ScenarioState& S, double simNow, double scenarioT0,
         S.bty->next = (S.suppressedUntil - scenarioT0) + 6;
       } else {
         S.bty->next = tS + S.bty->period;
-        /* SEAM: enemyVolley(S) — gauss draws from S.rng + scheduled impacts;
-           mission module (wave 2). Unreachable at generation (next >= 12 s). */
+        /* wave-3: enemyVolley(S) (05:903) — gauss draws from S.rng +
+           scheduled impacts stay mission-side; the caller fires them off
+           this flag. Unreachable at generation (next >= 12 s). */
+        if (io) io->volleyFired = true;
       }
     }
   } else if (S.type == "qfp" && !*S.overrun) {   /* 05:920 */
     if (!*S.hStarted) {
       if (simNow - scenarioT0 >= *S.hHour) {
         S.hStarted = true;
-        /* SEAM: the H-hour install (05:930-937) draws
-           a = S.rng(), r = S.rng(), rotY = S.rng() for each of the 8 troop
-           figures — wave 2 must take those draws here. */
+        /* wave-3 reconciliation: the H-hour install draws (05:930-937) —
+           a = S.rng(), r = S.rng(), rotY = S.rng() per troop figure, all 8
+           (units.troops.length is 8; every figure installs). The mesh
+           positions are engine-side; the DRAWS happen here so every later
+           S.rng consumer keeps its stream position. Null io = committed
+           generation-time behavior (H-hour is unreachable there). */
+        if (io) {
+          for (int i = 0; i < 8; i++) {
+            (void)S.rng.next();   /* a    (05:932) */
+            (void)S.rng.next();   /* r    (05:932) */
+            (void)S.rng.next();   /* rotY (05:936) */
+          }
+          io->hHourStarted = true;   /* caller logs 05:938-940 */
+        }
       }
     } else {
       const double dt2 =
@@ -102,7 +121,10 @@ void updateScenarioTick(ScenarioState& S, double simNow, double scenarioT0,
           S.enemy.z += (fb.z - S.enemy.z) / dFB * step;
         }
       }
-      if (dFB <= 90 && !*S.overrun) S.overrun = true;
+      if (dFB <= 90 && !*S.overrun) {
+        S.overrun = true;
+        if (io) io->overrunNow = true;   /* wave-3: caller runs 05:973-982 */
+      }
     }
   } else if (S.type == "defense" && !*S.overrun) {   /* 05:984 */
     const double dt2 = !S.lastT ? 0 : std::min(0.05, simNow - *S.lastT);
@@ -116,13 +138,20 @@ void updateScenarioTick(ScenarioState& S, double simNow, double scenarioT0,
         S.enemy.z += (ctx.op.z - S.enemy.z) / dOP * step;
       }
     }
-    if (dOP <= 90 && !*S.overrun) S.overrun = true;
+    if (dOP <= 90 && !*S.overrun) {
+      S.overrun = true;
+      if (io) io->overrunNow = true;   /* wave-3: caller runs 05:1014-1018 */
+    }
   } else if (S.type == "callin" && S.caller) {   /* 05:916 */
-    /* caller reactions latch off enemyAlive / S.everSuppressed — both at
-       their initial values at generation; voice lines are UI-side. */
-    if (!S.caller->saidDead && !enemyAlive) S.caller->saidDead = true;
-    else if (!S.caller->saidThanks && S.everSuppressed)
+    /* caller reactions latch off enemyAlive / S.everSuppressed; the voice
+       lines (callerSay 05:918-919) are the caller's — flagged via io. */
+    if (!S.caller->saidDead && !enemyAlive) {
+      S.caller->saidDead = true;
+      if (io) io->callerSaidDead = true;
+    } else if (!S.caller->saidThanks && S.everSuppressed) {
       S.caller->saidThanks = true;
+      if (io) io->callerSaidSup = true;
+    }
   }
   /* assault (05:906): squad mesh only — no scenario state mutates. */
 }

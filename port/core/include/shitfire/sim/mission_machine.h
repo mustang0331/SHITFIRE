@@ -41,7 +41,12 @@ namespace shitfire { namespace sim {
 enum class MethodKind { None, Grid, Polar, Shift };            /* mission.method */
 enum class IntentKind { Destroy, Suppress, Illum };            /* mission.intent (G13/TEMPO4) */
 enum class ImmKind { None, Suppress, Smoke };                  /* mission.imm (TEMPO2) */
-enum class FailReason { None, Fratricide, Collateral };        /* mission.failReason */
+/* mission.failReason. wave-3 reconciliation: Escaped/Overrun added — the
+   scenario layer writes them straight onto mission.failReason
+   (05-units-scenario.js:862/:886 'escaped', :979/:1016 'overrun'; the SimCore
+   facade owns those writes here) and the AAR reads them (13-aar.js:277-278).
+   The machine itself only ever sets Fratricide/Collateral (10:1225/:1236). */
+enum class FailReason { None, Fratricide, Collateral, Escaped, Overrun };
 enum class TgtRef { Main, Twin };                              /* mission.tgtRef (SUGG5) */
 enum class Warno { Adjust, Ffe };                              /* fireMission's warno */
 

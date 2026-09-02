@@ -18,6 +18,25 @@
    header). */
 namespace shitfire { namespace doctrine {
 
+/* wave-3 reconciliation: the six probability-gated flavor sites
+   (DETERMINISM_NOTE.md §a "gated-quip caveat"). Four of them air BEFORE a
+   say() whose return time schedules impacts or shifts doctrinal-line times
+   (ffeAck precedes SHOT at 10-mission.js:824-827; snideRound/corrSnark
+   precede fireForEffect/fireAdjustRound at 12-cff-handling.js:714-721;
+   readbackTail precedes fireMission at 12-cff:390-404), so a replay harness
+   must reproduce the recorded PRESENCE of each gated line — the capture's
+   Math.random stream itself is not reproducible headless (renderer/audio
+   consumers interleave, DETERMINISM_NOTE.md §a). Each gate therefore
+   identifies itself through coin() below. */
+enum class FlavorGate {
+  FfeAck,          /* 0.40 — 10-mission.js:824 */
+  CompleteTail,    /* 0.50 — 10-mission.js:902 */
+  ReadbackTail,    /* 0.45 — 12-cff-handling.js:390 */
+  SnideRound,      /* 0.55 — 12-cff-handling.js:714 */
+  CorrSnark,       /* 0.50 — 12-cff-handling.js:716 */
+  CareerCallback,  /* 0.40 — 15-campaign-menu.js:635 */
+};
+
 /* The injected flavor RNG — one uniform [0,1) per call, standing in for
    Math.random() at every SANCTIONED FLAVOR site in the FDC layer:
    - pick() line selection            07-voice-spot-audio.js:293
@@ -29,6 +48,12 @@ class IFlavorRng {
 public:
   virtual ~IFlavorRng() = default;
   virtual double next() = 0;
+  /* wave-3 reconciliation: a gated-presence decision (Math.random() < p at
+     the six sites above). Default body: next() < p — identical stream use
+     to the source. predictedAirTime is the FDC.say time the line would get
+     (max(now, lastT) + its delay), handed to replay harnesses so they can
+     match the recorded transcript; the default ignores it. */
+  virtual bool coin(double p, FlavorGate gate, double predictedAirTime);
 };
 
 /* One pool = one QUIPS key. `last` is the pool's _last rotation slot

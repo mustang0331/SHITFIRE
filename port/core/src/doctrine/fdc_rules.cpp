@@ -716,7 +716,12 @@ bool FdcEngine::handleCFF(const ParsedMessage& p, bool staged) {
   /* deviation policy (:387-390): sloppy-but-safe earns snide; clean gets
      the 45%-gated readback color. SANCTIONED FLAVOR gate (12-cff:390). */
   if (notes.size() >= 2) sayNet(pick(quips_.snide, flavor_), 1.1);
-  else if (flavor_.next() < 0.45) sayNet(pick(quips_.readbackTail, flavor_), 1.1);
+  /* wave-3 reconciliation: gate via coin() so replay reproduces recorded
+     presence (fdc_quips.h FlavorGate note) — this line precedes fireMission,
+     so its presence shifts the first round's SHOT time. */
+  else if (flavor_.coin(0.45, FlavorGate::ReadbackTail,
+                        std::fmax(clock_.now, speaker_.lastT()) + 1.1))
+    sayNet(pick(quips_.readbackTail, flavor_), 1.1);
   /* near-civilian advisory (:392-395) — non-blocking. */
   double minCiv = 1e300;
   for (const sim::Vec2& hh : view_.huts())
@@ -1053,12 +1058,17 @@ void FdcEngine::handleAdjust(const ParsedMessage& p) {
   else if (p.rep && machine_.state() == sim::MissionPhase::EomQuery)
     parts.push_back("REPEAT");   /* G13 (:710) */
   sayNet(joinList(parts, ", ") + ", OUT.", 1.0);
-  /* stupid-but-safe snark — SANCTIONED FLAVOR gates 0.55 (:714) / 0.5 (:716). */
+  /* stupid-but-safe snark — SANCTIONED FLAVOR gates 0.55 (:714) / 0.5 (:716).
+     wave-3 reconciliation: both precede fireForEffect/fireAdjustRound below,
+     so presence shifts that round's SHOT time — decided via coin()
+     (fdc_quips.h FlavorGate note). */
   if (p.any && strictRoundingViolation(p.corr.right, p.corr.add, p.ffe) &&
-      flavor_.next() < 0.55)
+      flavor_.coin(0.55, FlavorGate::SnideRound,
+                   std::fmax(clock_.now, speaker_.lastT()) + 1.3))
     sayNet(pick(quips_.snideRound, flavor_), 1.3);
   else if (std::fabs(p.corr.right) + std::fabs(p.corr.add) > 150 &&
-           flavor_.next() < 0.5)
+           flavor_.coin(0.5, FlavorGate::CorrSnark,
+                        std::fmax(clock_.now, speaker_.lastT()) + 1.0))
     sayNet(pick(quips_.corrSnark, flavor_), 1.0);
   /* G13 (:720-721). */
   if (p.ffe || (p.rep && machine_.state() == sim::MissionPhase::EomQuery))

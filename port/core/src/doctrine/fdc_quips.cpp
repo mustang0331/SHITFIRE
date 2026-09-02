@@ -14,6 +14,13 @@
 
 namespace shitfire { namespace doctrine {
 
+/* wave-3 reconciliation: default gated-presence coin — Math.random() < p at
+   the six FlavorGate sites (fdc_quips.h header note). Replay harnesses
+   override this to reproduce the recorded presence. */
+bool IFlavorRng::coin(double p, FlavorGate /*gate*/, double /*predictedAirTime*/) {
+  return next() < p;
+}
+
 // port of src/js/07-voice-spot-audio.js:36-290 (oracle-v1) — const QUIPS = {...}
 QuipSet makeQuips() {
   QuipSet q;
