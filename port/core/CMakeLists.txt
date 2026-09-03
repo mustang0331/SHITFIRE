@@ -19,4 +19,18 @@ target_compile_features(shitfire_core PUBLIC cxx_std_20)
 
 if(MSVC)
   target_compile_options(shitfire_core PRIVATE /fp:precise /W4 /permissive-)
+
+  # Exception model — DELIBERATE, not a default (ADVERSARY_SIGNOFF.md F1).
+  # Core sources contain zero throw/try/catch (F1 grep, every hit read), so
+  # the lib is pinned exceptions-OFF to make the README's "compiles
+  # exceptions-off" a build fact and to match the EH model of the UE modules
+  # it links into: UBT compiles non-editor modules with _HAS_EXCEPTIONS=0 and
+  # no /EH flag at all (UE_5.8 VCToolChain.cs:437-451, AddExceptionArguments —
+  # only editor/UHT builds get /EHsc). /EHs-c- overrides the /EHsc that CMake
+  # puts in the default MSVC flags (last flag wins). PRIVATE on purpose:
+  # core-tests keep /EHsc for Catch2 and link this lib exactly the way an
+  # exceptions-on UE *editor* module does — both mixes stay under test.
+  # Sinks may still not throw through core frames (events.h sink contract).
+  target_compile_options(shitfire_core PRIVATE /EHs-c-)
+  target_compile_definitions(shitfire_core PRIVATE _HAS_EXCEPTIONS=0)
 endif()
