@@ -13,6 +13,8 @@ public class ShitfireGame : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] {
 			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",
 			"UMG", "Niagara",
+			"Slate", "SlateCore",      // observer HUD/reticle NativePaint (FSlateDrawElement)
+			"ApplicationCore",         // observer demo input injection (IPlatformInputDeviceMapper)
 			"RealtimeMeshComponent",   // terrain/road/ocean meshes (port/unreal/Plugins)
 			"ShitfireCoreLib"          // the external /fp:precise sim core
 		});

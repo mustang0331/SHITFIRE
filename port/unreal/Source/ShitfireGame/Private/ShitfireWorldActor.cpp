@@ -2,6 +2,7 @@
 #include "ShitfireGame.h"
 #include "ShitfireFixtures.h"
 #include "bridge/ShitfireCoords.h"
+#include "bridge/ShitfireSimHost.h"
 
 #include "RealtimeMeshProcedural.h"
 #include "Components/DirectionalLightComponent.h"
@@ -13,13 +14,13 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
+#include "Engine/GameInstance.h"
 #include "Engine/SkyLight.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 // Engine-free sim core - every call below executes prebuilt /fp:precise code.
-#include "shitfire/campaign/campaign_data.h"
 #include "shitfire/config/sim_config.h"
 #include "shitfire/scenario/place_units.h"
 #include "shitfire/scenario/scenario_state.h"
@@ -63,25 +64,16 @@ AShitfireWorldActor::AShitfireWorldActor()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-AShitfireWorldActor::~AShitfireWorldActor()
-{
-	delete Sim;
-	Sim = nullptr;
-}
-
-void AShitfireWorldActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	delete Sim;
-	Sim = nullptr;
-	Super::EndPlay(EndPlayReason);
-}
-
 void AShitfireWorldActor::BeginPlay()
 {
 	Super::BeginPlay();
 
 	const double T0 = FPlatformTime::Seconds();
 	InitSimCore();
+	if (!Sim)
+	{
+		return;   // no subsystem - already logged, nothing to assemble from
+	}
 
 	PlaceholderBaseMat = LoadObject<UMaterialInterface>(
 		nullptr, TEXT("/Game/Materials/M_Placeholder.M_Placeholder"));
@@ -140,24 +132,21 @@ void AShitfireWorldActor::BeginPlay()
 
 void AShitfireWorldActor::InitSimCore()
 {
-	delete Sim;
-	Sim = new shitfire::SimCore();
-
-	shitfire::MissionInit MI;
-	MI.chapterId = TCHAR_TO_UTF8(*ChapterId);
-	MI.difficulty = "normal";
-	MI.startMs = 0;
-	const shitfire::campaign::ChapterSpec* Ch = shitfire::campaign::findChapter(MI.chapterId);
-	const shitfire::campaign::VolumeSpec* Vol = shitfire::campaign::volumeOf(MI.chapterId);
-	MI.missionSeed = Ch ? Ch->seed : 1.0;
-	MI.terrainSeed = (Vol && Vol->tseed.has_value()) ? *Vol->tseed : TerrainSeed;
-	Sim->init(MI);
-
-	const shitfire::SimCore::Parts P = Sim->parts();
-	UE_LOG(LogShitfire, Log,
-		TEXT("SimCore up: chapter %hs seed %.0f terrain %.0f type %hs, OP (%.0f, %.0f)"),
-		MI.chapterId.c_str(), MI.missionSeed, MI.terrainSeed,
-		P.scenario->type.c_str(), P.op->x, P.op->z);
+	// BUILDER-BRIDGE refactor (was: this actor new'd its own SimCore +
+	// campaign seed lookup, 587e630). The GameInstance subsystem owns the one
+	// SimCore now; the seed resolution moved verbatim into
+	// UShitfireSimHost::LaunchChapter. BeginPlay = fresh mission, as before.
+	Sim = nullptr;
+	UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	UShitfireSimHost* Host = GI ? GI->GetSubsystem<UShitfireSimHost>() : nullptr;
+	if (!Host)
+	{
+		UE_LOG(LogShitfire, Error,
+			TEXT("no UShitfireSimHost subsystem (no GameInstance?) - world assembly aborted"));
+		return;
+	}
+	Host->LaunchChapter(ChapterId, TerrainSeed);
+	Sim = Host->GetSimCore();
 }
 
 double AShitfireWorldActor::GroundH(double X, double Z) const

@@ -33,10 +33,8 @@ class SHITFIREGAME_API AShitfireWorldActor : public ARealtimeMeshActor
 
 public:
 	AShitfireWorldActor();
-	virtual ~AShitfireWorldActor() override;
 
 	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** OP tower eye (03-op-battery.js eyeFor) in UE space - pawn placement. */
 	FVector ObserverEyeUE() const;
@@ -74,9 +72,9 @@ private:
 	/** H(x,z) through the linked core lib (meters, sim frame). */
 	double GroundH(double X, double Z) const;
 
-	// Raw owned pointer, not unique_ptr: UHT's generated vtable-helper ctor
-	// instantiates member destructors with SimCore still incomplete. Deleted
-	// in EndPlay/dtor (sim_core.h is complete in the .cpp).
+	// NON-OWNING cache of UShitfireSimHost's SimCore (BUILDER-BRIDGE refactor
+	// of the 587e630 InitSimCore ownership - the GameInstance subsystem is
+	// the one owner now; it outlives this actor, so the cache never dangles).
 	shitfire::SimCore* Sim = nullptr;
 	bool bGoldenRaysPassed = false;
 
