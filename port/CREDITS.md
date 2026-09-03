@@ -19,3 +19,46 @@ support statement; only master's README declares "Supported engine versions: UE
 5.5 – 5.8", so master was pinned at the commit above instead of a tag (the
 repo's release channel is Fab, not GitHub tags). Vendored with `.git` removed;
 re-vendor by cloning that commit into port/unreal/Plugins/RealtimeMeshComponent.
+
+## port/unreal — art assets (BUILDER-ASSETS, P3)
+
+Downloaded by `port/unreal/Tools/download_assets.py` from the pinned URLs in
+`port/unreal/Tools/asset_manifest.json` (raw archives live only in the local
+asset cache, never the repo) and imported by `Tools/import_assets.py`. Every
+imported .uasset under Content/Textures, Content/Vegetation and
+Content/Models regenerates from these sources.
+
+### Terrain/road PBR textures — ambientCG, all CC0 1.0 Universal
+
+License: https://docs.ambientcg.com/license/ (CC0, no attribution required —
+credited anyway). All fetched 2026-09-03 as 2K JPG sets; Color + NormalGL
+maps imported (Roughness/AO/Displacement remain in the zips, unused so far).
+
+| Asset | Author | License | Source | Used for |
+|---|---|---|---|---|
+| Rock029 | ambientCG | CC0-1.0 | https://ambientcg.com/view?id=Rock029 | terrain rock/cliff layer (T_Rock_*) |
+| Ground110 | ambientCG | CC0-1.0 | https://ambientcg.com/view?id=Ground110 | terrain scrub layer (T_Scrub_*) |
+| Ground097 | ambientCG | CC0-1.0 | https://ambientcg.com/view?id=Ground097 | terrain sand layer (T_Sand_*) |
+| Ground080 | ambientCG | CC0-1.0 | https://ambientcg.com/view?id=Ground080 | terrain beach layer (T_Beach_*) |
+| Ground081 | ambientCG | CC0-1.0 | https://ambientcg.com/view?id=Ground081 | road/path ribbons (T_Road_*) |
+
+### 3D models — Poly Pizza (poly.pizza), fetched 2026-09-03
+
+| Asset | Author | License | Source | Used for |
+|---|---|---|---|---|
+| Palm Tree (SM_PalmTreeA) | Quaternius | CC0-1.0 | https://poly.pizza/m/A6cKJYFsIb | canopy vegetation (wired) |
+| Palm Tree (SM_PalmTreeB) | Quaternius | CC0-1.0 | https://poly.pizza/m/DsrrAYmucG | canopy variant (spare) |
+| Bushes (SM_DesertBush) | Quaternius | CC0-1.0 | https://poly.pizza/m/J2h3HrO356 | scatter vegetation (wired, arid-tinted) |
+| Dead Tree (SM_DeadTree) | Quaternius | CC0-1.0 | https://poly.pizza/m/Mcd2zYqyww | scatter variant (spare) |
+| Cactus (SM_Cactus) | Quaternius | CC0-1.0 | https://poly.pizza/m/HsEJgRLQWX | scatter variant (spare) |
+| Character Soldier (SM_Soldier) | Quaternius | CC0-1.0 | https://poly.pizza/m/PpLF4rt4ah | troop/squad unit (P4 wiring) |
+| SWAT (SM_SoldierSwat) | Quaternius | CC0-1.0 | https://poly.pizza/m/Btfn3G5Xv4 | alternate soldier (P4 wiring) |
+| M939 Truck (SM_TruckM939) | J-Toastie | CC-BY 3.0 | https://poly.pizza/m/y8lBpvMlim | military truck unit (P4 wiring) |
+| Humvee (SM_Humvee) | madtrollstudio | CC-BY 3.0 | https://poly.pizza/m/Ebryot9iKM | light vehicle unit (P4 wiring) |
+| Tank (SM_Tank) | Quaternius | CC0-1.0 | https://poly.pizza/m/cW3zvvkMOM | light armor unit (P4 wiring) |
+| Cannon (SM_Cannon) | Quaternius | CC0-1.0 | https://poly.pizza/m/qIAvoaawib | battery gun stand-in (P4 wiring) |
+
+CC-BY attribution lines (must ship in any distributed build's credits):
+
+- "M939 Truck" by J-Toastie (https://poly.pizza/m/y8lBpvMlim) [CC-BY 3.0] via Poly Pizza
+- "Humvee" by madtrollstudio (https://poly.pizza/m/Ebryot9iKM) [CC-BY 3.0] via Poly Pizza
