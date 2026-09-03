@@ -156,3 +156,26 @@ The 2026-09-02 P3 numbers were taken ON BATTERY (Windows caps the frame
 rate at ~30 and downclocks the GPU) - rerun PLUGGED IN before making the
 Lumen keep/drop call. Battery-throttled GPU cost at native 1080p:
 26.4 ms with Lumen GI, 20.4 ms without (delta ~6 ms); GameThread ~5 ms.
+
+### Art asset pipeline (BUILDER-ASSETS, P3)
+
+Every downloaded art asset is pinned in `port/unreal/Tools/asset_manifest.json`
+(source URL, license, author, fetch date - provenance duplicated per asset in
+`port/CREDITS.md`). Regeneration is two commands:
+
+```powershell
+python port\unreal\Tools\download_assets.py   # URLs -> %LOCALAPPDATA%\shitfire-asset-cache
+$env:UE_SDKS_ROOT = 'C:\Users\conno\prj\SHITFIRE-port\port\unreal\AutoSDK-stub'
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+  C:\Users\conno\prj\SHITFIRE-port\port\unreal\Shitfire.uproject `
+  -run=pythonscript -script="C:\Users\conno\prj\SHITFIRE-port\port\unreal\Tools\import_assets.py" `
+  -unattended -nopause -nosplash
+```
+
+Raw archives live only in the cache, never the repo; the imported .uassets are
+the committed build products (LFS). `import_assets.py` also regenerates
+`M_Terrain`/`M_Road` as texture-sampling graphs that keep `gen_assets.py`'s
+parameter names (run order: gen_assets.py first if you run both; the textured
+versions are the shipped ones). Paid packs slot in the same way: add a manifest
+entry (or drop files in the cache), extend import_assets.py's manifest lists,
+re-run, allowlist, credit.
