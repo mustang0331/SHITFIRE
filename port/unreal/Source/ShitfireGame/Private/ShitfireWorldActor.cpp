@@ -90,6 +90,11 @@ void AShitfireWorldActor::BeginPlay()
 	// The RMC never cooks collision (bCreateCollision=false on every section):
 	// the sim ray-march is the only geometry authority (see class header).
 	GetRealtimeMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	// The RMC component stays Movable: setting it Static after registration
+	// stops its runtime-created sections from rendering at all (observed on
+	// 5.8 + RMC v5.4). It never moves, so VSM still caches its pages. The
+	// ISM/HISM/ocean components ARE Static - they get their mesh before
+	// registration.
 
 	BuildTerrain(Mesh);
 
@@ -331,6 +336,7 @@ void AShitfireWorldActor::SpawnOcean()
 	OceanPlane = NewObject<UStaticMeshComponent>(this, TEXT("OceanPlane"));
 	OceanPlane->SetStaticMesh(Plane);
 	OceanPlane->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OceanPlane->SetMobility(EComponentMobility::Static);
 	// Z derives from the sim's sea-level contract IN CODE (ShitfireCoords.h),
 	// never eyeballed. 100 cm plane scaled to a 22 km sheet.
 	OceanPlane->SetWorldLocation(FVector(0, 0,
@@ -363,7 +369,10 @@ void AShitfireWorldActor::SpawnSkyAndLight()
 	Sun->SetActorRotation(FRotationMatrix::MakeFromX(TravelUE.GetSafeNormal()).Rotator());
 	if (UDirectionalLightComponent* DL = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 	{
-		DL->SetIntensity(4.0f);            // non-physical stylized scale; [YOUR CALL]
+		// Physical daylight illuminance (mid-day sun ~75k lux) paired with
+		// the pawn camera's fixed manual exposure (ISO 100, f/8, 1/125 s,
+		// EV100 ~ 13) - correct by arithmetic, no auto-exposure anywhere.
+		DL->SetIntensity(75000.0f);
 		DL->SetLightColor(FLinearColor::FromSRGBColor(SunColorSRGB));
 		DL->SetAtmosphereSunLight(true);
 	}
@@ -412,6 +421,7 @@ UInstancedStaticMeshComponent* AShitfireWorldActor::MakeInstancedClass(
 		NewObject<UInstancedStaticMeshComponent>(this, Name);
 	ISM->SetStaticMesh(MeshAsset);
 	ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ISM->SetMobility(EComponentMobility::Static);
 	if (UMaterialInstanceDynamic* MID = MakePlaceholderMID(Color))
 	{
 		ISM->SetMaterial(0, MID);
@@ -586,6 +596,7 @@ void AShitfireWorldActor::SpawnVegetation()
 			NewObject<UHierarchicalInstancedStaticMeshComponent>(this, Name);
 		H->SetStaticMesh(Cone);
 		H->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		H->SetMobility(EComponentMobility::Static);
 		if (UMaterialInstanceDynamic* MID = MakePlaceholderMID(Color))
 		{
 			H->SetMaterial(0, MID);

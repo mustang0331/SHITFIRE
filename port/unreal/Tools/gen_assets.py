@@ -103,16 +103,16 @@ wp = MEL.create_material_expression(mat, unreal.MaterialExpressionWorldPosition,
 nrm = MEL.create_material_expression(mat, unreal.MaterialExpressionVertexNormalWS, -1300, 200)
 params = [
     ("RockColor",    vector_param(mat, "RockColor",  (0.23, 0.20, 0.18))),
-    ("ScrubColor",   vector_param(mat, "ScrubColor", (0.20, 0.28, 0.12))),
-    ("SandColor",    vector_param(mat, "SandColor",  (0.55, 0.47, 0.33))),
+    ("ScrubColor",   vector_param(mat, "ScrubColor", (0.11, 0.14, 0.06))),
+    ("SandColor",    vector_param(mat, "SandColor",  (0.42, 0.35, 0.22))),
     ("BeachColor",   vector_param(mat, "BeachColor", (0.62, 0.56, 0.44))),
-    ("SlopeRockStart",  scalar_param(mat, "SlopeRockStart", 0.18)),
+    ("SlopeRockStart",  scalar_param(mat, "SlopeRockStart", 0.13)),
     ("SlopeRockFeather", scalar_param(mat, "SlopeRockFeather", 0.10)),
-    ("ScrubStartM",  scalar_param(mat, "ScrubStartM", 8.0)),
-    ("ScrubFeatherM", scalar_param(mat, "ScrubFeatherM", 14.0)),
+    ("ScrubStartM",  scalar_param(mat, "ScrubStartM", 5.0)),
+    ("ScrubFeatherM", scalar_param(mat, "ScrubFeatherM", 28.0)),
     ("BeachTopM",    scalar_param(mat, "BeachTopM", 2.5)),
-    ("NoiseScaleM",  scalar_param(mat, "NoiseScaleM", 37.0)),
-    ("NoiseAmp",     scalar_param(mat, "NoiseAmp", 0.12)),
+    ("NoiseScaleM",  scalar_param(mat, "NoiseScaleM", 61.0)),
+    ("NoiseAmp",     scalar_param(mat, "NoiseAmp", 0.24)),
 ]
 cn = custom_node(mat, TERRAIN_HLSL, ["WP", "N"] + [n for n, _ in params],
                  unreal.CustomMaterialOutputType.CMOT_FLOAT3)

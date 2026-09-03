@@ -94,6 +94,9 @@ void AShitfireGameMode::Tick(float DeltaSeconds)
 	{
 		bShotTaken = true;
 		PC->SetControlRotation(FRotator(BasePitch, BaseYaw, 0.f));
+		// Both capture paths: HighResShot is known to write black frames
+		// under some TSR configs; plain Shot is the cross-check.
+		PC->ConsoleCommand(TEXT("Shot"));
 		PC->ConsoleCommand(TEXT("HighResShot 1920x1080 filename=ShitfireBench"));
 	}
 	if (bShotTaken && BenchT >= 39.0)

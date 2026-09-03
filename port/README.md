@@ -136,3 +136,23 @@ assets are script-regenerated (`port/unreal/Tools/*.py` via
 
 Git LFS (git-lfs 3.5.1 on the build machine) tracks `*.uasset`/`*.umap` via
 `port/unreal/.gitattributes`.
+
+### P3 performance snapshot (how to rerun)
+
+```powershell
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" `
+  C:\Users\conno\prj\SHITFIRE-port\port\unreal\Shitfire.uproject `
+  -game -windowed -ResX=1920 -ResY=1080 -ForceRes -novsync -ShitfireBench -log
+```
+
+Self-driving: 5 s warmup, 30 s CSV-profiled deterministic camera sweep from
+the OP tower across the island toward the target area, screenshot, quit.
+CSV lands in `port/unreal/Saved/Profiling/CSV/`, screenshot in
+`port/unreal/Saved/Screenshots/WindowsEditor/ShitfireBench.png`.
+Add `-ExecCmds="r.DynamicGlobalIlluminationMethod 0,r.ReflectionMethod 0"`
+for the Lumen-off comparison run.
+
+The 2026-09-02 P3 numbers were taken ON BATTERY (Windows caps the frame
+rate at ~30 and downclocks the GPU) - rerun PLUGGED IN before making the
+Lumen keep/drop call. Battery-throttled GPU cost at native 1080p:
+26.4 ms with Lumen GI, 20.4 ms without (delta ~6 ms); GameThread ~5 ms.
