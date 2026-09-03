@@ -2,6 +2,7 @@
 #include "ShitfireGame.h"
 #include "ShitfireObserverPawn.h"
 #include "ShitfireWorldActor.h"
+#include "observer/ObserverPawn.h"
 
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -13,7 +14,11 @@
 
 AShitfireGameMode::AShitfireGameMode()
 {
-	DefaultPawnClass = AShitfireObserverPawn::StaticClass();
+	// BUILDER-OBSERVER wiring (the one sanctioned cross-file edit): the real
+	// observer pawn replaces the P3 camera-on-a-stick placeholder. Everything
+	// else here - eye placement, target aim, the bench sweep - drives the
+	// controller, which the new pawn reads, so it all keeps working.
+	DefaultPawnClass = AObserverPawn::StaticClass();
 	PrimaryActorTick.bCanEverTick = true;
 }
 
