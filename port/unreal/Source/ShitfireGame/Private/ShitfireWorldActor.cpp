@@ -44,6 +44,12 @@ namespace
 	const TCHAR* CylinderPath = TEXT("/Engine/BasicShapes/Cylinder.Cylinder");
 	const TCHAR* PlanePath = TEXT("/Engine/BasicShapes/Plane.Plane");
 
+	// Real vegetation meshes (BUILDER-ASSETS P3, Tools/import_assets.py +
+	// asset_manifest.json - CC0, see port/CREDITS.md). SpawnVegetation falls
+	// back to the original engine-cone placeholders when these are absent.
+	const TCHAR* VegCanopyPath = TEXT("/Game/Vegetation/SM_PalmTreeA.SM_PalmTreeA");
+	const TCHAR* VegScatterPath = TEXT("/Game/Vegetation/SM_DesertBush.SM_DesertBush");
+
 	// sim yaw (radians around up, east->north positive; three.js rotation.y)
 	// -> UE yaw degrees (east->south positive): sign flip.
 	float SimRotToUEYaw(double RotY)
@@ -578,28 +584,45 @@ void AShitfireWorldActor::SpawnPlaceholders()
 
 void AShitfireWorldActor::SpawnVegetation()
 {
-	// HISM cone placeholders straight from the ported placement stream
+	// HISM vegetation straight from the ported placement stream
 	// (04-world.js:1051; type 0 canopy / 1 scatter, s in [0.55, 1.0],
-	// h = ground height at placement). Wind and real foliage come later.
+	// h = ground height at placement). Meshes: real vegetation from
+	// /Game/Vegetation when present (BUILDER-ASSETS, Tools/import_assets.py;
+	// materials with the HISM usage flag are baked into the mesh assets),
+	// else the original engine-cone placeholders. Wind comes later.
 	const shitfire::SimCore::Parts P = Sim->parts();
 
-	UStaticMesh* Cone = LoadObject<UStaticMesh>(nullptr, ConePath);
-	if (!Cone)
+	UStaticMesh* CanopyMesh = LoadObject<UStaticMesh>(nullptr, VegCanopyPath);
+	UStaticMesh* ScatterMesh = LoadObject<UStaticMesh>(nullptr, VegScatterPath);
+	const bool bRealVeg = (CanopyMesh != nullptr && ScatterMesh != nullptr);
+	if (!bRealVeg)
 	{
-		UE_LOG(LogShitfire, Error, TEXT("engine Cone mesh missing"));
-		return;
+		UStaticMesh* Cone = LoadObject<UStaticMesh>(nullptr, ConePath);
+		if (!Cone)
+		{
+			UE_LOG(LogShitfire, Error, TEXT("engine Cone mesh missing"));
+			return;
+		}
+		UE_LOG(LogShitfire, Warning,
+			TEXT("vegetation meshes missing - run Tools/import_assets.py; using cone placeholders"));
+		CanopyMesh = Cone;
+		ScatterMesh = Cone;
 	}
 
-	auto MakeHISM = [this, Cone](const TCHAR* Name, const FLinearColor& Color)
+	auto MakeHISM = [this, bRealVeg](const TCHAR* Name, UStaticMesh* Mesh,
+	                                 const FLinearColor& ConeTint)
 	{
 		UHierarchicalInstancedStaticMeshComponent* H =
 			NewObject<UHierarchicalInstancedStaticMeshComponent>(this, Name);
-		H->SetStaticMesh(Cone);
+		H->SetStaticMesh(Mesh);
 		H->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		H->SetMobility(EComponentMobility::Static);
-		if (UMaterialInstanceDynamic* MID = MakePlaceholderMID(Color))
+		if (!bRealVeg)   // real meshes keep their imported/generated materials
 		{
-			H->SetMaterial(0, MID);
+			if (UMaterialInstanceDynamic* MID = MakePlaceholderMID(ConeTint))
+			{
+				H->SetMaterial(0, MID);
+			}
 		}
 		H->RegisterComponent();
 		H->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
@@ -608,9 +631,15 @@ void AShitfireWorldActor::SpawnVegetation()
 	};
 
 	UHierarchicalInstancedStaticMeshComponent* Canopy =
-		MakeHISM(TEXT("PH_VegCanopy"), FLinearColor(0.10f, 0.22f, 0.08f));
+		MakeHISM(TEXT("PH_VegCanopy"), CanopyMesh, FLinearColor(0.10f, 0.22f, 0.08f));
 	UHierarchicalInstancedStaticMeshComponent* Scatter =
-		MakeHISM(TEXT("PH_VegScatter"), FLinearColor(0.25f, 0.30f, 0.12f));
+		MakeHISM(TEXT("PH_VegScatter"), ScatterMesh, FLinearColor(0.25f, 0.30f, 0.12f));
+
+	// Real meshes: fit by bounds - uniform scale to the placement height,
+	// base sat on the ground (glTF pivots are not the engine cone's centered
+	// unit pivot, so bake each mesh's box into the per-instance transform).
+	const FBox CanopyBox = CanopyMesh->GetBoundingBox();
+	const FBox ScatterBox = ScatterMesh->GetBoundingBox();
 
 	int32 NCanopy = 0, NScatter = 0;
 	for (const auto& V : P.world->veg)
@@ -618,16 +647,31 @@ void AShitfireWorldActor::SpawnVegetation()
 		const bool bCanopy = (V.type == 0);
 		const double TreeH = (bCanopy ? 6.0 : 2.2) * V.s;
 		const double TreeR = (bCanopy ? 3.0 : 1.6) * V.s;
-		// V.h is the cached ground height at (x, z); engine cone is 100 cm,
-		// pivot centered, so lift by half the height.
-		const FVector Loc = ShitfireCoords::SimToUE(V.x, V.h + TreeH * 0.5, V.z);
-		const FTransform T(FRotator(0, SimRotToUEYaw(V.rot), 0), Loc,
-		                   FVector(TreeR, TreeR, TreeH));
+		FTransform T;
+		if (bRealVeg)
+		{
+			// TreeR is the cone-era footprint; natural aspect looks better on
+			// real meshes, so only TreeH drives the (uniform) scale.
+			const FBox& B = bCanopy ? CanopyBox : ScatterBox;
+			const double S = TreeH * ShitfireCoords::MetersToUE /
+				FMath::Max(B.GetSize().Z, 1.0);
+			FVector Loc = ShitfireCoords::SimToUE(V.x, V.h, V.z);
+			Loc.Z -= B.Min.Z * S;
+			T = FTransform(FRotator(0, SimRotToUEYaw(V.rot), 0), Loc, FVector(S));
+		}
+		else
+		{
+			// V.h is the cached ground height at (x, z); engine cone is
+			// 100 cm, pivot centered, so lift by half the height.
+			const FVector Loc = ShitfireCoords::SimToUE(V.x, V.h + TreeH * 0.5, V.z);
+			T = FTransform(FRotator(0, SimRotToUEYaw(V.rot), 0), Loc,
+			               FVector(TreeR, TreeR, TreeH));
+		}
 		if (bCanopy) { Canopy->AddInstance(T, true); NCanopy++; }
 		else         { Scatter->AddInstance(T, true); NScatter++; }
 	}
-	UE_LOG(LogShitfire, Log, TEXT("vegetation: %d canopy + %d scatter cones"),
-		NCanopy, NScatter);
+	UE_LOG(LogShitfire, Log, TEXT("vegetation: %d canopy + %d scatter (%s)"),
+		NCanopy, NScatter, bRealVeg ? TEXT("real meshes") : TEXT("cones"));
 }
 
 void AShitfireWorldActor::RunGoldenRaySelfTest()
