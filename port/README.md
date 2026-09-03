@@ -83,3 +83,56 @@ Parity tests are labeled `level1` / `level2` / `level3` (ctest `-L`):
 
 Tolerances come from ENGINE_PORT/PARITY_TESTING.md and are never loosened to
 make a test pass — a miss outside tolerance gets reported, not absorbed.
+
+## unreal/ — the UE 5.8 project (P3+)
+
+`port/unreal/Shitfire.uproject`, two modules:
+
+- **ShitfireCoreLib** (`ModuleType.External`) — compiles nothing. Exposes
+  `port/core/include` and links the prebuilt `shitfire_core.lib` from
+  `port/build/core/RelWithDebInfo/`. **Rebuild the lib via CMake before UBT
+  whenever core changes** (`cmake --build port/build --config RelWithDebInfo`);
+  UBT does not run CMake and will happily link a stale lib. UE's `/fp:fast`
+  flags can never touch the lib's machine code, and core headers carry no
+  computational inline bodies — that is the whole `/fp:precise` parity
+  guarantee (UNREAL_RESEARCH.md §3a).
+- **ShitfireGame** (Runtime) — the shell: C++-only gameplay logic (hard rule:
+  no Blueprint logic; the only .uassets are script-generated data assets on
+  the allowlist below). World assembly is procedural from C++ on BeginPlay;
+  the map asset is near-empty.
+
+Build (PowerShell):
+
+```powershell
+$env:UE_SDKS_ROOT = 'C:\Users\conno\prj\SHITFIRE-port\port\unreal\AutoSDK-stub'
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" `
+  ShitfireEditor Win64 Development `
+  -project="C:\Users\conno\prj\SHITFIRE-port\port\unreal\Shitfire.uproject" -WaitMutex
+```
+
+**AutoSDK-stub**: this machine has no .NET Framework SDK, which makes UBT's
+rules pass throw while instantiating the editor's SwarmInterface (Lightmass)
+module — a module this fully-dynamic project never uses and which is
+precompiled in the Launcher engine anyway. `port/unreal/AutoSDK-stub` carries
+a stub `mscoree.h` at the path UBT's NetFxSDK AutoSDK probe checks
+(`HostWin64/Win64/Windows Kits/NETFXSDK/4.6.2/Include/um/mscoree.h`);
+pointing `UE_SDKS_ROOT` at the stub satisfies the probe without installing
+anything. AutoSDK roots are additive — the real Windows SDK/MSVC discovery
+still runs from the registry. If the .NET Framework SDK is ever installed
+properly, delete the stub and drop the env var.
+
+### Binary-asset tripwire (pre-commit discipline — every P3/P4 agent)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File port\check-uassets.ps1
+```
+
+Fails listing any `*.uasset`/`*.umap` under `port/unreal` not matching
+`port/unreal/uasset-allowlist.txt`. Run it before EVERY commit that touches
+`port/unreal`. A GUI-made asset that lands unlisted is permanently invisible
+to the agents — that is the silent failure this gate exists for. Allowed
+assets are script-regenerated (`port/unreal/Tools/*.py` via
+`UnrealEditor-Cmd -run=pythonscript`); the scripts are the source of truth.
+
+Git LFS (git-lfs 3.5.1 on the build machine) tracks `*.uasset`/`*.umap` via
+`port/unreal/.gitattributes`.

@@ -1,0 +1,29 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.8",
+	"Category": "Simulation",
+	"Description": "SHITFIRE call-for-fire trainer - Unreal Engine port. Sim logic lives in the engine-free shitfire_core static lib (port/core); this project is the renderer/bridge shell.",
+	"Modules": [
+		{
+			"Name": "ShitfireGame",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "RealtimeMeshComponent",
+			"Enabled": true
+		},
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		}
+	]
+}

@@ -1,0 +1,9 @@
+# UE build byproducts - never committed.
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+.vs/
+*.sln
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
