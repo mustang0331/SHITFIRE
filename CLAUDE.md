@@ -1,151 +1,60 @@
 # CLAUDE.md — SHITFIRE (Forward Observer / Call-for-Fire Trainer)
 
-A single-file browser trainer for the FORWARD OBSERVER (not the gun crew).
+Single-file browser trainer for the forward observer, not the gun crew. **Start every session
+by reading `ROADMAP.md`**: it is the only authority on what ships next; take the one row marked
+NEXT, or ask. `PLAYBOOK.md` is how work runs (one row per chat, the gate stack, feedback
+triage). **`INVARIANTS.md`** holds the full domain facts, campaign rules, stable interfaces,
+gate details, tooling terms and workflow. Read it before touching the parser, FDC traffic, the
+campaign, grading or tooling. `DOCTRINE.md` is the authority for CFF formats and prowords.
 
-**Start every session by reading [ROADMAP.md](ROADMAP.md).** It is the single authority on what ships next and what is done, it names the one active work order, and its §1 says which file answers which question. Do not infer status from SPEC.md, README.md, or this file — they drift; the board does not. **[PLAYBOOK.md](PLAYBOOK.md)** is the how: the proven multi-chat strategy for running Claude Code on this project (one row per chat, docs to background agents, the verification stack, feedback triage).
+## Golden rules
+- The shipped artifact is one self-contained `SHITFIRE.html` that runs with nothing installed
+  and zero network. No runtime dependency, no backend, no keys. Never point the import map at
+  a CDN; three.js r160 is vendored in `vendor/` and inlined by the build.
+- `SHITFIRE.html` is a **build artifact**. Edit `src/js/*.js` and `src/shell/`, then
+  `node tools/build.js`. Never hand-edit it; the pre-commit hook rejects a stale build.
+  Manifest order is load-bearing.
+- Ballistics = direct-impact model: `impact = aimpoint + error`. Nothing ever computes where a
+  round goes from velocity, angle or drag. Corrections are in the OT frame; no angle-T.
+- FDC is rule-based JS, no LLM. Voice is never load-bearing; typed input always works.
+- Fratricide or civilian casualties = automatic fail, and fail ≠ end: the mission still
+  closes with RREMS. Do not reintroduce the auto-AAR.
+- Stable interfaces: `H(x,z)` · `fireMission()` · `applyCorrection()` · `FDC.say()` ·
+  `Scenario` · `gradeMission()` · the TLOG entry format.
+- Surface-to-surface only. Never build CAS/9-line unasked.
+- Callsigns MUSTANG 12 / HELLHOUND FIRES. Humor never replaces the doctrinal readback.
 
-**SPEC.md** ("BUILD ORDER") is a historical design record — the build it ordered is complete. The campaign storyline (volumes, chapters, characters, humor rules) lives in **NARRATIVE.md**. **DOCTRINE.md** (distilled from JFIRE 2019 + the JFO Student Handout) is the authority for CFF formats, prowords, rounding, readback protocol, and strict-mode rules — check it before writing any parser or FDC traffic.
-
-## Golden rules (do not violate)
-- **The shipped artifact is one self-contained `SHITFIRE.html` that runs with nothing installed.** No runtime npm dependency, no backend, no API keys. **Opening it in Chrome must always Just Work on a machine with nothing but a browser** — that is the invariant, and it is the *only* thing "one file" was ever protecting.
-- **Source lives in `src/`; `SHITFIRE.html` is a BUILD ARTIFACT** (source split 2026-07-30, user-approved). Edit `src/js/*.js` and the shell in `src/shell/`, then `node tools/build.js` regenerates `SHITFIRE.html` by **deterministic concatenation** in `src/manifest.json` order — a paste, not a bundler; no minify, no transform, no dependency. **Never hand-edit `SHITFIRE.html`** — the next build overwrites it, and the pre-commit hook rejects a commit whose `SHITFIRE.html` is not the current build of `src/`. Module ORDER in the manifest is load-bearing (hoisting, top-level `const`/`let`, parser branch precedence). The build adds nothing to the artifact and needs nothing installed to *run* it — only to *rebuild* it.
-- Three.js r160 is **vendored in `vendor/` and INLINED into the artifact** by the build as `data:` URLs in the import map — the shipped file runs with **zero network** (field/classroom/USB use, verified by `tools/shots.js`, which blocks all http(s) and fails on any request). Chrome forbids ES-module imports over `file://`, so a CDN or a sibling vendor file could never satisfy the double-click invariant — inlining is the only shape that is one-file, offline, and double-clickable at once. Never point the import map back at a CDN. No other external deps.
-- Only optional external input: a grayscale terrain heightmap/DEM (see SPEC "TERRAIN").
-- Voice = browser **Web Speech API** (`SpeechRecognition` + `SpeechSynthesis`), client-side, keyless. **Typed input is a mandatory fallback.**
-- FDC is **rule-based JS** (no LLM).
-- Target 60 fps. Preallocate; no per-frame allocation in the render loop.
-
-## Keep these interfaces stable (later stages depend on them)
-`H(x,z)` · `fireMission(targetLocation)` · `applyCorrection(otFrameDelta)` · `FDC.say(msg)` · `Scenario` · `gradeMission(metrics) → stars` (stage 9+) · **TLOG** (session transcript — logs comms, parse classification, impacts, and AAR outcomes; exportable text/JSON from the mission menu, persisted) used for dialogue review/correction — treat its entry format as stable so exports stay diffable across stages
-
-## Domain facts — get these right
-- **Ballistics = direct-impact model.** The IMPACT POINT is always `impact = aimpoint + error` — never simulate a trajectory, drag, or firing tables to *place* a round. **Terminal EFFECTS at that point may be modeled statistically** — fuze (airburst/delay/quick), sheaf shape, target posture (standing/prone/dug-in) and per-asset lethal radius may scale casualties/probability of effect, per DOCTRINE.md's researched figures (§Pre-mission and effects data). That is `effect = f(where it landed, how it was fused, what it hit)`, not a flight model. The line that must never be crossed: nothing computes *where a round goes* from muzzle velocity, angle, or drag.
-- **First round** deviates randomly within a range; **follow-up rounds** are significantly tighter.
-- **Corrections are in the observer-target (OT) frame.** Convert to a world delta via OT azimuth and move `aimpoint`. **No angle-T / gun-line rotation** — gun assumed to execute perfectly.
-- Callsigns: observer **MUSTANG 12**, FDC **HELLHOUND FIRES**. FDC tone: dark-humored, sardonic, sharp on wrong calls — but never break the doctrinal readback.
-- Grid precision by asset: **artillery 6-digit/100 m; 60mm mortar 8-digit/10 m; SUNLAMP (Epilogue) accepts 10-digit/1 m** (a design simplification — doctrine ties fine grids to laser-grid missions; 6-digit is always acceptable).
-- CFF = **6 elements in 3 transmissions, each read back by the FDC**; corrections in order **deviation → range** ("left/right" nearest 10 m, "add/drop" in 100 m multiples); **danger close is per firing asset — within 600 m of friendlies for the 155 battery, 250 m for the 60mm section** (`dangerCloseRadius()`, F2; expect creeping fire, ≤100 m corrections); end of mission = **RREMS** with surveillance terms suppressed/neutralized/destroyed. Details: DOCTRINE.md.
-- Fratricide (hitting a friendly element) = automatic mission fail (and 0 stars). **Fail ≠ end** (user correction, 2026-07-29): the failure is permanent, but the mission does **not** auto-end — the target must still be suppressed/neutralized/destroyed and the mission closed with RREMS. Do not reintroduce the auto-AAR.
-- **Civilian casualties (collateral damage) = automatic mission fail**, identical to fratricide — including fail ≠ end. Civilian villages/figures render distinctly from military elements.
-- **Permanent structures and roads must appear on the printed map sheets and the `[M]` map** (symbols + legend) so terrain association is a practicable skill (resect off the airfield, the radio mast, the village). Enemy positions are never plotted.
-- **Convoy pit stops:** moving convoys make seeded **1–3 minute stops** at gas stations/ammo depots/airfields along their route — catching a column halted differs from leading it on the move.
-- **FDC deviation policy:** doctrinal scripts are guidelines, flexible not rigid. **Dangerous deviation** (danger close w/o proword, corrections walking toward friendlies/civilians, unresolved-unsafe FFE) → FDC **rant**. **Stupid-but-safe deviation** (wrong element order, malformed-but-unambiguous calls, absurd rounding) → **snide remark**, mission proceeds. Strict mode still enforces format for grading — the rant/snide split is tone, not an extra gate.
-- **Surface-to-surface fires only.** CAS/9-line is future "Volume V" — a locked menu tease at most; never build it unasked.
-
-## Campaign rules (invariants — the campaign is BUILT, Foreword through Epilogue)
-- Mission menu = **book series**: Volumes → Chapters, per NARRATIVE.md (Foreword tutorial → Volumes I–IV → Epilogue). Chapters are **fixed-seed** missions; `[N]` is **Skirmish** mode. Epilogue scenario types (`chow`, `kaiju`) are chapter-only — never in the skirmish rotation.
-- **Star grading, original-MW2 style:** 0–5★ per chapter from competency (rounds-to-effect, first-round miss, format, time vs. par), capped by difficulty (Easy 3 / Normal 4 / Hard 5), shown in the mission menu and AAR. Volumes unlock at cumulative star thresholds.
-- The Epilogue's directed-energy mission (SUNLAMP) **uses the direct-impact model** — only pacing, prowords, visuals, and audio differ. The beam is presentation standing on a point the ordinary machinery already resolved.
-- Humor: follow NARRATIVE.md's humor rules — sprinkle in story chapters, dial to 11 only in the Epilogue, and **never let a joke replace the doctrinal readback**. Content boundary (user direction, 2026-07-30): HELLHOUND's profanity never takes God's name in vain.
-
-## Conventions
-- Vanilla JS, ES modules, no framework.
-- All constants in a top-level `CONFIG` object, grouped by system.
-- Seeded PRNG for reproducible scenarios; dispersion draws from the same stream.
-
-## Testing
-- Open `SHITFIRE.html` directly in **Chrome** (voice + print are Chrome/Edge desktop). Or run
-  `tools/serve.cmd` for a localhost origin where mic permission persists across sessions.
-- Voice needs mic permission on a real tab (asked once per session on `file://`). Test print/save
-  via the browser print dialog.
-- If ever run as a claude.ai Artifact: use **in-memory state, not `localStorage`** (blocked there).
-- **The gate stack, in the order a code row runs it** (details + per-gate purpose in PLAYBOOK.md §3):
-  `node tools/build.js` (pre-commit enforces the byte-exact artifact) · `node tools/lint.js`
-  (0 correctness errors) · `tools/syntaxgate.ps1` + `cscript tools/parser-order.js` (parse + branch
-  precedence, automatic on commit) · `node tools/shots.js` (boots clean, fully offline, 12 screenshot
-  states — **look at the frames**) · `node tools/replay.js` (parser vs every recorded transcript, on
-  any parser-adjacent row) · plus a fresh scratchpad harness per row that fails before the fix.
-
-## Dev tooling (permitted — amended 2026-07-30 by user decision)
-Test, lint, and QA tooling **is allowed**. The golden rule was never about keeping the repo austere —
-it is about the *shipped artifact* needing no install. Three conditions, all non-negotiable:
-
-1. **Tooling lives in `tools/`** with its own `package.json`; `node_modules/` is gitignored. Nothing
-   the tooling needs may leak into the repo root or into `SHITFIRE.html`.
-2. **Tools only ever READ `SHITFIRE.html`.** No tool may rewrite, preprocess, generate, or reformat
-   the sim file. **This bans auto-formatters outright** — reflowing a 200 KB single file destroys
-   review and `git blame` for zero functional gain.
-3. **The invariant holds:** `SHITFIRE.html` opens in Chrome and runs with nothing installed. If a
-   change ever makes tooling *required* to run the sim, the change is wrong no matter how useful the
-   tool is.
-
-Tooling is never a gate on the sim's design. If a tool can't cope with the single-file structure, the
-tool loses, not the file.
+## Gate before commit
+`node tools/build.js` · `node tools/lint.js` · `tools/syntaxgate.ps1` +
+`cscript tools/parser-order.js` · `node tools/shots.js` (look at the frames) ·
+`node tools/replay.js` on any parser-adjacent row · a fresh scratchpad harness that fails
+before the fix. One ROADMAP row = one commit, message prefixed with the row ID. Docs land in
+a separate follow-up commit.
 
 ## Don't
-- **Don't have two writers on the same `src/` module at once, and never hand-edit `SHITFIRE.html`.** The source split means two agents *can* now safely work different modules in parallel — that is the point of it — but two on one module still collides, and editing the built artifact directly is lost on the next build. One writer per module; rebuild, don't hand-patch.
-- Don't build a whole stage at once when it has lettered rows — ship one ROADMAP row, commit, then the next.
-- Don't add a trajectory sim, angle-T math, a runtime bundler, a server, or a **runtime** npm dependency. (The dev-only concat build and test tooling are allowed — see *Dev tooling*. "No bundler" means the shipped artifact is never webpack/rollup output; `tools/build.js` is a deterministic paste.)
-- Don't let voice be load-bearing — the typed core must fully work on its own.
-- Don't break the stable interfaces above.
-- Don't mark anything done from memory. Grep the code or run it.
+- Two writers on one `src/` module. One writer per module; every agent gets a file allowlist.
+- Mark anything done from memory. Grep the code or run it, cite `file:line`.
+- Add a trajectory sim, angle-T, runtime bundler, server, or runtime npm dependency.
+- Auto-format or rewrite `SHITFIRE.html` with a tool. Tools only read it.
 
-## Reporting to the user — applies to every agent, main thread or subagent
-The user is a fire-support expert, not a career developer. The gap is vocabulary and
-state-tracking, not judgment. Five rules, and dispatched agents inherit all five:
-1. **Plain English.** Every technical term gets a half-sentence gloss the first time it
-   appears — "vendored (a copy of the library kept in the repo instead of downloaded)".
-   Build, tooling, and graphics vocabulary especially. No filler jargon.
-2. **Numbered in, numbered out.** A prompt with several asks gets a numbered checklist of
-   every ask up front, and the same numbers at the end marked done / not done / needs a
-   call. Never drop an item silently — say which one you skipped and why.
-3. **Questions come batched and numbered**, four maximum, each with your recommended
-   default so a single "gtg" resolves them all.
-4. **"continue" / "go" / "carry on" = run the whole loop** to completion — build, verify,
-   commit, next. Stop only for something unsafe or genuinely ambiguous.
-5. **Mark judgment calls `[YOUR CALL]`.** Taste, palette, difficulty feel, "does the
-   island look right" — flag them so they're scannable. Never claim a feature is built
-   from memory; grep and cite `file:line` (this is rule 6 of *Don't*, restated because it
-   is the single most common failure).
+## Never read (context hazards)
+`SHITFIRE.html` (200 KB build output) · `vendor/` · `tools/node_modules/` ·
+`docs/screenshots/` · `*.PDF` / `*.pdf` (hundreds of pages: extract with a script, grep, read
+only those pages) · `*.tif` · `scratch/` · `graphify-out/cache/`.
 
-Prebuilt subagents live in `.claude/agents/` (`docs`, `research`) with these rules and an
-enforced file allowlist already in their system prompts — prefer them over an ad-hoc
-`general-purpose` dispatch.
+## Orchestration
+Rules: `C:\Users\conno\ClaudeVault\permanent\orchestrator-rules.md`. Prebuilt agents in
+`.claude/agents/` (`docs`, `research`) carry allowlists and a pinned model; prefer them over
+ad-hoc dispatch. Sim code → default model; doc files → sonnet.
 
-## Workflow — one work order at a time
-The build-out phase is complete (2026-07-30); the project is in its **play → feedback → triage →
-small rows** era. New rows are born from `user_feedback.md` triage and TLOG transcript review, not
-from a spec. The rules below still govern every row that gets born.
-1. **Read ROADMAP.md.** Take the single row marked `NEXT`. If none is marked, ask — don't pick one.
-2. **One row = one commit**, message prefixed with the row ID: `stage 13c: sky + time of day`, `fix F1: range rounding gate`. Matches existing history (`stage 12e: OT direction and RREMS end of mission`).
-3. **Pass the row's gate before committing.** The gate is in the ROADMAP table; graphics rows also run [GRAPHICS.md](GRAPHICS.md) §Verification checklist. Code existing ≠ row done.
-4. **Docs land in a separate follow-up commit** — never bundled into the code commit, or the diff stops being reviewable. That follow-up is what flips the row to `DONE`.
-5. **Model split (updated 2026-07-30 — Fable has free rein, per user).** Sim (`src/`) code →
-   **Fable**, in the main thread or dispatched as a subagent; both are allowed. Doc/planning files
-   (README, SPEC, NARRATIVE, CLAUDE, QUICKSTART, DOCTRINE, TLO, CHEATSHEET, ROADMAP, GRAPHICS,
-   DIALOGUE_REVISIONS) → **Sonnet subagent** by default — that's cost-efficiency guidance, not a
-   prohibition. The one hard rule regardless of model: an agent gets an explicit file allowlist,
-   and one writer per `src/` module.
-6. If a row turns out to be two things, **split the row in ROADMAP.md first**, then build.
-- Review diffs before merging. If a row gets messy, `git restore .` and re-prompt narrower — a clean partial beats a broken whole.
-
-## Context Navigation (Graphify)
-Code-structure graph: `graphify-out/graph.json` — 921 nodes, 1178 edges, 54 communities.
-Built locally via AST (0 tokens). Community report in `graphify-out/GRAPH_REPORT.md`.
-`.graphifyignore` keeps `vendor/`, `*.min.js` and the built `SHITFIRE.html` out of the
-corpus — before it, minified three.js was 68% of the graph and every hub was noise.
-
-### 3-Layer Query Rule
-1. **First:** query `graphify-out/graph.json` for code structure and connections
-2. **Second:** query the Obsidian vault at `C:\Users\conno\ClaudeVault` for decisions, progress, context
-3. **Third:** only read raw code files when editing, or when layers 1–2 lack the answer
-
-### Rebuilding
-- After structural changes: `graphify update .` (or `/graphify . --update` inside Claude Code)
-- The graph is persistent — do NOT rebuild every session
-- Never manually edit `graphify-out/` contents
-- `graphify-out/cache/` is gitignored; keep `graph.json` and `GRAPH_REPORT.md` versioned
-
-### Vault
-Session memory lives in the vault. Open with `/resume`, close with `/save`.
-
-## Vault context
+## Context, in order
+1. `graphify-out/graph.json` for code structure (`graphify update .` after structural changes;
+   never every session; never hand-edit `graphify-out/`).
+2. The vault, `C:\Users\conno\ClaudeVault\shitfire\`, for decisions and history. The
+   architecture note `shitfire\architecture\shitfire-architecture.md` is read on `/resume`,
+   not imported here.
+3. Raw source only when editing, or when 1 and 2 lack the answer.
 
 @C:/Users/conno/ClaudeVault/shitfire/shitfire-index.md
-@C:/Users/conno/ClaudeVault/shitfire/architecture/shitfire-architecture.md
 
-If those imports did not resolve, read them directly. Decisions, session history and
-open loops for this project live in `C:\Users\conno\ClaudeVault\shitfire\`; cross-cutting
-logs in `C:\Users\conno\ClaudeVault\logs\`. Repo docs (ROADMAP/SPEC/DOCTRINE) stay the
-source of truth for *what ships*; the vault records *why* and *what happened*.
 Open with `/resume`, close with `/save`. Never commit the vault.
