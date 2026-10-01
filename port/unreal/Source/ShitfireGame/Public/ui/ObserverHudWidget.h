@@ -5,9 +5,12 @@
 // #milcard. The comms log, PTT banner, state line and mission clock belong
 // to BUILDER-BRIDGE/UI and are absent on purpose.
 //
-// The transient hint line stands in for the browser's log(...,'sys') calls
-// until the comms log exists - BUILDER-UI: route AObserverPawn::Hint into
-// the real log and delete it.
+// The transient hint line is GONE (BUILDER-UI, P4): AObserverPawn::Hint ->
+// ShowHint now routes into the comms log as a sys line, exactly the
+// browser's log(...,'sys') destination. This widget also MOUNTS the net
+// layer (UShitfireNetHudWidget: strip + comms + AAR) as its own viewport
+// widget at Z 1 - the sanctioned minimal edit, because this HUD is
+// HitTestInvisible top-to-bottom and the radio box must take input.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -20,6 +23,7 @@ class UInvalidationBox;
 class UMilCardWidget;
 class UOverlay;
 class UReticleWidget;
+class UShitfireNetHudWidget;
 class USizeBox;
 class UTextBlock;
 class UVerticalBox;
@@ -46,7 +50,12 @@ public:
 	void SetMilCardOn(bool bOn);              // #milcard.on (09-camera.js:190)
 	bool IsMilCardOn() const;
 
+	/** BUILDER-UI P4: now a comms-log sys line (the browser's log(...,'sys')).
+	    Seconds is unused - log lines persist in the transcript. */
 	void ShowHint(const FText& Text, double Seconds);
+
+	/** The net layer this HUD mounts (BUILDER-UI P4). */
+	UShitfireNetHudWidget* GetNetHud() const { return NetHud; }
 
 	/** drawReticle moments (09:141,157; 16:221 resize) - repaint the cached box. */
 	void InvalidateReticle();
@@ -69,8 +78,7 @@ private:
 	UPROPERTY() TObjectPtr<UTextBlock> LaseText;
 	UPROPERTY() TObjectPtr<USizeBox> MilCardBox;
 	UPROPERTY() TObjectPtr<UMilCardWidget> MilCard;
-	UPROPERTY() TObjectPtr<UTextBlock> HintText;
+	UPROPERTY() TObjectPtr<UShitfireNetHudWidget> NetHud;   // BUILDER-UI P4
 
 	FVector2D LastSize = FVector2D::ZeroVector;
-	double HintClearAt = -1.0;
 };

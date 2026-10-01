@@ -1,6 +1,8 @@
 #include "ui/ObserverHudWidget.h"
 #include "ui/MilCardWidget.h"
+#include "ui/NetHudWidget.h"
 #include "ui/ReticleWidget.h"
+#include "bridge/ShitfireSimHost.h"
 #include "observer/ObserverPawn.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -25,7 +27,6 @@ namespace
 	const FLinearColor HudGreen = FLinearColor::FromSRGBColor(FColor(0xcf, 0xe0, 0xbd)); // body text family
 	const FLinearColor BinoInfoCol = FLinearColor::FromSRGBColor(FColor(0xe6, 0xee, 0xcd)); // #binoinfo (:176)
 	const FLinearColor LaseCol = FLinearColor::FromSRGBColor(FColor(0xff, 0xe9, 0xa8));  // #lase (:177)
-	const FLinearColor HintCol = FLinearColor::FromSRGBColor(FColor(0x9f, 0xb0, 0x8c));  // .ref green
 
 	FSlateFontInfo MonoFont(int32 Size)
 	{
@@ -152,27 +153,33 @@ void UObserverHudWidget::NativeOnInitialized()
 		MilCardBox->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
-	// ---- transient sys-hint line, bottom left ------------------------------
-	{
-		USizeBox* HintBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("HintBox"));
-		HintBox->SetWidthOverride(560.0f);
-		HintText = MakeText(TEXT("Hint"), 9, HintCol);
-		HintText->SetAutoWrapText(true);
-		HintBox->AddChild(HintText);
-		if (UCanvasPanelSlot* S = Canvas->AddChildToCanvas(HintBox))
-		{
-			S->SetAnchors(FAnchors(0.0f, 1.0f));
-			S->SetAlignment(FVector2D(0.0, 1.0));
-			S->SetPosition(FVector2D(12.0, -12.0));
-			S->SetAutoSize(true);
-		}
-	}
+	// The transient sys-hint line is gone (BUILDER-UI P4): ShowHint routes
+	// into the comms log the net layer owns - see SetObserver's mount.
 }
 
 void UObserverHudWidget::SetObserver(AObserverPawn* InObserver)
 {
 	Observer = InObserver;
 	if (Reticle) { Reticle->SetObserver(InObserver); }
+
+	// ---- BUILDER-UI P4: mount the net layer (strip + comms + AAR) ----------
+	// A separate viewport widget at Z 1, NOT a child: this HUD is
+	// HitTestInvisible (pointer-events: none) top-to-bottom, and the radio
+	// text box must take clicks and keys. Sanctioned minimal edit.
+	if (!NetHud && GetOwningPlayer())
+	{
+		NetHud = CreateWidget<UShitfireNetHudWidget>(GetOwningPlayer(),
+			UShitfireNetHudWidget::StaticClass());
+		if (NetHud)
+		{
+			NetHud->BindObserver(InObserver);   // [ENTER] seam (ObserverPawn.h:79-82)
+			if (UGameInstance* GI = GetGameInstance())
+			{
+				NetHud->BindHost(GI->GetSubsystem<UShitfireSimHost>());
+			}
+			NetHud->AddToViewport(1);
+		}
+	}
 }
 
 void UObserverHudWidget::SetBinoMode(bool bBinos)
@@ -221,12 +228,14 @@ bool UObserverHudWidget::IsMilCardOn() const
 	return MilCardBox && MilCardBox->GetVisibility() != ESlateVisibility::Collapsed;
 }
 
-void UObserverHudWidget::ShowHint(const FText& Text, double Seconds)
+void UObserverHudWidget::ShowHint(const FText& Text, double /*Seconds*/)
 {
-	if (HintText)
+	// BUILDER-UI P4: the browser's log(...,'sys') destination is the comms
+	// log now (the AObserverPawn::Hint seam, ObserverPawn.cpp:569-577).
+	// Display-only - never the core TLOG, which is the parity record.
+	if (NetHud)
 	{
-		HintText->SetText(Text);
-		HintClearAt = GetWorld() ? GetWorld()->GetTimeSeconds() + Seconds : -1.0;
+		NetHud->AppendLocalSys(Text.ToString());
 	}
 }
 
@@ -247,11 +256,5 @@ void UObserverHudWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTi
 	{
 		LastSize = Size;
 		InvalidateReticle();
-	}
-
-	if (HintClearAt >= 0.0 && GetWorld() && GetWorld()->GetTimeSeconds() >= HintClearAt)
-	{
-		HintClearAt = -1.0;
-		if (HintText) { HintText->SetText(FText::GetEmpty()); }
 	}
 }
