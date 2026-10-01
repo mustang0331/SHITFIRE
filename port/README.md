@@ -226,6 +226,14 @@ rate at ~30 and downclocks the GPU) - rerun PLUGGED IN before making the
 Lumen keep/drop call. Battery-throttled GPU cost at native 1080p:
 26.4 ms with Lumen GI, 20.4 ms without (delta ~6 ms); GameThread ~5 ms.
 
+**2026-10-01, plugged in, P4 build (skeletal units + vehicles + tower +
+battery, Lumen on), 30 s sweep, 2,221 frames:** frame 13.7 ms avg / 13.0 p50
+/ 14.4 p95 (~73 fps); GPU 12.1 ms avg; RenderThread 13.0 ms; GameThread 5.5
+ms; RHI thread 2.9 ms. The 16.6 ms budget holds on the sweep. Not yet
+measured: an FFE with six bursts live (the P4 gate's wording) - run a
+mission with `-ShitfireBench`-style CSV capture when the by-hand mission
+happens.
+
 ### Art asset pipeline (BUILDER-ASSETS, P3)
 
 Every downloaded art asset is pinned in `port/unreal/Tools/asset_manifest.json`
