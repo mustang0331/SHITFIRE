@@ -3,6 +3,7 @@
 #include "ShitfireFixtures.h"
 #include "bridge/ShitfireCoords.h"
 #include "bridge/ShitfireSimHost.h"
+#include "units/ShitfireUnitsActor.h"
 
 #include "RealtimeMeshProcedural.h"
 #include "Components/DirectionalLightComponent.h"
@@ -498,72 +499,15 @@ void AShitfireWorldActor::SpawnPlaceholders()
 		BoxAt(Rocks, R.x, R.z, R.r, R.r, FMath::Max(R.h, 0.5));
 	}
 
-	// -- OP tower + battery ------------------------------------------------
-	UInstancedStaticMeshComponent* Tower =
-		MakeInstancedClass(TEXT("PH_Tower"), CubePath, FLinearColor(0.55f, 0.55f, 0.60f));
-	BoxAt(Tower, P.op->x, P.op->z, 3.0, 3.0,
-		shitfire::scenario::CameraConstants{}.towerHeight);   // the 300 m OP watchtower
-
-	UInstancedStaticMeshComponent* Guns =
-		MakeInstancedClass(TEXT("PH_Guns"), CubePath, FLinearColor(0.10f, 0.16f, 0.09f));
-	{
-		static const double GunOff[4][2] = { {-12, -12}, {12, -12}, {-12, 12}, {12, 12} };
-		for (const double* Off : GunOff)
-		{
-			BoxAt(Guns, P.battery->x + Off[0], P.battery->z + Off[1], 2.2, 5.0, 2.0);
-		}
-	}
-
-	// -- scenario units (placeUnits layout) --------------------------------
-	UInstancedStaticMeshComponent* Troops =
-		MakeInstancedClass(TEXT("PH_Troops"), CubePath, FLinearColor(0.60f, 0.10f, 0.10f));
-	for (const auto& T : P.units->troops)
-	{
-		if (T.visible)
-		{
-			BoxAt(Troops, T.x, T.z, 0.6, 0.6, 1.8, SimRotToUEYaw(T.rotY));
-		}
-	}
-
-	UInstancedStaticMeshComponent* Vehicles =
-		MakeInstancedClass(TEXT("PH_Vehicles"), CubePath, FLinearColor(0.35f, 0.08f, 0.08f));
-	for (const auto& V : P.units->vehicles)
-	{
-		if (V.visible)
-		{
-			BoxAt(Vehicles, V.x, V.z, 2.4 * V.sx, 5.4 * V.sz, 2.2 * V.sy,
-				SimRotToUEYaw(V.rotY));
-		}
-	}
-
-	UInstancedStaticMeshComponent* Squad =
-		MakeInstancedClass(TEXT("PH_Squad"), CubePath, FLinearColor(0.15f, 0.25f, 0.50f));
-	for (int32 i = 0; i < 6; i++)
-	{
-		if (P.units->fSquadVisible[i])
-		{
-			BoxAt(Squad, P.units->fSquadX[i], P.units->fSquadZ[i], 0.6, 0.6, 1.8);
-		}
-	}
-	if (P.units->flagVisible)
-	{
-		BoxAt(Squad, P.units->flagX, P.units->flagZ, 0.15, 0.15, 6.0);
-	}
-	if (P.units->bunkerVisible)
-	{
-		BoxAt(Facilities, P.units->bunkerX, P.units->bunkerZ,
-			5.0 * P.units->bunkerSx, 5.0 * P.units->bunkerSz, 2.5 * P.units->bunkerSy);
-	}
-
-	UInstancedStaticMeshComponent* Civs =
-		MakeInstancedClass(TEXT("PH_Civs"), CubePath, FLinearColor(0.85f, 0.85f, 0.80f));
-	for (const auto& C : P.world->civs)
-	{
-		if (!C.hidden)
-		{
-			BoxAt(Civs, C.x, C.z, 0.5, 0.5, 1.7);
-		}
-	}
+	// -- units handoff (BUILDER-CHARACTERS, P4) ----------------------------
+	// The P3 unit-placeholder boxes (OP tower, battery guns, troops,
+	// vehicles, squad, flag, scenario bunker, civilians) moved to
+	// AShitfireUnitsActor: skeletal soldiers with pose states, real vehicle
+	// meshes on the core convoy positions, the modeled watchtower and Cannon
+	// battery, per-tick updates and presentation-cue reactions - none of
+	// which fits a static one-shot ISM install. World FEATURES (village
+	// huts, facilities, rocks, mast, vegetation) stay right here.
+	GetWorld()->SpawnActor<AShitfireUnitsActor>();
 
 	int32 Total = 0;
 	for (const auto& ISM : InstancedClasses) { Total += ISM->GetInstanceCount(); }
