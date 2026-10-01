@@ -1,5 +1,6 @@
 #include "ShitfireFixtures.h"
 #include "ShitfireGame.h"
+#include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Serialization/JsonReader.h"
@@ -10,6 +11,13 @@ namespace ShitfireFixtures
 
 FString FixturesDir()
 {
+	// -ParityFixtures=<abs path> overrides (the Shipping gate exe may not sit
+	// where ProjectDir resolves to the repo - see ShitfireParityGate.h).
+	FString Override;
+	if (FParse::Value(FCommandLine::Get(), TEXT("ParityFixtures="), Override) && !Override.IsEmpty())
+	{
+		return FPaths::ConvertRelativePathToFull(Override);
+	}
 	// ProjectDir = <repo>/port/unreal/ -> fixtures = <repo>/ENGINE_PORT/fixtures
 	return FPaths::ConvertRelativePathToFull(
 		FPaths::Combine(FPaths::ProjectDir(), TEXT("../../ENGINE_PORT/fixtures")));
