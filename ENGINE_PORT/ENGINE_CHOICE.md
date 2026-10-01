@@ -58,6 +58,8 @@ These follow the product regardless of which engine is picked, and each needs an
 
 **Engine: Unreal Engine 5.8**, chosen by the author knowingly against this document's recommendation, for the P0–P4 playable-slice port (stages in [PORT_PLAN.md](PORT_PLAN.md); the Unreal-specific map is [UNREAL_RESEARCH.md](UNREAL_RESEARCH.md)). Two of the rejection reasons were re-tested in 2026 and corrected in the table above (headless testing, licensing). The remaining reasons **stand** — above all the C++ ramp cost for a solo dev and the 2D/vector-document weakness — and must be re-examined before any P5 (cartography/print) or P7 (speech) work; the slice deliberately avoids those areas. This section exists so the override is on the record once, on stated terms, and is not re-litigated mid-port — the same discipline the original decision claimed for itself.
 
+**Amended 2026-09-02:** the author has ruled the visual bar up to a full milsim look (realistic environment, skeletal characters, day-first). That is precisely this document's own stated case where Unreal becomes the right tool ("high-fidelity visual simulation") — the override and the original analysis now agree. Target hardware: RTX 3060 Laptop at 60 fps/1080p; night + optics follow the slice as P4.5.
+
 ## What is explicitly out of scope for the port
 
 Porting is not the moment to add features. Close air support (Volume V), smoke and illumination missions, and multiplayer stay out until the port reaches parity. The one exception worth naming: the port should not *preclude* XR, so avoid baking mouse-look assumptions into the observer camera.
