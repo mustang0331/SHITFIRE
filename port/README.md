@@ -84,6 +84,69 @@ Parity tests are labeled `level1` / `level2` / `level3` (ctest `-L`):
 Tolerances come from ENGINE_PORT/PARITY_TESTING.md and are never loosened to
 make a test pass — a miss outside tolerance gets reported, not absorbed.
 
+### In-engine gates (P3/P4) — Tier 1
+
+The UE automation suite (Development editor, headless):
+
+```powershell
+$env:UE_SDKS_ROOT = 'C:\Users\conno\prj\SHITFIRE-port\port\unreal\AutoSDK-stub'
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+  C:\Users\conno\prj\SHITFIRE-port\port\unreal\Shitfire.uproject `
+  -ExecCmds="Automation RunTests SHITFIRE" -unattended -nopause -nosplash -nosound `
+  -testexit="Automation Test Queue Empty" -ReportExportPath=<dir>
+```
+
+(`-nullrhi` is fine for `SHITFIRE.Parity` and `SHITFIRE.Observer`; the
+`SHITFIRE.UI` tests render widgets and take screenshots, so run those with
+the GPU.) `<dir>/index.json` is the record. Tests, all green 2026-10-01:
+
+| Test | Proves |
+|---|---|
+| `SHITFIRE.Parity.Smoke` | PRNG u32-exact + one H row through the linked lib inside the engine process |
+| `SHITFIRE.Parity.SimHostReplay` | five oracle transcripts (05 bunker-bracket, 13 convoy, 14 danger-close, 20 60mm, 32 fratricide) through `UShitfireSimHost` at 1000x: impacts 0.000 m, AAR exact, delegate surface == TLOG |
+| `SHITFIRE.Observer.LaseGate` | all 500 raylos fixture rays through the production lase path |
+| `SHITFIRE.UI.TypedMission` | mission_05 typed key-by-key into the live text box: same parity, every TLOG net row rendered, AAR overlay up |
+| `SHITFIRE.UI.CommsLogBudget` | 2,050 lines, max 50-line append batch < 2 ms, virtualized |
+
+### The Shipping parity gate — `-ShitfireParityGate`
+
+The automation framework does not exist in Shipping builds, and Shipping is
+exactly where the `/fp:fast` risk lives (UNREAL_RESEARCH.md §3a). So the
+same replay machinery (`Source/ShitfireGame/Private/parity/`) also runs as a
+command-line mode of the game itself, at game-module startup, before any
+engine init or content: smoke + the five transcripts, a JSON report, and an
+exit code (0 pass · 1 fixtures unreachable · 2 smoke failed · 3 a transcript
+failed). It works in every config:
+
+```powershell
+# Development, from the editor binary (seconds):
+& "...\UnrealEditor-Cmd.exe" <proj>.uproject -game -ShitfireParityGate -unattended -nullrhi -nosound
+# report: port/unreal/Saved/ParityGate/parity-gate-Development.{json,txt}
+```
+
+A **Shipping** build needs cooked content even to boot (the uncooked project
+crashes in package loading during engine pre-init, before the game module
+starts — verified 2026-10-01), so the Shipping gate runs from a staged build:
+
+```powershell
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" Shitfire Win64 Shipping -project=<proj>.uproject
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project=<proj>.uproject `
+  -platform=Win64 -clientconfig=Shipping -cook -stage -pak -skipbuild -unattended -nop4
+& port\unreal\Saved\StagedBuilds\Windows\Shitfire\Binaries\Win64\Shitfire-Win64-Shipping.exe `
+  -ShitfireParityGate -ParityFixtures=C:\Users\conno\prj\SHITFIRE-port\ENGINE_PORT\fixtures -unattended -nullrhi -nosound
+# exit code is the verdict; report under the staged build's Saved/ParityGate/ (or %LOCALAPPDATA%\Shitfire\Saved\ParityGate\)
+```
+
+`-ParityFixtures=<dir>` points a relocated exe at the repo fixtures. The
+`*.started` breadcrumb is written before anything else so a boot crash is
+distinguishable from a gate failure.
+
+**Result 2026-10-01 (Shipping, staged build, 160 MB exe):** exit 0 — smoke
+PRNG 0 mismatches, H row max |err| 7.3e-14 m; transcripts 5/5 exact, worst
+|dTgt diff| 0.000 m, worst skew 0.100 s, every one on attempt 1; 0.48 s for
+the whole gate. Same numbers as Development and as Tier-0 — the prebuilt
+`/fp:precise` lib is byte-for-byte the same math under a Shipping link.
+
 ## unreal/ — the UE 5.8 project (P3+)
 
 `port/unreal/Shitfire.uproject`, two modules:
@@ -99,7 +162,13 @@ make a test pass — a miss outside tolerance gets reported, not absorbed.
 - **ShitfireGame** (Runtime) — the shell: C++-only gameplay logic (hard rule:
   no Blueprint logic; the only .uassets are script-generated data assets on
   the allowlist below). World assembly is procedural from C++ on BeginPlay;
-  the map asset is near-empty.
+  the map asset is near-empty. Layout of the shell as of P4 (2026-10-01):
+  `bridge/` (UShitfireSimHost — the one SimCore owner, coords shim, FX
+  actors) · `observer/` (pawn, optics, laser) · `ui/` (reticle, mil card,
+  observer HUD, net HUD = status strip + comms log/typed input + AAR panel)
+  · `units/` (skeletal soldiers, vehicles, watchtower, battery) · `audio/`
+  (radio-net audio subsystem) · `parity/` (transcript replay + the Shipping
+  gate) · `Tests/` (automation).
 
 Build (PowerShell):
 

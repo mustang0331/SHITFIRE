@@ -322,11 +322,17 @@ parity-testing strategy, and a staged plan P0–P8.
 **User's framing, 2026-07-30: this is over the horizon.** Nothing in this section competes with the
 domain sections above, and no row here should be picked up before them.
 
+**Superseded 2026-08-27 → the port is live.** The author overrode the Godot choice for **Unreal
+Engine 5.8** and the slice P0–P4 was built on branch `unreal-port` (worktree `prj\SHITFIRE-port`,
+code under `port/`). The three rows below carry the stage ledger; the per-stage record with
+commands and numbers is `port/README.md`, the P2 verdict is `port/ADVERSARY_SIGNOFF.md`, and the
+plan with exit criteria is `ENGINE_PORT/PORT_PLAN.md`. "Over the horizon" no longer applies.
+
 | ID | What | Owner | Status |
 |---|---|---|---|
-| PORT0 | **P0 freeze the oracle** — record the transcript library + export fixtures while the browser build is the only implementation. Cheap, and the plan's biggest risk if skipped. | — | READY (over the horizon) |
-| PORT1 | P1–P2 headless sim core (`SHITFIRE.Core` + parity tests) | — | PARKED |
-| PORT2 | P3–P8 engine shell through parity sign-off | — | PARKED |
+| PORT0 | **P0 freeze the oracle** — fixtures (Level 1/2) + 33 scripted transcripts (Level 3) captured by `tools/oracle-capture.js`, determinism audit, tag `oracle-v1` (= `6642f92`). | — | DONE 2026-08-31 (`e895666`…`7cb0d0c`, on master) |
+| PORT1 | P1–P2 headless sim core — `port/core/` C++20 `/fp:precise` static lib + `port/core-tests/` (Catch2): Level 1/2/3 all green, **33/33 transcripts exact**, adversarial sign-off granted. | — | DONE 2026-09-02 (`087956b`; sign-off `port/ADVERSARY_SIGNOFF.md`) |
+| PORT2 | P3–P4 engine shell: UE 5.8 project `port/unreal/`, external-lib link, world/terrain/lighting/FX (P3), observer + optics + laser (P3), SimHost bridge, radio audio, net HUD (comms log · typed input · status strip · AAR), skeletal units (P4). In-engine gates: `SHITFIRE.*` automation 5/5 and the `-ShitfireParityGate` runner — **Shipping-config staged build: 5/5 transcripts exact, exit 0, 2026-10-01** (see `port/README.md`). | — | P3 DONE 2026-09-04 · P4 code + automated gates DONE 2026-10-01 (`4c73713`, `014b62d`, gate row) · **P4 exit needs the author** — by-hand mission + visual review `[YOUR CALL]`; P4.5 night/optics and P5–P8 unscheduled |
 
 **The browser build is not retired by the port.** It stays as the parity oracle and the zero-install
 distribution channel. Every row landed on this board makes the oracle *better*, not obsolete.

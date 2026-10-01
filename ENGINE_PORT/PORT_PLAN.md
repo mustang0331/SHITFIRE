@@ -5,6 +5,8 @@ Same discipline as the browser build's BUILD ORDER: **ship stage N working and c
 Each stage lists its work, its **exit criteria** (objective, checkable — not "feels done"), and what it deliberately leaves undone.
 
 > **2026-08-28:** the port is underway as a **P0–P4 slice targeting Unreal Engine 5.8** on branch `unreal-port` (author's override — see [ENGINE_CHOICE.md](ENGINE_CHOICE.md) *Decision override*). P5–P8 are unscheduled. P5's "print/PDF has no free answer" is since answered in [UNREAL_RESEARCH.md](UNREAL_RESEARCH.md) §5: render the sheet to a high-res render target → PNG now, wrap in a PDF via libharu later.
+>
+> **2026-10-01 status:** P0 done (fixtures + 33 transcripts at tag `oracle-v1`). P1–P2 done — the C++ core replays all 33 transcripts exactly, adversarial sign-off in `port/ADVERSARY_SIGNOFF.md`. P3 done (world, observer, optics, FX, lighting; the author's visual review is still open). P4: typed loop closed end to end in the engine — net HUD, units, audio — with the in-engine gates green in Development and the Shipping-config gate runnable as `-ShitfireParityGate` (see `port/README.md`). The P4 exit still owes the author's by-hand mission and visual review. The live row board is `ROADMAP.md` §3.8.
 
 ---
 

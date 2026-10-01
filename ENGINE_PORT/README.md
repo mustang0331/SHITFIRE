@@ -8,7 +8,7 @@ About **half of SHITFIRE is engine-agnostic domain logic** — ballistics, the o
 
 The move that makes this safe is that the sim is **fully deterministic** — a seed plus a command sequence yields exactly one outcome — so the existing browser build becomes a **golden-master oracle** the port can be tested against automatically, to the metre. Correctness is therefore proven headless (stages P1–P2) *before* anything is rendered, because debugging ballistics through a rendering layer is far harder than debugging it in a test runner.
 
-Recommended engine: **Godot 4 with C#**, because this product's real burdens are dense 2D instrument UI and porting a body of pure logic that must stay testable — precisely where Godot is strongest and Unreal is weakest.
+Recommended engine: **Godot 4 with C#**, because this product's real burdens are dense 2D instrument UI and porting a body of pure logic that must stay testable — precisely where Godot is strongest and Unreal is weakest. **Overridden 2026-08-27: the build targets Unreal Engine 5.8** (see ENGINE_CHOICE.md *Decision override*); the port lives in `../port/` on branch `unreal-port`, and `../port/README.md` is the build-and-gate record.
 
 ## Read in this order
 
