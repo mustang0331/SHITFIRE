@@ -98,15 +98,16 @@ $env:UE_SDKS_ROOT = 'C:\Users\conno\prj\SHITFIRE-port\port\unreal\AutoSDK-stub'
 
 (`-nullrhi` is fine for `SHITFIRE.Parity` and `SHITFIRE.Observer`; the
 `SHITFIRE.UI` tests render widgets and take screenshots, so run those with
-the GPU.) `<dir>/index.json` is the record. Tests, all green 2026-10-01:
+the GPU.) `<dir>/index.json` is the record. Tests, all green 2026-10-06:
 
 | Test | Proves |
 |---|---|
 | `SHITFIRE.Parity.Smoke` | PRNG u32-exact + one H row through the linked lib inside the engine process |
 | `SHITFIRE.Parity.SimHostReplay` | five oracle transcripts (05 bunker-bracket, 13 convoy, 14 danger-close, 20 60mm, 32 fratricide) through `UShitfireSimHost` at 1000x: impacts 0.000 m, AAR exact, delegate surface == TLOG |
 | `SHITFIRE.Observer.LaseGate` | all 500 raylos fixture rays through the production lase path |
-| `SHITFIRE.UI.TypedMission` | mission_05 typed key-by-key into the live text box: same parity, every TLOG net row rendered, AAR overlay up |
+| `SHITFIRE.UI.TypedMission` | mission_05 typed key-by-key into the live text box (comparator shared with `Private/parity/`): same parity, every TLOG net row rendered, AAR overlay up |
 | `SHITFIRE.UI.CommsLogBudget` | 2,050 lines, max 50-line append batch < 2 ms, virtualized |
+| `SHITFIRE.Units.HumanoidImportGate` | the imported soldier skeletal asset has vertices and bones in agreement (bounds within 3× the 200 cm rig, root-bone scale ≤ 1.5); `FShitfireUnitAssets::Load()` honours the verdict and degrades to the box tier with an Error log otherwise. Added 2026-10-06 after the bench frame's "hovering vehicle" and "beach wreck pile" turned out to be the soldier asset imported 136× too large and lying on its side |
 
 ### The Shipping parity gate — `-ShitfireParityGate`
 
