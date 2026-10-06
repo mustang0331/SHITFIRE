@@ -2,11 +2,13 @@
 #include "ShitfireGame.h"
 #include "ShitfireWorldActor.h"
 #include "bridge/ShitfireCoords.h"
+#include "bridge/ShitfireSimHost.h"
 #include "ui/ObserverHudWidget.h"
 
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "EngineUtils.h"
+#include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
@@ -192,6 +194,32 @@ const shitfire::HeightField* AObserverPawn::Heightfield()
 	return nullptr;
 }
 
+double AObserverPawn::LaseClockNow()
+{
+	// Both scheduled halves of doLase ride schedule(sim.now + ...)
+	// (09-camera.js:208 +0.55, :221 +CONFIG.UI.laseHold; schedule() is the
+	// sim-clock event queue, 06-clock-comms.js:4-12), NOT wall time: at
+	// TimeScale 1000 the hold is 6 SIM seconds, and a paused sim keeps the
+	// readout up. GetSimNow() reads 0 with no mission live - the lase cannot
+	// resolve then anyway (Heightfield() needs the live SimCore). Same lazy
+	// lookup as the HUD's net layer (ObserverHudWidget.cpp:176-178).
+	if (!SimHost)
+	{
+		if (UWorld* W = GetWorld())
+		{
+			if (UGameInstance* GI = W->GetGameInstance())
+			{
+				SimHost = GI->GetSubsystem<UShitfireSimHost>();
+			}
+		}
+	}
+	if (SimHost)
+	{
+		return SimHost->GetSimNow();
+	}
+	return GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+}
+
 FObserverLaseHit AObserverPawn::ComputeLase(const shitfire::HeightField& Hf, double MaxDistM) const
 {
 	// The browser's raycast half of doLase (09-camera.js:210-218):
@@ -226,7 +254,7 @@ FObserverLaseHit AObserverPawn::ComputeLase(const shitfire::HeightField& Hf, dou
 void AObserverPawn::DoLase()
 {
 	// doLase (09-camera.js:192-223)
-	const double Now = GetWorld()->GetTimeSeconds();
+	const double Now = GetWorld()->GetTimeSeconds();   // world clock - the sway squeeze only
 
 	if (!bBinos)
 	{
@@ -251,7 +279,7 @@ void AObserverPawn::DoLase()
 	// point documented here.
 	if (Hud) { Hud->SetLaseText(FText::FromString(TEXT("LASING…"))); }      // :207
 	PendingLaseToken = LaseToken;                                           // :208 schedule(+0.55)
-	LaseFireAt = Now + Cfg::LaseDelaySec;
+	LaseFireAt = LaseClockNow() + Cfg::LaseDelaySec;   // SIM clock: schedule(sim.now + 0.55)
 }
 
 void AObserverPawn::ResolveLase()
@@ -283,9 +311,9 @@ void AObserverPawn::ResolveLase()
 	}
 	if (Hud) { Hud->SetLaseText(FText::FromString(Text)); }
 
-	// clear after CONFIG.UI.laseHold seconds, token-guarded (:221)
+	// clear after CONFIG.UI.laseHold SIM seconds, token-guarded (:221)
 	ClearLaseToken = LaseToken;
-	LaseClearAt = GetWorld()->GetTimeSeconds() + Cfg::LaseHoldSec;
+	LaseClearAt = LaseClockNow() + Cfg::LaseHoldSec;
 }
 
 // -------------------------------------------------------------- mil card ----
@@ -527,13 +555,15 @@ void AObserverPawn::Tick(float DeltaSeconds)
 		FMath::RadiansToDegrees(Pitch + SwayPitch),
 		FMath::RadiansToDegrees(Yaw + SwayYaw) - 90.0, 0.0));
 
-	// ---- scheduled lase halves (09-camera.js:208,221) ---------------------
-	if (LaseFireAt >= 0.0 && Now >= LaseFireAt)
+	// ---- scheduled lase halves (09-camera.js:208,221) - SIM clock ---------
+	// LaseClockNow(), not the world Now above (that one is the sway only).
+	const double LaseNow = LaseClockNow();
+	if (LaseFireAt >= 0.0 && LaseNow >= LaseFireAt)
 	{
 		LaseFireAt = -1.0;
 		if (PendingLaseToken == LaseToken) { ResolveLase(); }
 	}
-	if (LaseClearAt >= 0.0 && Now >= LaseClearAt)
+	if (LaseClearAt >= 0.0 && LaseNow >= LaseClearAt)
 	{
 		LaseClearAt = -1.0;
 		if (ClearLaseToken == LaseToken && Hud) { Hud->SetLaseText(FText::GetEmpty()); }

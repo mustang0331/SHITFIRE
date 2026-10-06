@@ -27,6 +27,7 @@ class UInputAction;
 class UInputMappingContext;
 class UObserverHudWidget;
 class AShitfireWorldActor;
+class UShitfireSimHost;
 struct FInputActionValue;
 namespace shitfire { class HeightField; }
 
@@ -112,6 +113,14 @@ private:
 	AShitfireWorldActor* FindWorldActor();          // lazy - see .cpp
 	const shitfire::HeightField* Heightfield();
 
+	/** The lase scheduler's clock: SIM seconds from UShitfireSimHost. The
+	    browser schedules both halves of doLase on sim.now (09-camera.js:208
+	    +0.55, :221 +CONFIG.UI.laseHold; schedule() is the sim-clock event
+	    queue, 06-clock-comms.js:4-12), so the delay and the hold scale with
+	    TimeScale and freeze with a paused sim. World seconds only when no
+	    host exists at all. */
+	double LaseClockNow();
+
 	// -ShitfireObserverDemo: scripted PIE sanity pass (binos, 3 powers,
 	// 3 lases, screenshots) so the observer is inspectable headlessly.
 	void TickDemo(double Now);
@@ -124,6 +133,9 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<AShitfireWorldActor> WorldActor;
+
+	UPROPERTY()
+	TObjectPtr<UShitfireSimHost> SimHost;        // lazy - LaseClockNow()
 
 	// runtime-constructed Enhanced Input objects
 	UPROPERTY() TObjectPtr<UInputMappingContext> Imc;
@@ -146,9 +158,9 @@ private:
 	// doLase state (09-camera.js:178,202-221)
 	int32 LaseToken = 0;
 	int32 PendingLaseToken = -1;
-	double LaseFireAt = -1.0;            // world seconds; <0 = idle
+	double LaseFireAt = -1.0;            // SIM seconds (LaseClockNow); <0 = idle
 	int32 ClearLaseToken = -1;
-	double LaseClearAt = -1.0;
+	double LaseClearAt = -1.0;           // SIM seconds (LaseClockNow); <0 = idle
 
 	bool bNoLaserChapter = false;        // activeChapter.noLaser (09:196)
 
