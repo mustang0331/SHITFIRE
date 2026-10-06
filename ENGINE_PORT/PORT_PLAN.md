@@ -78,6 +78,38 @@ First engine code. Getting a recognisable OP view.
 
 ---
 
+## P4.5 — Night and optics *(scoped 2026-10-06; follows the P4 by-hand exit)*
+
+Named by ENGINE_CHOICE.md (2026-09-02 amendment) as "night + optics follow the slice".
+The port renders one hard-coded day rig (`ShitfireWorldActor.cpp:39-42`, "Day only per the
+P3 ruling"); the browser has five times of day and three vision modes. Night chapters 2.2
+and 2.5 (`reqIllum`) are unplayable until this lands. Browser sources are the oracle;
+reference frames are fixtures 09/10/11 (night-eye, NVG, thermal, `DETERMINISM_NOTE.md:92-94`).
+
+| Row | Scope | Browser source | Exit criterion |
+|---|---|---|---|
+| P4.5a | TOD table + apply: five rows (day/dawn/dusk/overcast/night) incl. the `light` ambient scalar | `02-scene.js:59-76`, `:100-125` | mission `tod` selects sun dir/colour/intensity, sky, fog; all five rows reproduce; `light` readable by optics code |
+| P4.5b | Night base look: moonlight, dark ground, no starfield | `02-scene.js:44-58` | night chapter is dark but legible naked-eye, matching fixture 09 |
+| P4.5c | Vision mode state, `[O]` cycle, status-strip text | `08-burst-optics.js:84-93`, `:357-380`; `16-input.js:155,276`; `10-mission.js:15-20` | `[O]` cycles day → nvg → thermal → day; HUD shows `OPTIC <mode> \| TOD <tod>` |
+| P4.5d | NVG look: P43 green, AGC, bloom-out in daylight (`nvgBloomAt` 0.35) | `08-burst-optics.js:102-110, 163-180, 201-221`; `00-config.js:191` | NVG readable at night; collapses to flat pale green when ambient > 0.35 |
+| P4.5e | Thermal look: white-hot, day wash (`thermalWashAt` 0.30), relief kept | `08-burst-optics.js:176-181, 222-235`; `00-config.js:192` | figures separate from cold terrain at night; terrain washes out when ambient > 0.30 |
+| P4.5f | Per-material optic signatures (`vis` NVG luminance + thermal RGB) on figures, huts, asphalt, path, rock, canopy, burst FX | `04-world.js:93-159, 1063-1068`; `08-burst-optics.js:36-42, 399-403, 434` | enemy / friendly / civilian discrimination holds in both optics (friendly cap bright NVG, cyan thermal; civ hat cold) |
+| P4.5g | Optic overlay: vignette, tube tint, grain, emitter halos (24 Hz, 320×180) | `08-burst-optics.js:261-312, 324-355`; `00-config.js:181-192` | vignette NVG 0.90 / thermal 0.62, grain 0.16 / ×0.45, halos on flare and bursts |
+| P4.5h | Illumination at night: flare as a real shadowing light, wind drift, per-flare burn from `mission.rng`, `usedIllum`/`reqIllum` grading | `08-burst-optics.js:451-543`; `10-mission.js:1122-1131`; `00-config.js:117` | flare lights terrain and figures in all three modes; burn seeded; chapter 2.5 grades. Partial today: `ShitfireFlareActor.cpp:16-100` (no drift, no shadows, glow tuned to the day exposure) |
+
+**Decision before P4.5b/d:** the port pins exposure at EV100 ≈ 13 with auto-exposure off
+(`ShitfireWorldActor.cpp:370`, `ObserverPawn.cpp:61-68`). Night and NVG gain need an
+exposure story (per-TOD manual EV, or a different rig) — `[YOUR CALL]`, and ENGINE_CHOICE.md
+asks for the Unreal override to be re-examined before P5 anyway.
+
+**Determinism:** grain and halo randomness are sanctioned flavour; the illum burn is SIM-PATH,
+one `mission.rng` draw (`DETERMINISM_NOTE.md:15,20-21`). Parity gates stay green throughout.
+
+**Exit criteria:** chapters 2.2 and 2.5 playable by hand at night in all three optics, with
+impacts and AAR still matching the oracle; fixtures 09/10/11 reproduced to the author's eye.
+
+---
+
 ## P5 — Cartography
 
 The heaviest UI stage; scheduled deliberately rather than discovered late.
