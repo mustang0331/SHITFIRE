@@ -209,18 +209,10 @@ void AShitfireUnitsActor::MakeFigure(FFigure& F, const TCHAR* Name,
 			// dump); the hash-named sibling is an unanimated attachment stub
 			// that idles at ground level - attaching there put giant
 			// unscaled heads on the beach (2026-09-04 probe, take 1).
-			FName HeadBone = NAME_None;
 			const FReferenceSkeleton& Ref =
 				S->GetSkeletalMeshAsset()->GetRefSkeleton();
-			for (int32 i = 0; i < Ref.GetNum(); i++)
-			{
-				if (Ref.GetBoneName(i) == FName(TEXT("Head")))
-				{
-					HeadBone = Ref.GetBoneName(i);
-					break;
-				}
-			}
-			if (HeadBone != NAME_None)
+			const int32 HeadIdx = Ref.FindBoneIndex(FName(TEXT("Head")));
+			if (HeadIdx != INDEX_NONE)
 			{
 				UStaticMeshComponent* H = NewObject<UStaticMeshComponent>(this);
 				H->SetStaticMesh(Assets.SoldierHead);
@@ -231,7 +223,22 @@ void AShitfireUnitsActor::MakeFigure(FFigure& F, const TCHAR* Name,
 				// 200 cm rig, so it must inherit the body's fit + legibility
 				// scaling through the bone.
 				H->AttachToComponent(S,
-					FAttachmentTransformRules::SnapToTargetIncludingScale, HeadBone);
+					FAttachmentTransformRules::SnapToTargetIncludingScale,
+					Ref.GetBoneName(HeadIdx));
+				// The head static mesh is authored in the body's feet-origin
+				// (component) space at bind pose (box z 162..219 cm), not in
+				// head-bone space. Snapping it to the bone put the helmet a
+				// head-height above the skull once the re-import gave the
+				// Head bone its true 157 cm position (2026-10-06 probe). So
+				// offset it by the inverse of the bone's component-space
+				// ref-pose transform: it then sits on the skull at bind pose
+				// and follows the bone's animation from there.
+				FTransform HeadRefCS = FTransform::Identity;
+				for (int32 B = HeadIdx; B != INDEX_NONE; B = Ref.GetParentIndex(B))
+				{
+					HeadRefCS = HeadRefCS * Ref.GetRefBonePose()[B];
+				}
+				H->SetRelativeTransform(HeadRefCS.Inverse());
 				Keep.Add(H);
 				F.Head = H;
 			}
