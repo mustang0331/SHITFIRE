@@ -28,9 +28,9 @@
 //   - the AAR overlay is up with the recorded verdict + star row.
 // Screenshots (gate c): log+strip mid-mission, and the AAR panel.
 //
-// The transcript/flavor/comparator machinery is duplicated VERBATIM from
-// Private/Tests/ShitfireSimHostReplayTest.cpp:55-365 (BUILDER-BRIDGE's
-// file, not edited from here) - single-source cleanup is theirs to offer.
+// The transcript/flavor/comparator machinery is ONE copy in
+// parity/ShitfireTranscriptReplay.{h,cpp} (shared with SimHostReplay and the
+// -ShitfireParityGate runner); this file owns only the typed-drive context.
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -41,6 +41,7 @@
 #include "ShitfireSimHostReplayCollector.h"
 #include "ShitfireUiTestUtil.h"
 #include "bridge/ShitfireSimHost.h"
+#include "parity/ShitfireTranscriptReplay.h"
 #include "ui/AarPanelWidget.h"
 #include "ui/CommsLogWidget.h"
 #include "ui/NetHudWidget.h"
@@ -49,16 +50,9 @@
 #include "UObject/StrongObjectPtr.h"
 
 // Engine-free sim core (prebuilt /fp:precise lib via ShitfireCoreLib).
-#include "shitfire/doctrine/fdc_quips.h"
-#include "shitfire/math/prng.h"
 #include "shitfire/review/tlog.h"
 #include "shitfire/sim_core.h"
 
-#include <algorithm>
-#include <cmath>
-#include <map>
-#include <set>
-#include <string>
 #include <vector>
 
 namespace
@@ -67,305 +61,18 @@ namespace
 
 	constexpr const TCHAR* kTranscript = TEXT("level3/mission_05_ch1-2-bunker-bracket.json");
 
-	/* ---- recorded transcript (ShitfireSimHostReplayTest.cpp:59-121) ----- */
-
-	struct FRecEntry
-	{
-		double T = 0;
-		FString Kind;
-		FString Msg;
-		double DTgt = 0;
-		FString Shell;
-		int32 Stars = -1;
-		FString Outcome;
-		double Rounds = 0;
-		double Dur = 0;
-	};
-
-	struct FTranscript
-	{
-		FString Chapter;
-		FString ScenarioType;
-		FString Difficulty;
-		double SeedMission = 1;
-		double SeedTerrain = 1337;
-		TArray<FRecEntry> Entries;
-	};
-
-	bool LoadTranscript(FTranscript& Out)
-	{
-		const TSharedPtr<FJsonObject> J = ShitfireFixtures::LoadJson(kTranscript);
-		if (!J.IsValid())
-		{
-			return false;
-		}
-		const TSharedPtr<FJsonObject> Meta = J->GetObjectField(TEXT("meta"));
-		Meta->TryGetStringField(TEXT("chapter"), Out.Chapter);
-		Out.ScenarioType = Meta->GetStringField(TEXT("scenarioType"));
-		Out.Difficulty = Meta->GetStringField(TEXT("difficulty"));
-		Out.SeedMission = Meta->GetNumberField(TEXT("seedMission"));
-		Out.SeedTerrain = Meta->GetNumberField(TEXT("seedTerrain"));
-		for (const TSharedPtr<FJsonValue>& V : J->GetArrayField(TEXT("tlog")))
-		{
-			const TSharedPtr<FJsonObject> E = V->AsObject();
-			FRecEntry R;
-			R.T = E->GetNumberField(TEXT("t"));
-			R.Kind = E->GetStringField(TEXT("kind"));
-			E->TryGetStringField(TEXT("msg"), R.Msg);
-			if (R.Kind == TEXT("impact"))
-			{
-				R.DTgt = E->GetNumberField(TEXT("dTgt"));
-				if (!E->TryGetStringField(TEXT("shell"), R.Shell))
-				{
-					R.Shell = TEXT("he");
-				}
-			}
-			else if (R.Kind == TEXT("aar"))
-			{
-				double S = -1;
-				if (E->TryGetNumberField(TEXT("stars"), S)) { R.Stars = static_cast<int32>(S); }
-				E->TryGetStringField(TEXT("outcome"), R.Outcome);
-				E->TryGetNumberField(TEXT("rounds"), R.Rounds);
-				E->TryGetNumberField(TEXT("dur"), R.Dur);
-			}
-			Out.Entries.Add(MoveTemp(R));
-		}
-		return Out.Entries.Num() > 0;
-	}
-
-	/* ---- clock helpers (ShitfireSimHostReplayTest.cpp:125-148) ----------- */
-
-	double JsRound1(double X) { return std::floor(X * 10 + 0.5) / 10; }
-
-	TArray<int64> GridCandidates(double TRec)
-	{
-		TArray<int64> Out;
-		const int64 Center = static_cast<int64>(std::floor(TRec * 1000 + 0.5));
-		for (int64 M = ((Center - 64) / 16) * 16; M <= Center + 64; M += 16)
-		{
-			if (M < 0) { continue; }
-			if (JsRound1(static_cast<double>(M) / 1000.0) == JsRound1(TRec))
-			{
-				Out.Add(M);
-			}
-		}
-		return Out;
-	}
-
-	int64 DeliveryFrameMs(double T)
-	{
-		const double Raw = T * 1000.0;
-		int64 M = static_cast<int64>(std::ceil(Raw / 16.0 - 1e-9)) * 16;
-		if (static_cast<double>(M) < Raw - 1e-9) { M += 16; }
-		return M;
-	}
-
-	/* ---- gated-flavor replay (ShitfireSimHostReplayTest.cpp:154-239) ----- */
-
-	void ReplaceAll(std::string& S, const std::string& From, const std::string& To)
-	{
-		std::size_t Pos = 0;
-		while ((Pos = S.find(From, Pos)) != std::string::npos)
-		{
-			S.replace(Pos, From.size(), To);
-			Pos += To.size();
-		}
-	}
-
-	std::string NormalizeCallsigns(std::string S)
-	{
-		ReplaceAll(S, "HACKSAW FIRES", "HELLHOUND FIRES");
-		ReplaceAll(S, "SUNLAMP ACTUAL", "HELLHOUND FIRES");
-		ReplaceAll(S, "HACKSAW", "HELLHOUND");
-		ReplaceAll(S, "SUNLAMP", "HELLHOUND");
-		return S;
-	}
-
-	class FReplayFlavor final : public sf::doctrine::IFlavorRng
-	{
-	public:
-		explicit FReplayFlavor(const FTranscript& Tr) : Rng(0x5F3759DFu)
-		{
-			const sf::doctrine::QuipSet Quips = sf::doctrine::makeQuips();
-			const std::map<sf::doctrine::FlavorGate, const std::vector<std::string>*> Gates = {
-				{sf::doctrine::FlavorGate::FfeAck, &Quips.ffeAck.lines},
-				{sf::doctrine::FlavorGate::CompleteTail, &Quips.completeTail.lines},
-				{sf::doctrine::FlavorGate::ReadbackTail, &Quips.readbackTail.lines},
-				{sf::doctrine::FlavorGate::SnideRound, &Quips.snideRound.lines},
-				{sf::doctrine::FlavorGate::CorrSnark, &Quips.corrSnark.lines},
-			};
-			for (const FRecEntry& E : Tr.Entries)
-			{
-				if (E.Kind != TEXT("fdc")) { continue; }
-				const std::string Msg = NormalizeCallsigns(TCHAR_TO_UTF8(*E.Msg));
-				for (const auto& G : Gates)
-				{
-					std::vector<std::string> Normalized;
-					for (const std::string& L : *G.second)
-					{
-						Normalized.push_back(NormalizeCallsigns(L));
-					}
-					if (std::find(Normalized.begin(), Normalized.end(), Msg) != Normalized.end())
-					{
-						Times[G.first].push_back(E.T);
-						break;
-					}
-				}
-			}
-		}
-
-		double next() override { return Rng.next(); }
-
-		bool coin(double /*P*/, sf::doctrine::FlavorGate Gate, double PredictedAirTime) override
-		{
-			if (Gate == sf::doctrine::FlavorGate::CareerCallback) { return false; }
-			const auto It = Times.find(Gate);
-			if (It == Times.end()) { return false; }
-			auto& Used = Consumed[Gate];
-			const double TPred = JsRound1(
-				static_cast<double>(DeliveryFrameMs(PredictedAirTime)) / 1000.0);
-			for (std::size_t i = 0; i < It->second.size(); i++)
-			{
-				if (Used.count(i)) { continue; }
-				if (std::fabs(It->second[i] - TPred) <= 0.75)
-				{
-					Used.insert(i);
-					return true;
-				}
-				if (It->second[i] > TPred + 0.75) { break; }
-			}
-			return false;
-		}
-
-	private:
-		sf::Mulberry32 Rng;
-		std::map<sf::doctrine::FlavorGate, std::vector<double>> Times;
-		std::map<sf::doctrine::FlavorGate, std::set<std::size_t>> Consumed;
-	};
-
-	/* ---- comparator (ShitfireSimHostReplayTest.cpp:244-365) -------------- */
-
-	struct FAttemptResult
-	{
-		bool bPass = true;
-		double FirstFailT = 1e300;
-		double WorstDTgtDiff = 0;
-		double WorstSkew = 0;
-		TArray<FString> Errors;
-
-		void Fail(double T, const FString& What)
-		{
-			bPass = false;
-			if (T < FirstFailT) { FirstFailT = T; }
-			if (Errors.Num() < 10) { Errors.Add(What); }
-		}
-	};
-
-	FAttemptResult CompareRun(const FTranscript& Tr,
-	                          const std::vector<sf::review::TlogEntry>& Got)
-	{
-		FAttemptResult R;
-
-		TArray<const FRecEntry*> RecImpacts;
-		for (const FRecEntry& E : Tr.Entries)
-		{
-			if (E.Kind == TEXT("impact")) { RecImpacts.Add(&E); }
-		}
-		std::vector<const sf::review::TlogEntry*> GotImpacts;
-		for (const auto& E : Got)
-		{
-			if (E.kind == "impact") { GotImpacts.push_back(&E); }
-		}
-		if (RecImpacts.Num() != static_cast<int32>(GotImpacts.size()))
-		{
-			R.Fail(RecImpacts.Num() > 0 ? RecImpacts[0]->T : 0,
-				FString::Printf(TEXT("impact count: recorded %d, got %d"),
-					RecImpacts.Num(), static_cast<int32>(GotImpacts.size())));
-		}
-		const int32 NImp = FMath::Min(RecImpacts.Num(), static_cast<int32>(GotImpacts.size()));
-		for (int32 i = 0; i < NImp; i++)
-		{
-			const FRecEntry& Rec = *RecImpacts[i];
-			const sf::review::TlogEntry& Mine = *GotImpacts[static_cast<std::size_t>(i)];
-			const FString MineMsg = UTF8_TO_TCHAR(Mine.msg.c_str());
-			if (!Rec.Msg.Equals(MineMsg))
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("impact #%d msg: recorded '%s', got '%s'"),
-					i, *Rec.Msg, *MineMsg));
-			}
-			const double Diff = std::fabs(Rec.DTgt - Mine.dTgt.value_or(-1.0));
-			R.WorstDTgtDiff = FMath::Max(R.WorstDTgtDiff, Diff);
-			if (Diff > 0.01)
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("impact #%d dTgt: recorded %.3f, got %.3f"),
-					i, Rec.DTgt, Mine.dTgt.value_or(-1.0)));
-			}
-			const FString MineShell = UTF8_TO_TCHAR(Mine.shell.value_or("he").c_str());
-			if (!Rec.Shell.Equals(MineShell))
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("impact #%d shell: recorded %s, got %s"),
-					i, *Rec.Shell, *MineShell));
-			}
-			const double Skew = std::fabs(Rec.T - Mine.t);
-			R.WorstSkew = FMath::Max(R.WorstSkew, Skew);
-			if (Skew > 0.5)
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("impact #%d time skew %.3f s"), i, Skew));
-			}
-		}
-
-		TArray<const FRecEntry*> RecAars;
-		for (const FRecEntry& E : Tr.Entries)
-		{
-			if (E.Kind == TEXT("aar")) { RecAars.Add(&E); }
-		}
-		std::vector<const sf::review::TlogEntry*> GotAars;
-		for (const auto& E : Got)
-		{
-			if (E.kind == "aar") { GotAars.push_back(&E); }
-		}
-		if (RecAars.Num() != static_cast<int32>(GotAars.size()))
-		{
-			R.Fail(RecAars.Num() > 0 ? RecAars[0]->T : 1e299,
-				FString::Printf(TEXT("aar count: recorded %d, got %d"),
-					RecAars.Num(), static_cast<int32>(GotAars.size())));
-		}
-		const int32 NAar = FMath::Min(RecAars.Num(), static_cast<int32>(GotAars.size()));
-		for (int32 i = 0; i < NAar; i++)
-		{
-			const FRecEntry& Rec = *RecAars[i];
-			const sf::review::TlogEntry& Mine = *GotAars[static_cast<std::size_t>(i)];
-			const FString MineMsg = UTF8_TO_TCHAR(Mine.msg.c_str());
-			if (!Rec.Msg.Equals(MineMsg))
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("aar verdict: recorded '%s', got '%s'"),
-					*Rec.Msg, *MineMsg));
-			}
-			const int32 MineStars = Mine.stars.has_value() ? static_cast<int32>(*Mine.stars) : -1;
-			if (Rec.Stars != MineStars)
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("aar stars: recorded %d, got %d"),
-					Rec.Stars, MineStars));
-			}
-			const FString MineOutcome = UTF8_TO_TCHAR(Mine.outcome.value_or("").c_str());
-			if (!Rec.Outcome.Equals(MineOutcome))
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("aar outcome: recorded '%s', got '%s'"),
-					*Rec.Outcome, *MineOutcome));
-			}
-			if (Rec.Rounds != Mine.rounds.value_or(-1.0))
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("aar rounds: recorded %.0f, got %.0f"),
-					Rec.Rounds, Mine.rounds.value_or(-1.0)));
-			}
-			if (Rec.Dur != Mine.dur.value_or(-1.0))
-			{
-				R.Fail(Rec.T, FString::Printf(TEXT("aar dur: recorded %.0f, got %.0f"),
-					Rec.Dur, Mine.dur.value_or(-1.0)));
-			}
-		}
-		return R;
-	}
+	/* ---- transcript / flavor / comparator: parity/ShitfireTranscriptReplay.h
+	   LoadTranscript, GridCandidates, DeliveryFrameMs, FReplayFlavor and
+	   CompareRun are the shared copy (same checks and tolerances the
+	   SimHostReplay gate asserts); nothing is re-implemented here. */
+	using ShitfireParity::FRecEntry;
+	using ShitfireParity::FTranscript;
+	using ShitfireParity::FReplayFlavor;
+	using ShitfireParity::FAttemptResult;
+	using ShitfireParity::LoadTranscript;
+	using ShitfireParity::GridCandidates;
+	using ShitfireParity::DeliveryFrameMs;
+	using ShitfireParity::CompareRun;
 
 	FString StarStr(int32 N)
 	{
@@ -426,7 +133,7 @@ DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FTypedSetup, TSharedPtr<FTypedCtx
 bool FTypedSetup::Update()
 {
 	FAutomationTestBase* T = Ctx->Test;
-	if (!T->TestTrue(TEXT("transcript fixture loads"), LoadTranscript(Ctx->Tr)))
+	if (!T->TestTrue(TEXT("transcript fixture loads"), LoadTranscript(kTranscript, Ctx->Tr)))
 	{
 		Ctx->bDone = true;
 		return true;
@@ -462,7 +169,7 @@ bool FTypedSetup::Update()
 	T->AddInfo(FString::Printf(TEXT("%d typed sends, start frame %lld ms, TimeScale 1000"),
 		Ctx->SendMsgs.Num(), StartMs));
 
-	// standalone host (ShitfireSimHostReplayTest.cpp:391-401 arrangement)
+	// standalone host (ShitfireSimHostReplayTest.cpp:52-62 arrangement)
 	Ctx->Flavor = MakeUnique<FReplayFlavor>(Ctx->Tr);
 	UGameInstance* HostOuter = NewObject<UGameInstance>(GEngine);
 	Ctx->HostOuter = TStrongObjectPtr<UGameInstance>(HostOuter);
@@ -596,7 +303,7 @@ bool FTypedDrive::Update()
 		Ctx->Phase = 2;
 		return false;
 	}
-	case 2:   // trailing drain (ShitfireSimHostReplayTest.cpp:468-472)
+	case 2:   // trailing drain (ShitfireTranscriptReplay.cpp:367-372)
 	{
 		if (H->GetPendingSimEventCount() > 0 &&
 			H->GetSimNow() <= Ctx->LastRecT + 240.0)
