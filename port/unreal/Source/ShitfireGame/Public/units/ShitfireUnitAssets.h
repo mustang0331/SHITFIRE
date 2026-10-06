@@ -56,8 +56,22 @@ struct FShitfireUnitAssets
 	bool bHumanoidReal = false;   // SoldierMesh loaded - else box figures
 	bool bAnimsReal = false;      // all three clips loaded - else pose-only tier
 
-	/** LoadObject everything above; logs one line per missing asset. */
+	/** LoadObject everything above; logs one line per missing asset. A
+	    humanoid that fails HumanoidImportSane() is REJECTED (Error log) and
+	    the bundle degrades to the box tier - never a 100x figure. */
 	static FShitfireUnitAssets Load();
+
+	/** Import-sanity gate for the humanoid body (2026-10-06 bench frame: the
+	    Interchange glTF import of the FBX2glTF soldier left the vertex buffer
+	    at 272 x 222 x 69 METRES lying along -Y, and a ref-pose Root bone scale
+	    of 170.6 that every SnapToTargetIncludingScale attachment inherits -
+	    the "wreck pile" on the beach and the helmet in the sky). True only
+	    when the vertex bounds fit a SoldierNativeHeightCm rig and the root
+	    bone carries no scale. OutWhy names the failed check. */
+	static bool HumanoidImportSane(const USkeletalMesh* Mesh, FString& OutWhy);
+
+	/** The body asset path Load() uses (tests call the gate on it directly). */
+	static const TCHAR* SoldierBodyPath();
 
 	// Browser figure heights the silhouettes are scaled to (04-world.js:66 -
 	// FIG.h: troop 2.40 m incl. cap, civ 2.08 m). The mil card deliberately
@@ -72,7 +86,19 @@ struct FShitfireUnitAssets
 	// bounds are unusable (272 x 222 x 69 m prop/bone grid in the GLB) - do
 	// not fit scale from GetBounds(). A swapped-in pack re-measures this via
 	// the -ShitfireUnitsProbe UNITCAL log.
+	//
+	// 2026-10-06: those "junk" bounds ARE the rendered geometry (UE Python
+	// probe: Body bounds extent 13626 x 11119 x 3458 cm; SWAT alternate 8377
+	// x 2750 x 1301 cm, same defect). The bones sit at 2 m, the vertices at
+	// ~100x, so the asset cannot be fit by any scale - it must be re-imported
+	// (Tools/import_assets.py, default AssetImportTask options). Until then
+	// HumanoidImportSane() rejects it and the box tier draws the figures.
 	static constexpr double SoldierNativeHeightCm = 200.0;
+	// Gate limits: a 200 cm rig in T-pose spans ~270 cm; anything past 3x the
+	// rig height is an import defect, not a tall soldier. Root-bone scale is
+	// 1.0 on a clean import; 1.5 leaves room for unit-conversion noise only.
+	static constexpr double HumanoidBoundsSlack = 3.0;
+	static constexpr double HumanoidMaxRootScale = 1.5;
 
 	// Frozen mil-relation dimensions - the mil card teaches truck 5 m and the
 	// range formula divides by them (05:6-13). Vehicle meshes are uniformly
