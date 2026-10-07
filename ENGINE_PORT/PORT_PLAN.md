@@ -110,6 +110,84 @@ impacts and AAR still matching the oracle; fixtures 09/10/11 reproduced to the a
 
 ---
 
+## ART — milsim art pass *(row PORT3, opened 2026-10-07 at the author's direction)*
+
+The 2026-09-02 ruling (ENGINE_CHOICE.md) set the bar at a full milsim look, but no stage owned
+the art. P3 built the pipeline (`asset_manifest.json` → `download_assets.py` → `import_assets.py`,
+LFS, `uasset-allowlist.txt`, `CREDITS.md`) and shipped free placeholders. Inventory 2026-10-07,
+by class (evidence in the 2026-10-07 vault log):
+
+| Class | Today | Gap |
+|---|---|---|
+| Terrain | one 300×300-quad mesh, four 2K CC0 layers blended by slope/height, no AO/roughness, no near-field detail | near-field detail layer, macro variation, AO/height blend |
+| Vegetation | Quaternius low-poly palm + desert bush, two species, no wind, no LOD, no clutter | realistic palm/scrub/grass, clutter scatter, LOD/billboard tier |
+| Rocks | grey engine cubes | boulder/outcrop set |
+| Roads | one 2K dirt tile ribbon, hard edge | edge blend, normal map, asphalt variant for the town |
+| Sea | translucent plane, sum-of-sines normal, screen-space reflection | real displacement, shore foam, sea-state table |
+| Sky/fog | SkyAtmosphere + height fog, no clouds, one day TOD | cloud layer (overcast row), tuned haze; TOD rows are P4.5a |
+| Infantry | Quaternius soldier, three clips, no kit, no prone/kneel clips | realistic rigged soldier, friendly uniform variant, fuller clip set |
+| Civilians | same soldier mesh re-tinted | distinct civilian body and hat silhouette |
+| Vehicles | Poly Pizza Humvee + M939 (CC-BY), Quaternius tank, fit-scaled to the 5 m box | realistic HMMWV/truck/armour with wreck states |
+| Tower | engine cubes | modelled timber/steel tower, deck at exactly `towerHeight` |
+| Battery | Quaternius cannon, cube tent, sphere flashes | real tube/howitzer, crew, emplacement dressing |
+| KP posts | white cubes | stake/panel mesh legible at optic ranges |
+| Buildings | cubes for huts, town, bunker, mast, flag | modular arid village kit, town block, mast |
+| Burst FX | sphere flash, cylinder smoke columns, no Niagara | Niagara flash/dust/debris/smoke, scorch decal |
+| Illum flare | sphere + point light, no drift | P4.5h owns it |
+
+**Rows.** Each lands as its own commit through the manifest pipeline, with a viewed probe frame
+and a plugged-in perf capture before and after.
+
+| Row | Scope | Gate |
+|---|---|---|
+| ART-a | Master material convention: one parent material carrying the `vis` optic-signature parameters (NVG luminance, thermal colour) per browser table (`04-world.js:93-159`); every imported pack material becomes an instance of it. Prerequisite for every other row, and for P4.5f | an untagged material fails a test, not a silent luminance fallback |
+| ART-b | Infantry: rigged soldier body (enemy, friendly variant), distinct civilian body; Quaternius Universal Animation Library retargeted (prone, crawl, death, rifle). Feet-origin pivot check added to `HumanoidImportGate`; `SoldierNativeHeightCm` re-measured per body; casualty state distinct from prone (closes browser `GFX3`) | figures countable at 3000 m through 7X (GRAPHICS.md check 2); enemy/friendly/civilian unambiguous at 2000 m |
+| ART-c | Vehicles: HMMWV, light truck, one armour type with wreck variants. Manifest gains an authored mil-dimension field; a vehicle import gate like the humanoid one | truck reads 5 / 2.5 / 1.67 mil at 1 / 2 / 3 km against the reticle stadia |
+| ART-d | Structures: village/compound kit, town block, bunker, mast, tower, KP post, battery dressing. Hut footprints stay on the mil card (7 × 3 × 5 m, 5.2 × 3 × 4.2 m); tower deck at `towerHeight`, eye 2.2 m above it | map/printed-sheet oracle unchanged; reticle readings on the tower match the oracle |
+| ART-e | Environment: rocks, realistic palm/scrub, ground clutter. Clutter seed and placement obey the browser's exclusion discs, road/beach/slope rules and the 6 m canopy cap (`04-world.js:1026-1050`); up-facing normals / two-sided shading so canopy reads from 300 m down; LOD step in `import_assets.py`; 2K texture cap | 4000 placements inside budget; KP posts and burst plumes never masked |
+| ART-f | Burst FX in Niagara with the browser's envelope pinned first (flash 0.18 s, ring 4→70 in 1.3 s, dust 6→42 m in 3 s, column to ~107 m over 11 s leaning with island wind, dead at 14 s; `08-burst-optics.js:616-685`) | timeline fixture passes before and after |
+| ART-g | Sea and sky: water with shore foam and a sea-state table; cloud layer for the overcast TOD. Fog envelope (linear 4500–15000 m) and the ACES horizon stay as the oracle has them | fixtures 09/10/11 still match; 3200 m legibility floor holds |
+| ART-h | Terrain and roads: near-field detail, AO/height blend, road edge blend, asphalt variant; black-sand palette variant for Volume IV | no change to `H(x,z)`; mil-card reference objects unchanged |
+
+**Decisions before ART-b (the first visible row):**
+- **[YOUR CALL] Milsim vs legibility.** The browser's figure palette is an inverted two-tone
+  rule (enemy dark body / bright cap, friendly dark body / ice cap, civilian pale body / dark
+  hat) chosen so figures are countable at 3000 m and families distinguishable at 2000 m.
+  Realistic camouflage breaks it. The row needs a ruling on which wins when they conflict.
+  Recommendation: legibility wins; realism goes into kit, posture, animation and materials, not
+  the silhouette palette.
+- **[YOUR CALL] Nanite stance.** `DefaultEngine.ini` says nothing ships Nanite, the manifest sets
+  it on five vegetation meshes, and the import enables it in a try/except that only logs. Settle
+  it and check in-editor before any Nanite rock pack lands.
+- **Order against P4.5.** Perf headroom is 2.9 ms avg / 2.2 ms p95 at 1080p plugged in, Lumen
+  on, before any art (`port/README.md:230-236`); the six-burst FFE baseline was never measured.
+  P4.5h's shadowing flare light and the night rig also cost frame time. Recommendation: ART-a
+  and ART-b first (every frame shows figures), then P4.5, then ART-c onward with the budget
+  re-measured.
+
+**Verified sources (fetched 2026-10-07, licence page read):**
+- Quaternius Universal Animation Library, CC0, free. Animations only, no body mesh.
+- HMMWV M998A1 by 42manako, Sketchfab, CC BY, free; attribution in CREDITS.md.
+- M1A1 Abrams by MirzaArrafiERV_45, Sketchfab, CC BY, free; attribution. Not on the mil card.
+- Poly Haven Namaqualand collection, CC0, free; rocks/scrub/ground, 8K textures (cap to 2K), the
+  UE scene is a 5.4 project (migrate, never open in place; the allowlist will reject strays).
+- Sixteen further candidates (Fab character, mortar, village, watchtower, palm, desert, Niagara
+  and smoke packs) were found by search but **not verified**: licence, price and 5.8 support
+  unchecked. Treat as leads only. Trademark on vehicle names and shapes is outside CC BY; the
+  Fab EULA on redistribution inside a free binary has not been read.
+
+**Pipeline work the rows depend on:** new manifest source types (Sketchfab, Poly Haven) with
+hash pins so a fresh clone regenerates `Content/`; allowlist directories for Animations,
+Characters, Buildings, Water, Niagara, IK retargeters, each with a why and a regenerate-how;
+an animation-only import and retarget step; a LOD step; a per-class perf line.
+
+**Exit criteria:** GRAPHICS.md's own gates on the engine build: figures countable at 3000 m
+through binos, village vs military element unambiguous at 2000 m, first round at max deviation
+spottable and measurable off the reticle, 60 fps at 1080p on the RTX 3060 laptop with six
+bursts live; parity gates untouched; every asset in the manifest, credited, regenerable.
+
+---
+
 ## P5 — Cartography
 
 The heaviest UI stage; scheduled deliberately rather than discovered late.
