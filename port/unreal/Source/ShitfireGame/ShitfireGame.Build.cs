@@ -20,7 +20,8 @@ public class ShitfireGame : ModuleRules
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {
-			"Json"                     // fixture parsing for parity smoke + golden-ray self-test
+			"Json",                    // fixture parsing for parity smoke + golden-ray self-test
+			"AssetRegistry"            // SHITFIRE.Art.MaterialVisTag sweeps every /Game material
 		});
 	}
 }

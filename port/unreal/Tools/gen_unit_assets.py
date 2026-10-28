@@ -13,17 +13,30 @@ contract:
               skeletal-mesh usage flag, which the terrain/placeholder
               materials lack - THE reason this material exists.
               Params: Tint (vector), BodyRoughness (scalar).
+              ART-a: Tint -> vis preview wrap -> BaseColor, VisNvg 0.20,
+              VisThermal white (enemy-body row of 04-world.js:93-159; C++
+              overrides per figure family). Needs MPC_Vision, so
+              gen_assets.py runs first (vis_material.py).
 
 Run headless:
   UnrealEditor-Cmd.exe <Shitfire.uproject> -run=pythonscript ^
       -script="port/unreal/Tools/gen_unit_assets.py" -unattended -nopause
 """
+import os
+import sys
+
 import unreal
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import vis_material as vm  # noqa: E402
 
 MEL = unreal.MaterialEditingLibrary
 EAL = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 PKG_PATH = "/Game/Units"
+MPC = vm.ensure_vision_mpc()
 
 
 def fresh_material(name):
@@ -52,7 +65,8 @@ def unit_body():
         mat, unreal.MaterialExpressionVectorParameter, -600, 0)
     tint.set_editor_property("parameter_name", "Tint")
     tint.set_editor_property("default_value", unreal.LinearColor(0.5, 0.5, 0.5, 1.0))
-    MEL.connect_material_property(tint, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    vm.wrap_vis_property(mat, tint, "", unreal.MaterialProperty.MP_BASE_COLOR,
+                         0.20, (1.0, 1.0, 1.0), MPC)
     rough = MEL.create_material_expression(
         mat, unreal.MaterialExpressionScalarParameter, -600, 250)
     rough.set_editor_property("parameter_name", "BodyRoughness")

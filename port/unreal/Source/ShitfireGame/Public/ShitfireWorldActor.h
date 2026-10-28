@@ -14,6 +14,7 @@
 
 #include "CoreMinimal.h"
 #include "RealtimeMeshActor.h"
+#include "ShitfireVis.h"
 #include "ShitfireWorldActor.generated.h"
 
 namespace shitfire
@@ -57,17 +58,22 @@ private:
 	void BuildTerrain(URealtimeMeshProcedural* Mesh);
 	void BuildRibbonSection(URealtimeMeshProcedural* Mesh, int32 SectionIndex,
 	                        const TArray<TArray<FVector2D>>& PolylinesXZ,
-	                        double WidthMeters, double LiftMeters);
+	                        double WidthMeters, double LiftMeters,
+	                        const FShitfireVis& Vis);
 	void SpawnOcean();
 	void SpawnSkyAndLight();
 	void SpawnPlaceholders();
 	void SpawnVegetation();
 	void RunGoldenRaySelfTest();
 
+	// Every placeholder carries an optic signature (ShitfireVis.h, ART-a):
+	// the world audit at the end of BeginPlay fails any slot without one.
 	UInstancedStaticMeshComponent* MakeInstancedClass(const TCHAR* Name,
 	                                                  const TCHAR* MeshPath,
-	                                                  const FLinearColor& Color);
-	UMaterialInstanceDynamic* MakePlaceholderMID(const FLinearColor& Color);
+	                                                  const FLinearColor& Color,
+	                                                  const FShitfireVis& Vis);
+	UMaterialInstanceDynamic* MakePlaceholderMID(const FLinearColor& Color,
+	                                             const FShitfireVis& Vis);
 
 	/** H(x,z) through the linked core lib (meters, sim frame). */
 	double GroundH(double X, double Z) const;

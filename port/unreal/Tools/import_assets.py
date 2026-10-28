@@ -17,12 +17,25 @@ Textures: albedo sRGB on; normal maps TC_Normalmap, sRGB off (ambientCG
 NormalGL flavor; the custom nodes do their own rg*2-1 unpack, and macro
 shading dominates at the 1,500-3,200 m mission ranges).
 
-Vegetation meshes get script-generated materials (MI_* of M_VegBase) with
-used_with_instanced_static_meshes baked in - imported glTF materials
-inherit from engine Interchange parents whose usage flags we cannot edit,
-which silently breaks HISM rendering in -game (same trap gen_assets.py
-documents for M_Placeholder). Unit models under /Game/Models keep their
-imported materials (not instanced yet; BUILDER-CHARACTERS wires them).
+ART-a (vis_material.py): NO imported Interchange material survives. Every
+mesh slot under /Game ends up on a MaterialInstanceConstant of
+/Game/Materials/M_ShitfireMaster (BaseTex * Tint, Roughness, VisNvg /
+VisThermal from the model's manifest `vis` entry - a model without one
+raises). Imported glTF materials inherit from engine Interchange parents
+whose usage flags we cannot edit (silently breaks HISM rendering in -game,
+the trap gen_assets.py documents for M_Placeholder) and carry no Vis tag.
+  * vegetation models (no `reparent_imported_materials`): import into a
+    scratch folder, keep the palette texture as T_<Model>_Palette, build
+    MI_<Model>_<slot> under dest, delete the scratch folder;
+  * unit packs (`reparent_imported_materials: true`): import in place so
+    the animation/skeleton assets keep the paths C++ loads, then for EVERY
+    StaticMesh/SkeletalMesh under dest build MI_<Mesh>_<slot> beside the
+    mesh (BaseTex = the slot's glTF image matched by name, else the pack's
+    single texture; Tint = baseColorFactor), assign it, and delete the
+    Interchange materials (textures stay).
+M_Terrain/M_Road here get the same Vis defaults as gen_assets.py. The
+master is loaded, and rebuilt if missing or untagged, on every run
+(including SHITFIRE_IMPORT_ONLY). Gate: Tools/check_vis_tags.py.
 
 Run headless (asset cache must exist - run download_assets.py first):
   UnrealEditor-Cmd.exe <Shitfire.uproject> -run=pythonscript ^
@@ -32,18 +45,20 @@ import json
 import math
 import os
 import struct
+import sys
 
 import unreal
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import vis_material as vm  # noqa: E402
 
 MEL = unreal.MaterialEditingLibrary
 EAL = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
-HERE = os.path.dirname(os.path.abspath(__file__))
-
-WHITE_TEX_CANDIDATES = [
-    "/Engine/EngineResources/WhiteSquareTexture",
-    "/Engine/EngineResources/DefaultTexture",
-]
+BASE_COLOR = unreal.MaterialProperty.MP_BASE_COLOR
+LEGACY_VEG_BASE = "/Game/Vegetation/M_VegBase"  # pre-ART-a parent, removed
 
 
 def log(msg):
@@ -498,60 +513,109 @@ def glb_material_info(path):
     if ctype != b"JSON":
         raise RuntimeError(path + " unexpected first chunk " + repr(ctype))
     g = json.loads(data[20:20 + clen].decode("utf-8"))
+    images = g.get("images", [])
+    textures = g.get("textures", [])
     mats = []
     for m in g.get("materials", []):
         pbr = m.get("pbrMetallicRoughness", {})
+        image = None
+        bct = pbr.get("baseColorTexture")
+        if bct is not None:
+            img = images[textures[bct["index"]]["source"]]
+            image = img.get("name") or img.get("uri") or ""
         mats.append({
             "name": m.get("name", ""),
             "factor": pbr.get("baseColorFactor", [1.0, 1.0, 1.0, 1.0]),
-            "has_tex": "baseColorTexture" in pbr,
+            "has_tex": bct is not None,
+            "image": image,  # glTF image name (file name) or None
         })
     return mats
 
 
-def ensure_veg_base():
-    """M_VegBase: BaseTex * Tint, rough, ISM+Nanite usage baked in."""
-    full = "/Game/Vegetation/M_VegBase"
-    if EAL.does_asset_exist(full):
-        EAL.delete_asset(full)
-    mat = TOOLS.create_asset("M_VegBase", "/Game/Vegetation",
-                             unreal.Material, unreal.MaterialFactoryNew())
-    mat.set_editor_property("used_with_instanced_static_meshes", True)
-    try:
-        mat.set_editor_property("used_with_nanite", True)
-    except Exception as e:  # noqa: BLE001
-        log("note: used_with_nanite not settable (%s)" % e)
-    white = None
-    for cand in WHITE_TEX_CANDIDATES:
-        if EAL.does_asset_exist(cand):
-            white = EAL.load_asset(cand)
-            break
-    ts = MEL.create_material_expression(
-        mat, unreal.MaterialExpressionTextureSampleParameter2D, -700, 0)
-    ts.set_editor_property("parameter_name", "BaseTex")
-    if white:
-        ts.set_editor_property("texture", white)
-    else:
-        log("WARNING: no engine white texture found; BaseTex default unset")
-    tint = MEL.create_material_expression(
-        mat, unreal.MaterialExpressionVectorParameter, -700, 300)
-    tint.set_editor_property("parameter_name", "Tint")
-    tint.set_editor_property("default_value", unreal.LinearColor(1, 1, 1, 1))
-    mul = MEL.create_material_expression(
-        mat, unreal.MaterialExpressionMultiply, -350, 100)
-    MEL.connect_material_expressions(ts, "RGB", mul, "A")
-    MEL.connect_material_expressions(tint, "", mul, "B")
-    MEL.connect_material_property(mul, "", unreal.MaterialProperty.MP_BASE_COLOR)
-    rough = MEL.create_material_expression(
-        mat, unreal.MaterialExpressionScalarParameter, -700, 500)
-    rough.set_editor_property("parameter_name", "VegRoughness")
-    rough.set_editor_property("default_value", 0.85)
-    MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
-    MEL.layout_material_expressions(mat)
-    MEL.recompile_material(mat)
-    EAL.save_loaded_asset(mat)
-    log("built M_VegBase")
-    return mat
+def gltf_material_for_slot(ginfo, slot_name, model_name):
+    """The glTF material a mesh slot came from: exact name, then the name
+    with Interchange's de-duplication digits stripped (Black1 -> Black;
+    duplicates in these packs carry identical factors), then the only
+    material when the pack has one. Raises otherwise."""
+    by_name = {}
+    for gi in ginfo:
+        by_name.setdefault(gi["name"], gi)
+    gi = by_name.get(slot_name)
+    if gi is None:
+        gi = by_name.get(slot_name.rstrip("0123456789"))
+    if gi is None and len(ginfo) == 1:
+        gi = ginfo[0]
+    if gi is None:
+        raise RuntimeError("%s: slot %r matches none of the glTF materials %s" % (
+            model_name, slot_name, sorted(by_name)))
+    return gi
+
+
+def texture_for_gltf_material(gi, textures, model_name):
+    """Imported Texture2D for a glTF material's baseColorTexture image, by
+    image name, else the pack's only texture. None when the material is
+    untextured; raises when textured but unmatched."""
+    if not gi["has_tex"]:
+        return None
+    want = os.path.splitext(gi.get("image") or "")[0].lower()
+    for _op, t in textures:
+        if want and t.get_name().lower() == want:
+            return t
+    if len(textures) == 1:
+        return textures[0][1]
+    raise RuntimeError("%s: material %r image %r matched none of %s" % (
+        model_name, gi["name"], gi.get("image"), [op for op, _ in textures]))
+
+
+def reparent_pack_materials(m, dest, master, src):
+    """Every StaticMesh/SkeletalMesh slot under `dest` -> MI_<Mesh>_<slot>
+    of the master; then the Interchange materials are deleted. Returns
+    (instances created, interchange materials deleted)."""
+    ginfo = glb_material_info(src)
+    nvg, th = vm.model_vis(m)
+    assets = loaded_assets_under(dest)
+    textures = [(op, a) for op, a in assets if isinstance(a, unreal.Texture2D)]
+    imported_mats = [op for op, a in assets if isinstance(a, unreal.MaterialInterface)]
+    n_mic = 0
+    for op, a in assets:
+        is_static = isinstance(a, unreal.StaticMesh)
+        is_skel = isinstance(a, unreal.SkeletalMesh)
+        if not (is_static or is_skel):
+            continue
+        # SkeletalMesh.Materials is BlueprintGetter/Setter-backed (SkeletalMesh.h
+        # :908-952); the Python wrapper exposes it only as an editor property.
+        slots = list(a.get_editor_property("static_materials" if is_static else "materials"))
+        folder = op.rsplit("/", 1)[0]
+        mesh_name = a.get_name()
+        for i, s in enumerate(slots):
+            slot_name = str(s.get_editor_property("material_slot_name"))
+            gi = gltf_material_for_slot(ginfo, slot_name, m["name"])
+            tex = texture_for_gltf_material(gi, textures, m["name"])
+            mic = vm.new_master_instance("MI_%s_%d" % (mesh_name, i), folder, master,
+                                         tex, gi["factor"][:3], nvg, th)
+            if is_static:
+                a.set_material(i, mic)
+            else:
+                s.set_editor_property("material_interface", mic)
+                slots[i] = s
+            n_mic += 1
+        if is_skel:
+            # struct array: re-set the whole thing (per-element writes on a
+            # Python copy do not reach the asset)
+            a.set_editor_property("materials", slots)
+        if not EAL.save_loaded_asset(a):
+            raise RuntimeError("save failed for " + op)
+        log("  %s: %d slot(s) -> MI_%s_*" % (mesh_name, len(slots), mesh_name))
+    n_del = 0
+    for op in imported_mats:
+        if EAL.delete_asset(op.split(".")[0]):
+            n_del += 1
+        else:
+            raise RuntimeError("could not delete imported material " + op)
+    mat_dir = "%s/%s/Materials" % (dest, m["name"])
+    if EAL.does_directory_exist(mat_dir):
+        EAL.delete_directory(mat_dir)
+    return n_mic, n_del
 
 
 def pick_mesh(assets):
@@ -574,12 +638,17 @@ def pick_mesh(assets):
     return None, None
 
 
-def import_models(man, cache, veg_base):
+def import_models(man, cache, master):
+    totals = {"mic": 0, "deleted": 0}
     for m in man["models"]:
         src = os.path.join(cache, "models", m["name"] + ".glb")
         if not os.path.exists(src):
             raise RuntimeError("missing " + src)
-        keep = m.get("keep_imported_materials", False)
+        if "keep_imported_materials" in m:
+            raise RuntimeError("%s: keep_imported_materials was renamed to "
+                               "reparent_imported_materials (ART-a)" % m["name"])
+        keep = m.get("reparent_imported_materials", False)
+        nvg, th = vm.model_vis(m)  # raises early: no model ships untagged
         dest = m["dest"]
         imp_dir = dest if keep else dest + "/_imp_" + m["name"]
         final = "%s/%s" % (dest, m["name"])
@@ -604,6 +673,14 @@ def import_models(man, cache, veg_base):
         if not EAL.rename_asset(mesh_op.split(".")[0], final):
             raise RuntimeError("rename failed %s -> %s" % (mesh_op, final))
         mesh = EAL.load_asset(final)
+
+        if keep:
+            n_mic, n_del = reparent_pack_materials(m, dest, master, src)
+            totals["mic"] += n_mic
+            totals["deleted"] += n_del
+            log("%s: %d MI_* of the master, %d Interchange materials deleted" % (
+                m["name"], n_mic, n_del))
+            mesh = EAL.load_asset(final)
 
         if not keep and mesh_kind == "static":
             # Script-generated materials (HISM/Nanite usage flags), palette
@@ -633,27 +710,20 @@ def import_models(man, cache, veg_base):
                     gi = ginfo[0]
                 factor = (gi or {}).get("factor", [1, 1, 1, 1])
                 has_tex = (gi or {}).get("has_tex", palette is not None)
-                mi_name = "MI_%s_%d" % (m["name"], i)
-                mi_full = "%s/%s" % (dest, mi_name)
-                if EAL.does_asset_exist(mi_full):
-                    EAL.delete_asset(mi_full)
-                mic = TOOLS.create_asset(
-                    mi_name, dest, unreal.MaterialInstanceConstant,
-                    unreal.MaterialInstanceConstantFactoryNew())
-                MEL.set_material_instance_parent(mic, veg_base)
                 col = [factor[0], factor[1], factor[2]]
                 if tint_over:
                     col = [col[0] * tint_over[0], col[1] * tint_over[1],
                            col[2] * tint_over[2]]
-                MEL.set_material_instance_vector_parameter_value(
-                    mic, "Tint", unreal.LinearColor(col[0], col[1], col[2], 1.0))
-                if has_tex and palette:
-                    MEL.set_material_instance_texture_parameter_value(
-                        mic, "BaseTex", palette)
-                MEL.update_material_instance(mic)
-                EAL.save_loaded_asset(mic)
+                mic = vm.new_master_instance(
+                    "MI_%s_%d" % (m["name"], i), dest, master,
+                    palette if (has_tex and palette) else None, col, nvg, th)
                 mesh.set_material(i, mic)
-            # drop the imported material/texture leftovers
+                totals["mic"] += 1
+            # drop the imported material/texture leftovers (counts the
+            # Interchange materials the scratch folder held)
+            totals["deleted"] += sum(
+                1 for _op, a in loaded_assets_under(imp_dir)
+                if isinstance(a, unreal.MaterialInterface))
             EAL.delete_directory(imp_dir)
 
         if m.get("nanite") and mesh_kind == "static":
@@ -665,6 +735,8 @@ def import_models(man, cache, veg_base):
                 log("note: nanite not set on %s (%s)" % (m["name"], e))
         EAL.save_loaded_asset(mesh)
         log("model %s (%s)" % (final, mesh_kind))
+    log("materials: %d MI_* instances of %s created, %d Interchange materials deleted" % (
+        totals["mic"], vm.MASTER_PATH, totals["deleted"]))
 
 
 # ---------------------------------------------------- terrain/road materials
@@ -785,7 +857,7 @@ return normalize(float3(N.xy + nxy * NormalStrength, max(N.z, 0.05)));
 """
 
 
-def build_terrain_material(tex):
+def build_terrain_material(tex, mpc):
     mat = fresh_material("M_Terrain")
     mat.set_editor_property("tangent_space_normal", False)
     wp = MEL.create_material_expression(
@@ -852,7 +924,7 @@ def build_terrain_material(tex):
         MEL.connect_material_expressions(e, "", cn, n)
     for n in tile_params + weight_params + tint_params + noise_params:
         MEL.connect_material_expressions(pmap[n], "", cn, n)
-    MEL.connect_material_property(cn, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    vm.wrap_vis_property(mat, cn, "", BASE_COLOR, 0.55, (0.14, 0.14, 0.14), mpc, -200, 0)
 
     normal_inputs = (["WP", "N"] + [n for n, _ in ntexes] + tile_params +
                      weight_params + ["NormalStrength"])
@@ -883,7 +955,7 @@ return c * RoadColor.rgb;
 """
 
 
-def build_road_material(tex):
+def build_road_material(tex, mpc):
     mat = fresh_material("M_Road")
     # Ribbon winding unproven both ways (gen_assets.py) - keep two-sided.
     mat.set_editor_property("two_sided", True)
@@ -904,7 +976,7 @@ def build_road_material(tex):
     MEL.connect_material_expressions(mmul, "", cn, "RoadMacroMul")
     MEL.connect_material_expressions(mbl, "", cn, "RoadMacroBlend")
     MEL.connect_material_expressions(col, "", cn, "RoadColor")
-    MEL.connect_material_property(cn, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    vm.wrap_vis_property(mat, cn, "", BASE_COLOR, 0.10, (0.62, 0.62, 0.62), mpc, -200, 0)
     rough = scalar_param(mat, "RoadRoughness", 0.9, -1500, 900)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
     finish(mat)
@@ -915,24 +987,29 @@ def main():
         man = json.load(f)
     cache = cache_root()
     log("cache: " + cache)
+    # ART-a: the master (and MPC_Vision) must exist and be tagged before any
+    # instance is parented to it; rebuilt here if gen_assets.py never ran.
+    mpc = vm.ensure_vision_mpc()
+    master = vm.ensure_master()
     only = os.environ.get("SHITFIRE_IMPORT_ONLY")
     if only:
-        # Scoped re-run: just the named models; textures, M_VegBase and the
+        # Scoped re-run: just the named models; textures and the
         # terrain/road materials are left as they are on disk.
         names = set(n.strip() for n in only.split(",") if n.strip())
         missing = names - set(m["name"] for m in man["models"])
         if missing:
             raise RuntimeError("SHITFIRE_IMPORT_ONLY names unknown models: %s" % sorted(missing))
         man = dict(man, models=[m for m in man["models"] if m["name"] in names])
-        veg_base = EAL.load_asset("/Game/Vegetation/M_VegBase") or ensure_veg_base()
-        import_models(man, cache, veg_base)
+        import_models(man, cache, master)
         log("done (scoped to %s)" % sorted(names))
         return
+    if EAL.does_asset_exist(LEGACY_VEG_BASE):
+        EAL.delete_asset(LEGACY_VEG_BASE)
+        log("deleted pre-ART-a " + LEGACY_VEG_BASE)
     tex = import_textures(man, cache)
-    veg_base = ensure_veg_base()
-    import_models(man, cache, veg_base)
-    build_terrain_material(tex)
-    build_road_material(tex)
+    import_models(man, cache, master)
+    build_terrain_material(tex, mpc)
+    build_road_material(tex, mpc)
     log("done")
 
 

@@ -1,6 +1,7 @@
 #include "ShitfireWorldActor.h"
 #include "ShitfireGame.h"
 #include "ShitfireFixtures.h"
+#include "ShitfireVis.h"
 #include "bridge/ShitfireCoords.h"
 #include "bridge/ShitfireSimHost.h"
 #include "units/ShitfireUnitsActor.h"
@@ -114,8 +115,10 @@ void AShitfireWorldActor::BeginPlay()
 		TArray<TArray<FVector2D>> Roads, Paths;
 		for (const auto& L : P.world->roads) { Roads.Add(ToXZ(L)); }
 		for (const auto& L : P.world->paths) { Paths.Add(ToXZ(L)); }
-		BuildRibbonSection(Mesh, 1, Roads, W.roadWidth, 0.18);
-		BuildRibbonSection(Mesh, 2, Paths, W.pathWidth, 0.12);
+		// Signatures: roads are the browser's sealed `asph` (04-world.js:148),
+		// paths its bare-soil `path` (:150) - one material, two instances.
+		BuildRibbonSection(Mesh, 1, Roads, W.roadWidth, 0.18, ShitfireVis::Asphalt);
+		BuildRibbonSection(Mesh, 2, Paths, W.pathWidth, 0.12, ShitfireVis::Path);
 	}
 
 	SpawnOcean();
@@ -126,6 +129,12 @@ void AShitfireWorldActor::BeginPlay()
 #if !UE_BUILD_SHIPPING
 	RunGoldenRaySelfTest();
 #endif
+
+	// ART-a gate, runtime half: every slot on every spawned primitive (this
+	// actor, the units actor it spawned, their attachments) carries the
+	// optic-signature parameters. An Error per offender, never a fallback.
+	ShitfireVis::AuditWorld(GetWorld());
+	ShitfireVis::ApplyPreviewMode(GetWorld());   // honours -ExecCmds="shitfire.VisMode n"
 
 	UE_LOG(LogShitfire, Log, TEXT("world assembly took %.2f s"),
 		FPlatformTime::Seconds() - T0);
@@ -240,7 +249,7 @@ void AShitfireWorldActor::BuildTerrain(URealtimeMeshProcedural* Mesh)
 			nullptr, TEXT("/Game/Materials/M_Terrain.M_Terrain")))
 	{
 		GetRealtimeMeshComponent()->SetMaterial(0,
-			UMaterialInstanceDynamic::Create(TerrainMat, this));
+			ShitfireVis::MakeTagged(TerrainMat, this, ShitfireVis::Terrain));
 	}
 	else
 	{
@@ -254,7 +263,8 @@ void AShitfireWorldActor::BuildTerrain(URealtimeMeshProcedural* Mesh)
 void AShitfireWorldActor::BuildRibbonSection(URealtimeMeshProcedural* Mesh,
                                              int32 SectionIndex,
                                              const TArray<TArray<FVector2D>>& PolylinesXZ,
-                                             double WidthMeters, double LiftMeters)
+                                             double WidthMeters, double LiftMeters,
+                                             const FShitfireVis& Vis)
 {
 	TArray<FVector> Verts;
 	TArray<int32> Tris;
@@ -316,7 +326,7 @@ void AShitfireWorldActor::BuildRibbonSection(URealtimeMeshProcedural* Mesh,
 			nullptr, TEXT("/Game/Materials/M_Road.M_Road")))
 	{
 		GetRealtimeMeshComponent()->SetMaterial(SectionIndex,
-			UMaterialInstanceDynamic::Create(RoadMat, this));
+			ShitfireVis::MakeTagged(RoadMat, this, Vis));
 	}
 	UE_LOG(LogShitfire, Log, TEXT("ribbon section %d: %d verts"), SectionIndex, Verts.Num());
 }
@@ -341,7 +351,7 @@ void AShitfireWorldActor::SpawnOcean()
 	if (UMaterialInterface* OceanMat = LoadObject<UMaterialInterface>(
 			nullptr, TEXT("/Game/Materials/M_Ocean.M_Ocean")))
 	{
-		OceanPlane->SetMaterial(0, UMaterialInstanceDynamic::Create(OceanMat, this));
+		OceanPlane->SetMaterial(0, ShitfireVis::MakeTagged(OceanMat, this, ShitfireVis::Ocean));
 	}
 	OceanPlane->RegisterComponent();
 	OceanPlane->AttachToComponent(GetRootComponent(),
@@ -393,19 +403,20 @@ void AShitfireWorldActor::SpawnSkyAndLight()
 	}
 }
 
-UMaterialInstanceDynamic* AShitfireWorldActor::MakePlaceholderMID(const FLinearColor& Color)
+UMaterialInstanceDynamic* AShitfireWorldActor::MakePlaceholderMID(const FLinearColor& Color,
+                                                                  const FShitfireVis& Vis)
 {
-	if (!PlaceholderBaseMat)
+	UMaterialInstanceDynamic* MID = ShitfireVis::MakeTagged(PlaceholderBaseMat, this, Vis);
+	if (MID)
 	{
-		return nullptr;
+		MID->SetVectorParameterValue(TEXT("Color"), Color);
 	}
-	UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(PlaceholderBaseMat, this);
-	MID->SetVectorParameterValue(TEXT("Color"), Color);
 	return MID;
 }
 
 UInstancedStaticMeshComponent* AShitfireWorldActor::MakeInstancedClass(
-	const TCHAR* Name, const TCHAR* MeshPath, const FLinearColor& Color)
+	const TCHAR* Name, const TCHAR* MeshPath, const FLinearColor& Color,
+	const FShitfireVis& Vis)
 {
 	UStaticMesh* MeshAsset = LoadObject<UStaticMesh>(nullptr, MeshPath);
 	if (!MeshAsset)
@@ -418,7 +429,7 @@ UInstancedStaticMeshComponent* AShitfireWorldActor::MakeInstancedClass(
 	ISM->SetStaticMesh(MeshAsset);
 	ISM->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ISM->SetMobility(EComponentMobility::Static);
-	if (UMaterialInstanceDynamic* MID = MakePlaceholderMID(Color))
+	if (UMaterialInstanceDynamic* MID = MakePlaceholderMID(Color, Vis))
 	{
 		ISM->SetMaterial(0, MID);
 	}
@@ -448,8 +459,12 @@ void AShitfireWorldActor::SpawnPlaceholders()
 	};
 
 	// -- world features ----------------------------------------------------
+	// One ISM class serves village huts AND town buildings, so it takes the
+	// hut signature (04-world.js:128); the town's masonry/roof split
+	// (TownMasonry/TownRoof) waits for the ART-d building kit.
 	UInstancedStaticMeshComponent* Huts =
-		MakeInstancedClass(TEXT("PH_Huts"), CubePath, FLinearColor(0.35f, 0.22f, 0.12f));
+		MakeInstancedClass(TEXT("PH_Huts"), CubePath, FLinearColor(0.35f, 0.22f, 0.12f),
+			ShitfireVis::HutCiv);
 	for (const auto& V : P.world->villages)
 	{
 		for (const auto& Hut : V.huts)
@@ -465,10 +480,16 @@ void AShitfireWorldActor::SpawnPlaceholders()
 		}
 	}
 
+	// Facilities/mast are untagged in the browser (_wMats.mil/strip,
+	// 04-world.js:22-24): they take the same luminance-derived fallback.
+	const FLinearColor ColFacility(0.45f, 0.45f, 0.48f);
+	const FLinearColor ColMast(0.7f, 0.7f, 0.75f);
 	UInstancedStaticMeshComponent* Facilities =
-		MakeInstancedClass(TEXT("PH_Facilities"), CubePath, FLinearColor(0.45f, 0.45f, 0.48f));
+		MakeInstancedClass(TEXT("PH_Facilities"), CubePath, ColFacility,
+			ShitfireVis::Derived(ColFacility));
 	UInstancedStaticMeshComponent* Mast =
-		MakeInstancedClass(TEXT("PH_Mast"), CylinderPath, FLinearColor(0.7f, 0.7f, 0.75f));
+		MakeInstancedClass(TEXT("PH_Mast"), CylinderPath, ColMast,
+			ShitfireVis::Derived(ColMast));
 	for (const auto& F : P.world->facilities)
 	{
 		if (F.kind == "mast")
@@ -493,7 +514,8 @@ void AShitfireWorldActor::SpawnPlaceholders()
 	}
 
 	UInstancedStaticMeshComponent* Rocks =
-		MakeInstancedClass(TEXT("PH_Rocks"), CubePath, FLinearColor(0.30f, 0.29f, 0.28f));
+		MakeInstancedClass(TEXT("PH_Rocks"), CubePath, FLinearColor(0.30f, 0.29f, 0.28f),
+			ShitfireVis::Rock);
 	for (const auto& R : P.world->rocks)
 	{
 		BoxAt(Rocks, R.x, R.z, R.r, R.r, FMath::Max(R.h, 0.5));
@@ -543,16 +565,17 @@ void AShitfireWorldActor::SpawnVegetation()
 	}
 
 	auto MakeHISM = [this, bRealVeg](const TCHAR* Name, UStaticMesh* Mesh,
-	                                 const FLinearColor& ConeTint)
+	                                 const FLinearColor& ConeTint,
+	                                 const FShitfireVis& Vis)
 	{
 		UHierarchicalInstancedStaticMeshComponent* H =
 			NewObject<UHierarchicalInstancedStaticMeshComponent>(this, Name);
 		H->SetStaticMesh(Mesh);
 		H->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		H->SetMobility(EComponentMobility::Static);
-		if (!bRealVeg)   // real meshes keep their imported/generated materials
+		if (!bRealVeg)   // real meshes carry MI_* of M_ShitfireMaster (import_assets.py)
 		{
-			if (UMaterialInstanceDynamic* MID = MakePlaceholderMID(ConeTint))
+			if (UMaterialInstanceDynamic* MID = MakePlaceholderMID(ConeTint, Vis))
 			{
 				H->SetMaterial(0, MID);
 			}
@@ -564,9 +587,11 @@ void AShitfireWorldActor::SpawnVegetation()
 	};
 
 	UHierarchicalInstancedStaticMeshComponent* Canopy =
-		MakeHISM(TEXT("PH_VegCanopy"), CanopyMesh, FLinearColor(0.10f, 0.22f, 0.08f));
+		MakeHISM(TEXT("PH_VegCanopy"), CanopyMesh, FLinearColor(0.10f, 0.22f, 0.08f),
+			ShitfireVis::Canopy);
 	UHierarchicalInstancedStaticMeshComponent* Scatter =
-		MakeHISM(TEXT("PH_VegScatter"), ScatterMesh, FLinearColor(0.25f, 0.30f, 0.12f));
+		MakeHISM(TEXT("PH_VegScatter"), ScatterMesh, FLinearColor(0.25f, 0.30f, 0.12f),
+			ShitfireVis::Scatter);
 
 	// Real meshes: fit by bounds - uniform scale to the placement height,
 	// base sat on the ground (glTF pivots are not the engine cone's centered

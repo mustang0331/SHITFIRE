@@ -39,6 +39,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "ShitfireVis.h"
 #include "bridge/ShitfireSimHost.h"
 #include "units/ShitfireUnitAssets.h"
 #include "ShitfireUnitsActor.generated.h"
@@ -136,12 +137,19 @@ private:
 	void BuildEffects();
 	void ApplyInitialLayout();
 
+	// Vis = the optic signature every slot must carry (ShitfireVis.h, ART-a).
+	// With a null BaseMat the mesh's own (re-parented, tagged) materials stay.
 	UStaticMeshComponent* MakeStatic(const TCHAR* Name, UStaticMesh* Mesh,
 	                                 UMaterialInterface* BaseMat,
 	                                 const FLinearColor& Tint,
+	                                 const FShitfireVis& Vis,
 	                                 UMaterialInstanceDynamic** OutMid = nullptr);
+	// BodyVis/CapVis: the family's body and cap/hat signatures (04-world.js:
+	// 121-126) - the pack's imported tag is the enemy's; squad and civs
+	// override per slot so the three families stay distinguishable at night.
 	void MakeFigure(FFigure& F, const TCHAR* Name, const FLinearColor& Tint,
-	                bool bTintBody, double BaseHeightM);
+	                bool bTintBody, double BaseHeightM,
+	                const FShitfireVis& BodyVis, const FShitfireVis& CapVis);
 	void FitVehicleMesh(FVehicle& V, UStaticMesh* Mesh, double TargetLengthM);
 
 	// ---- per-frame ------------------------------------------------------

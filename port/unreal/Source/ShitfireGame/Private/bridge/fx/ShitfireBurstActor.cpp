@@ -1,5 +1,6 @@
 #include "bridge/fx/ShitfireBurstActor.h"
 #include "ShitfireGame.h"
+#include "ShitfireVis.h"
 #include "bridge/ShitfireCoords.h"
 
 #include "Components/StaticMeshComponent.h"
@@ -27,7 +28,7 @@ AShitfireBurstActor::AShitfireBurstActor()
 
 UStaticMeshComponent* AShitfireBurstActor::MakePart(const TCHAR* Name,
 	const TCHAR* MeshPath, const TCHAR* MaterialPath,
-	TObjectPtr<UMaterialInstanceDynamic>& OutMid)
+	const FShitfireVis& Vis, TObjectPtr<UMaterialInstanceDynamic>& OutMid)
 {
 	UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, MeshPath);
 	if (!Mesh)
@@ -41,7 +42,7 @@ UStaticMeshComponent* AShitfireBurstActor::MakePart(const TCHAR* Name,
 	C->SetCastShadow(false);   // translucent columns; shadows would double cost
 	if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, MaterialPath))
 	{
-		OutMid = UMaterialInstanceDynamic::Create(M, this);
+		OutMid = ShitfireVis::MakeTagged(M, this, Vis);
 		C->SetMaterial(0, OutMid);
 	}
 	else
@@ -67,16 +68,17 @@ void AShitfireBurstActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Optic signatures per 08-burst-optics.js:36-39 (flash / dust / puffs).
 	Flash = MakePart(TEXT("Flash"), SpherePath,
-		TEXT("/Game/FX/M_FxFlash.M_FxFlash"), FlashMid);
+		TEXT("/Game/FX/M_FxFlash.M_FxFlash"), ShitfireVis::BurstFlash, FlashMid);
 	Dirt = MakePart(TEXT("Dirt"), ConePath,
-		TEXT("/Game/FX/M_FxDirt.M_FxDirt"), DirtMid);
+		TEXT("/Game/FX/M_FxDirt.M_FxDirt"), ShitfireVis::BurstDust, DirtMid);
 	for (int32 i = 0; i < NumSmokeSegments; i++)
 	{
 		TObjectPtr<UMaterialInstanceDynamic> Mid = nullptr;
 		UStaticMeshComponent* Seg = MakePart(
 			*FString::Printf(TEXT("Smoke%d"), i), CylinderPath,
-			TEXT("/Game/FX/M_FxSmoke.M_FxSmoke"), Mid);
+			TEXT("/Game/FX/M_FxSmoke.M_FxSmoke"), ShitfireVis::BurstPuff, Mid);
 		SmokeSegments.Add(Seg);
 		SmokeMids.Add(Mid);
 	}

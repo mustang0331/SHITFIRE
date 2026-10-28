@@ -1,5 +1,6 @@
 #include "units/ShitfireUnitsActor.h"
 #include "ShitfireGame.h"
+#include "ShitfireVis.h"
 #include "bridge/ShitfireCoords.h"
 
 #include "Algo/Count.h"
@@ -138,7 +139,7 @@ void AShitfireUnitsActor::EndPlay(const EEndPlayReason::Type Reason)
 
 UStaticMeshComponent* AShitfireUnitsActor::MakeStatic(const TCHAR* Name,
 	UStaticMesh* Mesh, UMaterialInterface* BaseMat, const FLinearColor& Tint,
-	UMaterialInstanceDynamic** OutMid)
+	const FShitfireVis& Vis, UMaterialInstanceDynamic** OutMid)
 {
 	UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this, Name);
 	if (Mesh) { C->SetStaticMesh(Mesh); }
@@ -146,7 +147,7 @@ UStaticMeshComponent* AShitfireUnitsActor::MakeStatic(const TCHAR* Name,
 	C->SetMobility(EComponentMobility::Movable);
 	if (BaseMat)
 	{
-		UMaterialInstanceDynamic* Mid = UMaterialInstanceDynamic::Create(BaseMat, this);
+		UMaterialInstanceDynamic* Mid = ShitfireVis::MakeTagged(BaseMat, this, Vis);
 		// M_Placeholder takes "Color"; M_UnitBody takes "Tint"; the FX
 		// materials take "Color" - set both, extra params are ignored.
 		Mid->SetVectorParameterValue(TEXT("Color"), Tint);
@@ -166,7 +167,8 @@ UStaticMeshComponent* AShitfireUnitsActor::MakeStatic(const TCHAR* Name,
 }
 
 void AShitfireUnitsActor::MakeFigure(FFigure& F, const TCHAR* Name,
-	const FLinearColor& Tint, bool bTintBody, double BaseHeightM)
+	const FLinearColor& Tint, bool bTintBody, double BaseHeightM,
+	const FShitfireVis& BodyVis, const FShitfireVis& CapVis)
 {
 	F.BaseHeightM = BaseHeightM;
 	if (Assets.bHumanoidReal)
@@ -183,13 +185,23 @@ void AShitfireUnitsActor::MakeFigure(FFigure& F, const TCHAR* Name,
 		if (bTintBody && Assets.UnitBodyMat)
 		{
 			UMaterialInstanceDynamic* Mid =
-				UMaterialInstanceDynamic::Create(Assets.UnitBodyMat, this);
+				ShitfireVis::MakeTagged(Assets.UnitBodyMat, this, BodyVis);
 			Mid->SetVectorParameterValue(TEXT("Tint"), Tint);
 			for (int32 i = 0; i < S->GetNumMaterials(); i++)
 			{
 				S->SetMaterial(i, Mid);
 			}
 			Keep.Add(Mid);
+		}
+		else
+		{
+			// Pack materials (MI_* of M_ShitfireMaster, tagged at import with
+			// the enemy body); instance per slot so the family's own
+			// signature is explicit here, not inherited from the manifest.
+			for (int32 i = 0; i < S->GetNumMaterials(); i++)
+			{
+				ShitfireVis::Apply(S->CreateDynamicMaterialInstance(i), BodyVis);
+			}
 		}
 		S->RegisterComponent();
 		S->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
@@ -239,6 +251,12 @@ void AShitfireUnitsActor::MakeFigure(FFigure& F, const TCHAR* Name,
 					HeadRefCS = HeadRefCS * Ref.GetRefBonePose()[B];
 				}
 				H->SetRelativeTransform(HeadRefCS.Inverse());
+				// The cap is the family discriminator at night (friendly =
+				// IR beacon / CID panel, civilian = cold straw): tag per slot.
+				for (int32 i = 0; i < H->GetNumMaterials(); i++)
+				{
+					ShitfireVis::Apply(H->CreateDynamicMaterialInstance(i), CapVis);
+				}
 				Keep.Add(H);
 				F.Head = H;
 			}
@@ -247,7 +265,7 @@ void AShitfireUnitsActor::MakeFigure(FFigure& F, const TCHAR* Name,
 	else
 	{
 		// Box fallback: the browser body silhouette (04:68, 0.8 x 2.0 x 0.8).
-		F.Box = MakeStatic(Name, Assets.Cube, Assets.PlaceholderMat, Tint);
+		F.Box = MakeStatic(Name, Assets.Cube, Assets.PlaceholderMat, Tint, BodyVis);
 		F.MeshScale = 1.0;
 	}
 	F.IdleRate = FMath::FRandRange(0.9, 1.1);   // sanctioned unseeded flavor
@@ -259,20 +277,23 @@ void AShitfireUnitsActor::BuildFigures()
 	for (int32 i = 0; i < 8; i++)
 	{
 		MakeFigure(Troops[i], *FString::Printf(TEXT("Troop%d"), i),
-			ColEnemyBody, /*bTintBody=*/false, FShitfireUnitAssets::TroopHeightM);
+			ColEnemyBody, /*bTintBody=*/false, FShitfireUnitAssets::TroopHeightM,
+			ShitfireVis::EnemyBody, ShitfireVis::EnemyCap);
 	}
 	Squad.SetNum(6);    // units.fSquad (05:48)
 	for (int32 i = 0; i < 6; i++)
 	{
 		MakeFigure(Squad[i], *FString::Printf(TEXT("Squad%d"), i),
-			ColFriendly, /*bTintBody=*/true, FShitfireUnitAssets::TroopHeightM);
+			ColFriendly, /*bTintBody=*/true, FShitfireUnitAssets::TroopHeightM,
+			ShitfireVis::FriendBody, ShitfireVis::FriendCap);
 	}
 	const shitfire::SimCore::Parts P = Sim->parts();
 	Civs.SetNum(static_cast<int32>(P.world->civs.size()));
 	for (int32 i = 0; i < Civs.Num(); i++)
 	{
 		MakeFigure(Civs[i], *FString::Printf(TEXT("Civ%d"), i),
-			ColCiv, /*bTintBody=*/true, FShitfireUnitAssets::CivHeightM);
+			ColCiv, /*bTintBody=*/true, FShitfireUnitAssets::CivHeightM,
+			ShitfireVis::CivBody, ShitfireVis::CivHat);
 	}
 }
 
@@ -298,10 +319,10 @@ void AShitfireUnitsActor::BuildVehicles()
 	{
 		FVehicle& V = Vehicles[i];
 		V.Mesh = MakeStatic(*FString::Printf(TEXT("Vehicle%d"), i),
-			Assets.Cube, nullptr, FLinearColor::White);
+			Assets.Cube, nullptr, FLinearColor::White, ShitfireVis::Vehicle);
 		// Flicker flame over a dead hull (05:60-67, 05:853).
 		V.Flame = MakeStatic(*FString::Printf(TEXT("VehFlame%d"), i),
-			Assets.Sphere, Assets.FxFlashMat, ColFlame);
+			Assets.Sphere, Assets.FxFlashMat, ColFlame, ShitfireVis::Flame);
 		if (UMaterialInstanceDynamic* Mid =
 			Cast<UMaterialInstanceDynamic>(V.Flame->GetMaterial(0)))
 		{
@@ -314,8 +335,10 @@ void AShitfireUnitsActor::BuildVehicles()
 	for (int32 i = 0; i < DustPoolSize; i++)
 	{
 		UMaterialInstanceDynamic* Mid = nullptr;
+		// Vehicle dust is a port addition (research 09); the browser has no
+		// tag for it, so it takes the browser's untagged derivation.
 		DustPool[i].Mesh = MakeStatic(*FString::Printf(TEXT("Dust%d"), i),
-			Assets.Sphere, Assets.FxDirtMat, ColDust, &Mid);
+			Assets.Sphere, Assets.FxDirtMat, ColDust, ShitfireVis::Derived(ColDust), &Mid);
 		DustPool[i].Mid = Mid;
 		if (Mid) { Mid->SetScalarParameterValue(TEXT("NoiseScaleM"), 3.0); }
 	}
@@ -327,19 +350,24 @@ void AShitfireUnitsActor::BuildStructures()
 	for (int32 i = 0; i < 3; i++)
 	{
 		Huts[i] = MakeStatic(*FString::Printf(TEXT("UnitHut%d"), i),
-			Assets.Cube, Assets.PlaceholderMat, ColHut);
+			Assets.Cube, Assets.PlaceholderMat, ColHut, ShitfireVis::UnitHut);
 	}
-	FlagPole = MakeStatic(TEXT("FlagPole"), Assets.Cube, Assets.PlaceholderMat, ColFlagPole);
-	FlagBanner = MakeStatic(TEXT("FlagBanner"), Assets.Cube, Assets.PlaceholderMat, ColFlagBanner);
+	// Flag pole and banner are untagged in the browser (05:21-24): derived.
+	FlagPole = MakeStatic(TEXT("FlagPole"), Assets.Cube, Assets.PlaceholderMat,
+		ColFlagPole, ShitfireVis::Derived(ColFlagPole));
+	FlagBanner = MakeStatic(TEXT("FlagBanner"), Assets.Cube, Assets.PlaceholderMat,
+		ColFlagBanner, ShitfireVis::Derived(ColFlagBanner));
 	UMaterialInstanceDynamic* Mid = nullptr;
+	// The scorch / kaiju recolours only change Color; the browser keeps the
+	// same tagged material through them (05:75), so the signature stays.
 	Bunker = MakeStatic(TEXT("UnitBunker"), Assets.Cube, Assets.PlaceholderMat,
-		ColBunker, &Mid);
+		ColBunker, ShitfireVis::Bunker, &Mid);
 	BunkerMid = Mid;
 	KpPosts.SetNum(2);    // units.kpPosts (05:40)
 	for (int32 i = 0; i < 2; i++)
 	{
 		KpPosts[i] = MakeStatic(*FString::Printf(TEXT("KpPost%d"), i),
-			Assets.Cube, Assets.PlaceholderMat, ColKpPost);
+			Assets.Cube, Assets.PlaceholderMat, ColKpPost, ShitfireVis::Post);
 	}
 }
 
@@ -356,8 +384,9 @@ void AShitfireUnitsActor::BuildTowerAndBattery()
 	                     double Ox, double Oz, double Oy,
 	                     double W, double H, double D, double PitchDeg)
 	{
+		// Tower parts are untagged in the browser (03:23-24): derived.
 		UStaticMeshComponent* M = MakeStatic(Name, Assets.Cube,
-			Assets.PlaceholderMat, C);
+			Assets.PlaceholderMat, C, ShitfireVis::Derived(C));
 		M->SetWorldLocation(ShitfireCoords::SimToUE(OpX + Ox, OpH + Oy, OpZ + Oz));
 		M->SetWorldScale3D(FVector(W, D, H));   // sim W/D -> UE X/Y, H -> Z
 		M->SetWorldRotation(FRotator(PitchDeg, 0, 0));
@@ -388,9 +417,12 @@ void AShitfireUnitsActor::BuildTowerAndBattery()
 		const double Ox = i * 16 - 8, Oz = i * 7;
 		const double GX = BX + Ox, GZ = BZ + Oz;
 		const double G = GroundH(GX, GZ);
+		// Browser gunMat (03:95) is untagged: derived; the Cannon pack's own
+		// instances carry the same number from the manifest.
 		UStaticMeshComponent* Gun = MakeStatic(
 			*FString::Printf(TEXT("BatteryGun%d"), i), Assets.Cube,
-			Assets.CannonMesh ? nullptr : Assets.PlaceholderMat, Hex(0x3E4A34));
+			Assets.CannonMesh ? nullptr : Assets.PlaceholderMat, Hex(0x3E4A34),
+			ShitfireVis::Derived(Hex(0x3E4A34)));
 		if (Assets.CannonMesh)
 		{
 			FVehicle Fit;
@@ -406,7 +438,8 @@ void AShitfireUnitsActor::BuildTowerAndBattery()
 			{
 				UStaticMeshComponent* W = MakeStatic(
 					*FString::Printf(TEXT("BatteryGunWheels%d"), i),
-					Assets.CannonWheels, nullptr, FLinearColor::White);
+					Assets.CannonWheels, nullptr, FLinearColor::White,
+					ShitfireVis::Derived(Hex(0x3E4A34)));
 				W->SetWorldTransform(Gun->GetComponentTransform());
 				W->SetVisibility(true);
 				BatteryParts.Add(W);
@@ -424,7 +457,7 @@ void AShitfireUnitsActor::BuildTowerAndBattery()
 	{
 		const double TX = BX - 14, TZ = BZ + 10;
 		UStaticMeshComponent* Tent = MakeStatic(TEXT("BatteryTent"),
-			Assets.Cube, Assets.PlaceholderMat, ColTent);
+			Assets.Cube, Assets.PlaceholderMat, ColTent, ShitfireVis::Derived(ColTent));
 		Tent->SetWorldScale3D(FVector(6, 4.5, 2.6));
 		Tent->SetWorldLocation(ShitfireCoords::SimToUE(TX, GroundH(TX, TZ) + 1.3, TZ));
 		Tent->SetVisibility(true);
@@ -438,7 +471,7 @@ void AShitfireUnitsActor::BuildEffects()
 	for (int32 i = 0; i < 6; i++)
 	{
 		Flashes[i] = MakeStatic(*FString::Printf(TEXT("MuzzleFlash%d"), i),
-			Assets.Sphere, Assets.FxFlashMat, ColFlash);
+			Assets.Sphere, Assets.FxFlashMat, ColFlash, ShitfireVis::Flash);
 		if (UMaterialInstanceDynamic* Mid =
 			Cast<UMaterialInstanceDynamic>(Flashes[i]->GetMaterial(0)))
 		{
@@ -451,8 +484,10 @@ void AShitfireUnitsActor::BuildEffects()
 	for (int32 i = 0; i < 4; i++)
 	{
 		UMaterialInstanceDynamic* Mid = nullptr;
+		// Smoke puffs are untagged in the browser (05:34): derived.
 		Puffs[i] = MakeStatic(*FString::Printf(TEXT("SmokePuff%d"), i),
-			Assets.Sphere, Assets.FxSmokeMat, Hex(0x8A877E), &Mid);
+			Assets.Sphere, Assets.FxSmokeMat, Hex(0x8A877E),
+			ShitfireVis::Derived(Hex(0x8A877E)), &Mid);
 		PuffMids[i] = Mid;
 	}
 }
@@ -526,6 +561,15 @@ void AShitfireUnitsActor::ApplyInitialLayout()
 			V.YawOffsetDeg = 0.0;
 			V.ZLiftUE = 0.0;
 			V.Mesh->SetWorldScale3D(FVector(5.0, 2.3, 2.1));
+			// The engine cube would otherwise draw the (untagged) engine
+			// default material - the audit's one legitimate catch.
+			if (UMaterialInstanceDynamic* Mid = ShitfireVis::MakeTagged(
+					Assets.PlaceholderMat, this, ShitfireVis::Vehicle))
+			{
+				Mid->SetVectorParameterValue(TEXT("Color"), Hex(0x3E4A34));
+				V.Mesh->SetMaterial(0, Mid);
+				Keep.Add(Mid);
+			}
 		}
 		if (U.vehicles[i].deadMat) { V.bDeadShown = false; /* applied in tick */ }
 		// Strongpoint statics get the Tank turret same-origin.
@@ -533,7 +577,7 @@ void AShitfireUnitsActor::ApplyInitialLayout()
 		{
 			UStaticMeshComponent* T = MakeStatic(
 				*FString::Printf(TEXT("VehTurret%d"), i),
-				Assets.TankTurret, nullptr, FLinearColor::White);
+				Assets.TankTurret, nullptr, FLinearColor::White, ShitfireVis::Vehicle);
 			T->AttachToComponent(V.Mesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 			T->SetVisibility(V.bVisible);
 		}
@@ -922,7 +966,8 @@ void AShitfireUnitsActor::UpdateVehicles(double SimNow, double Dt)
 				Assets.UnitBodyMat ? Assets.UnitBodyMat : Assets.PlaceholderMat;
 			if (Base)
 			{
-				UMaterialInstanceDynamic* Dead = UMaterialInstanceDynamic::Create(Base, this);
+				UMaterialInstanceDynamic* Dead =
+					ShitfireVis::MakeTagged(Base, this, ShitfireVis::VehicleDead);
 				Dead->SetVectorParameterValue(TEXT("Tint"), ColVehDead);
 				Dead->SetVectorParameterValue(TEXT("Color"), ColVehDead);
 				for (int32 m = 0; m < V.Mesh->GetNumMaterials(); m++)

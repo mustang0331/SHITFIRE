@@ -67,6 +67,7 @@ protected:
 private:
 	UStaticMeshComponent* MakePart(const TCHAR* Name, const TCHAR* MeshPath,
 	                               const TCHAR* MaterialPath,
+	                               const struct FShitfireVis& Vis,
 	                               TObjectPtr<UMaterialInstanceDynamic>& OutMid);
 
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Flash;

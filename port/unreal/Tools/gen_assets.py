@@ -1,10 +1,24 @@
-"""Regenerates the first-pass procedural materials under /Game/Materials.
+"""Regenerates the first-pass procedural materials under /Game/Materials,
+plus the ART-a optic-signature assets every other material depends on.
 
-These are the ONLY material assets in the project and they are 100%%
-script-generated (delete + recreate on every run - the .uassets are build
-products; THIS FILE is the source of truth). All four are parameter-driven
-so BUILDER-ASSETS can later swap real texture packs into the same parameter
-names (or regenerate with texture-sampling graphs) without touching C++.
+The .uassets are build products (delete + recreate on every run); THIS FILE
+is the source of truth. The four surface materials are parameter-driven so
+BUILDER-ASSETS can swap real texture packs into the same parameter names
+(import_assets.py does so for M_Terrain/M_Road) without touching C++.
+
+Built FIRST, before any other material (vis_material.py holds the code):
+  MPC_Vision         MaterialParameterCollection, scalar VisMode (0 day,
+                     1 NVG preview, 2 thermal preview). C++ drives it.
+  M_ShitfireMaster   parent of every imported pack material: BaseTex *
+                     Tint -> vis preview wrap -> BaseColor, Roughness,
+                     skeletal/ISM/Nanite usage flags. Vis {0.5, 0.5 grey}.
+
+Every material below carries VisNvg (scalar) + VisThermal (vector) wired
+through the preview wrap into BaseColor (vis_material.py docstring). The
+defaults mirror the browser vis tables (04-world.js:93-159):
+  M_Terrain {0.55, 0.14 grey}  M_Road {0.10, 0.62 grey} (asphalt; C++ sets
+  path sections)  M_Ocean {0.06, 0.22 grey}  M_Placeholder {0.5, 0.5 grey}
+  (C++ always overrides).
 
   M_Terrain      slope/height-layered island surface (rock/scrub/sand/beach),
                  shader-side value noise for breakup. Params: RockColor,
@@ -23,12 +37,26 @@ Run headless:
   UnrealEditor-Cmd.exe <Shitfire.uproject> -run=pythonscript ^
       -script="port/unreal/Tools/gen_assets.py" -unattended -nopause
 """
+import os
+import sys
+
 import unreal
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import vis_material as vm  # noqa: E402
 
 MEL = unreal.MaterialEditingLibrary
 EAL = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 PKG_PATH = "/Game/Materials"
+BASE_COLOR = unreal.MaterialProperty.MP_BASE_COLOR
+
+# ART-a assets first: every material below references MPC_Vision, and
+# import_assets.py re-parents the pack materials onto the master.
+MPC = vm.ensure_vision_mpc(fresh=True)
+vm.build_master(MPC)
 
 
 def fresh_material(name):
@@ -120,7 +148,7 @@ MEL.connect_material_expressions(wp, "", cn, "WP")
 MEL.connect_material_expressions(nrm, "", cn, "N")
 for pname, pexpr in params:
     MEL.connect_material_expressions(pexpr, "", cn, pname)
-MEL.connect_material_property(cn, "", unreal.MaterialProperty.MP_BASE_COLOR)
+vm.wrap_vis_property(mat, cn, "", BASE_COLOR, 0.55, (0.14, 0.14, 0.14), MPC)
 rough = scalar_param(mat, "TerrainRoughness", 0.95, -400, 400)
 MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
 finish(mat)
@@ -131,7 +159,7 @@ mat = fresh_material("M_Road")
 # (tiny triangle count, no perf concern).
 mat.set_editor_property("two_sided", True)
 col = vector_param(mat, "RoadColor", (0.10, 0.09, 0.08))
-MEL.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
+vm.wrap_vis_property(mat, col, "", BASE_COLOR, 0.10, (0.62, 0.62, 0.62), MPC)
 rough = scalar_param(mat, "RoadRoughness", 0.92, -900, 300)
 MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
 finish(mat)
@@ -165,7 +193,7 @@ MEL.connect_material_expressions(wspeed, "", cn, "WaveSpeed")
 MEL.connect_material_expressions(wbump, "", cn, "WaveBump")
 MEL.connect_material_property(cn, "", unreal.MaterialProperty.MP_NORMAL)
 col = vector_param(mat, "OceanColor", (0.02, 0.09, 0.13))
-MEL.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
+vm.wrap_vis_property(mat, col, "", BASE_COLOR, 0.06, (0.22, 0.22, 0.22), MPC)
 rough = scalar_param(mat, "OceanRoughness", 0.06, -900, 300)
 MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
 opac = scalar_param(mat, "OceanOpacity", 0.85, -900, 500)
@@ -178,7 +206,7 @@ mat = fresh_material("M_Placeholder")
 # (the editor auto-adds it interactively; cooked/-game builds will not).
 mat.set_editor_property("used_with_instanced_static_meshes", True)
 col = vector_param(mat, "Color", (0.75, 0.25, 0.25))
-MEL.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
+vm.wrap_vis_property(mat, col, "", BASE_COLOR, 0.5, (0.5, 0.5, 0.5), MPC)
 rough = scalar_param(mat, "PlaceholderRoughness", 0.7, -900, 300)
 MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
 finish(mat)

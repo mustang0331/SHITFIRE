@@ -1,5 +1,6 @@
 #include "bridge/fx/ShitfireFlareActor.h"
 #include "ShitfireGame.h"
+#include "ShitfireVis.h"
 #include "bridge/ShitfireCoords.h"
 
 #include "Components/PointLightComponent.h"
@@ -35,7 +36,7 @@ void AShitfireFlareActor::BeginPlay()
 		if (UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr,
 				TEXT("/Game/FX/M_FxFlare.M_FxFlare")))
 		{
-			GlowMid = UMaterialInstanceDynamic::Create(Mat, this);
+			GlowMid = ShitfireVis::MakeTagged(Mat, this, ShitfireVis::Flare);   // 08:508
 			Glow->SetMaterial(0, GlowMid);
 		}
 		else

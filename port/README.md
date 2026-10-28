@@ -98,7 +98,7 @@ $env:UE_SDKS_ROOT = 'C:\Users\conno\prj\SHITFIRE-port\port\unreal\AutoSDK-stub'
 
 (`-nullrhi` is fine for `SHITFIRE.Parity` and `SHITFIRE.Observer`; the
 `SHITFIRE.UI` tests render widgets and take screenshots, so run those with
-the GPU.) `<dir>/index.json` is the record. Tests, all green 2026-10-06:
+the GPU.) `<dir>/index.json` is the record. Tests, all green 2026-10-28 (7/7):
 
 | Test | Proves |
 |---|---|
@@ -108,6 +108,7 @@ the GPU.) `<dir>/index.json` is the record. Tests, all green 2026-10-06:
 | `SHITFIRE.UI.TypedMission` | mission_05 typed key-by-key into the live text box (comparator shared with `Private/parity/`): same parity, every TLOG net row rendered, AAR overlay up |
 | `SHITFIRE.UI.CommsLogBudget` | 2,050 lines, max 50-line append batch < 2 ms, virtualized |
 | `SHITFIRE.Units.HumanoidImportGate` | the imported soldier skeletal asset has vertices and bones in agreement (bounds within 3× the 200 cm rig, root-bone scale ≤ 1.5); `FShitfireUnitAssets::Load()` honours the verdict and degrades to the box tier with an Error log otherwise. Added 2026-10-06 after the bench frame's "hovering vehicle" and "beach wreck pile" turned out to be the soldier asset imported 136× too large and lying on its side |
+| `SHITFIRE.Art.MaterialVisTag` | every `UMaterialInterface` the asset registry knows under `/Game` resolves the optic-signature parameters `VisNvg` + `VisThermal` (124 swept, 0 untagged, 2026-10-28), `M_ShitfireMaster` and `MPC_Vision` exist, and `ShitfireVis::Derived()` reproduces the browser's untagged-luminance fallback on a pinned colour. Asset half of the ART-a gate; the runtime half is `ShitfireVis::AuditWorld` at the end of `AShitfireWorldActor::BeginPlay` (an Error per untagged slot on any spawned primitive; also `shitfire.VisAudit` on the console) |
 
 ### The Shipping parity gate — `-ShitfireParityGate`
 
@@ -257,3 +258,47 @@ parameter names (run order: gen_assets.py first if you run both; the textured
 versions are the shipped ones). Paid packs slot in the same way: add a manifest
 entry (or drop files in the cache), extend import_assets.py's manifest lists,
 re-run, allowlist, credit.
+
+**Optic-signature convention (ART-a, 2026-10-28).** The browser tags every
+material with `vis = {nvg, th}` and swaps colours per device
+(src/js/04-world.js:93-159, 08-burst-optics.js:96-129); an untagged material
+silently falls back to its daytime luminance, which the browser's own first
+pass measured as worse than the naked eye at night. In the engine the tag is a
+parameter contract, and a missing tag fails instead of falling back:
+
+- every `UMaterial` under `/Game` declares scalar `VisNvg` and vector
+  `VisThermal`, wired through one `VisPreview` custom node into its colour
+  output (`Tools/vis_material.py`, shared by every gen script) - at
+  `MPC_Vision.VisMode` 0 (the default) the node is a no-op;
+- `/Game/Materials/M_ShitfireMaster` (lit, `BaseTex` × `Tint`, `Roughness`,
+  skeletal + ISM + Nanite usage) is the parent of every imported pack
+  material: `import_assets.py` re-parents each mesh slot to an `MI_<mesh>_<slot>`
+  instance with the pack's base-colour texture and `baseColorFactor`, tagged
+  from the manifest's per-model `vis` entry (a model without one raises), and
+  deletes the Interchange materials - no third-party material survives
+  import. The manifest key is `reparent_imported_materials` (the old
+  `keep_imported_materials` raises);
+- C++ never creates an untagged instance: `ShitfireVis::MakeTagged` /
+  `Apply` with the browser's numbers from `Public/ShitfireVis.h` (file:line
+  beside each), `ShitfireVis::Derived()` for the colours the browser left
+  untagged (tower, tent, flag, dust), per-slot overrides on figures so the
+  three families keep their own body/cap signatures on the shared body;
+- gates: `SHITFIRE.Art.MaterialVisTag` (asset sweep) + the BeginPlay world
+  audit; `Tools/check_vis_tags.py` is the same sweep as an editor-python
+  commandlet for use right after an import.
+
+Run order is now `gen_assets.py` (creates MPC + master; **deletes and
+recreates the master, so the MI_* on disk dangle until import_assets.py
+reruns**) → `gen_fx_assets.py` → `gen_unit_assets.py` → `import_assets.py` →
+`check_vis_tags.py`. `shitfire.VisMode 1|2` (console or
+`-ExecCmds="shitfire.VisMode 1"`) renders every material's NVG luminance or
+thermal signature flat so a new pack's tagging can be checked by eye; the
+real tube/wash rig is P4.5f. Read the preview as RELATIVE at equal range: the
+flat value is still an albedo under the sun, the sky light and the aerial
+perspective (2026-10-28 units-probe frames: the tower leg at point-blank
+renders its thermal 0.097 as linear 0.11, the 0.14 terrain reads 0.23 at
+300 m and 0.38 inland, the 0.06 sea stays sky-bright through reflection).
+That is also the P4.5f lesson in advance: the real NVG/thermal rig cannot be
+a material colour swap like the browser's - it has to bypass lighting and
+haze (emissive/unlit path or a post-process reading the signature from a
+custom buffer), or the tags are swamped at mission range.

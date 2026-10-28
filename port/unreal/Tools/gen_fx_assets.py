@@ -15,16 +15,32 @@ port/unreal/uasset-allowlist.txt. Consumed by the C++ FX actors
   M_FxFlare  unlit additive glow blob for the illum round. Params: Color,
              Intensity (driven per-frame from C++ for gutter/flicker).
 
+ART-a: every material carries VisNvg + VisThermal through the preview wrap
+(vis_material.py; needs MPC_Vision, so gen_assets.py runs first). The glows
+wrap Color BEFORE the * Intensity multiply into Emissive; the masked
+columns wrap BaseColor (opacity mask untouched). Defaults: M_FxFlash and
+M_FxFlare {1, white}, M_FxDirt {0.85, 0.62 grey}, M_FxSmoke {0.60, 0.44
+grey}.
+
 Run headless:
   UnrealEditor-Cmd.exe <Shitfire.uproject> -run=pythonscript ^
       -script="port/unreal/Tools/gen_fx_assets.py" -unattended -nopause
 """
+import os
+import sys
+
 import unreal
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import vis_material as vm  # noqa: E402
 
 MEL = unreal.MaterialEditingLibrary
 EAL = unreal.EditorAssetLibrary
 TOOLS = unreal.AssetToolsHelpers.get_asset_tools()
 PKG_PATH = "/Game/FX"
+MPC = vm.ensure_vision_mpc()
 
 
 def fresh_material(name):
@@ -72,7 +88,7 @@ def finish(mat):
     unreal.log("gen_fx_assets: wrote " + mat.get_path_name())
 
 
-def unlit_additive_glow(name, rgb, intensity):
+def unlit_additive_glow(name, rgb, intensity, nvg, th):
     """Flash + flare share a structure: emissive = Color * Intensity.
 
     Intensity is ABSOLUTE LUMINANCE (cd/m2): unlit emissive bypasses
@@ -85,8 +101,11 @@ def unlit_additive_glow(name, rgb, intensity):
     mat.set_editor_property("blend_mode", unreal.BlendMode.BLEND_ADDITIVE)
     col = vector_param(mat, "Color", rgb)
     inten = scalar_param(mat, "Intensity", intensity, -900, 300)
+    # vis wrap sits on Color BEFORE the luminance multiply (the preview
+    # recolours the glow, Intensity still sets how bright it is)
+    wrap = vm.wrap_vis_preview(mat, col, "", nvg, th, MPC, -700, 0)
     mul = MEL.create_material_expression(mat, unreal.MaterialExpressionMultiply, -500, 100)
-    MEL.connect_material_expressions(col, "", mul, "A")
+    MEL.connect_material_expressions(wrap, "", mul, "A")
     MEL.connect_material_expressions(inten, "", mul, "B")
     MEL.connect_material_property(mul, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     finish(mat)
@@ -112,7 +131,7 @@ return saturate(Opacity * (0.78 + 0.45 * n));
 """
 
 
-def lit_masked_column(name, rgb, opacity, noise_scale_m, scroll_mps):
+def lit_masked_column(name, rgb, opacity, noise_scale_m, scroll_mps, nvg, th):
     """LIT + MASKED: Color is an ALBEDO the sun lights (correct under the
     fixed manual EV100 ~13 camera and any later TOD), and the noise output
     drives the OPACITY MASK - solid smoke body with ragged noise-clipped
@@ -127,7 +146,8 @@ def lit_masked_column(name, rgb, opacity, noise_scale_m, scroll_mps):
     mat.set_editor_property("opacity_mask_clip_value", 0.35)
     mat.set_editor_property("two_sided", True)
     col = vector_param(mat, "Color", rgb)
-    MEL.connect_material_property(col, "", unreal.MaterialProperty.MP_BASE_COLOR)
+    vm.wrap_vis_property(mat, col, "", unreal.MaterialProperty.MP_BASE_COLOR,
+                         nvg, th, MPC, -500, -300)
     rough = scalar_param(mat, "ColumnRoughness", 0.95, -900, 150)
     MEL.connect_material_property(rough, "", unreal.MaterialProperty.MP_ROUGHNESS)
     wp = MEL.create_material_expression(mat, unreal.MaterialExpressionWorldPosition, -1300, 0)
@@ -148,11 +168,12 @@ def lit_masked_column(name, rgb, opacity, noise_scale_m, scroll_mps):
 
 
 # glows: luminance-scaled for the EV100 ~13 day exposure (see docstring)
-unlit_additive_glow("M_FxFlash", (1.0, 0.85, 0.55), 60000.0)
-unlit_additive_glow("M_FxFlare", (1.0, 0.92, 0.75), 25000.0)
+WHITE = (1.0, 1.0, 1.0)
+unlit_additive_glow("M_FxFlash", (1.0, 0.85, 0.55), 60000.0, 1.0, WHITE)
+unlit_additive_glow("M_FxFlare", (1.0, 0.92, 0.75), 25000.0, 1.0, WHITE)
 # dirt: dark earth albedo, chunky noise, no scroll
-lit_masked_column("M_FxDirt", (0.16, 0.12, 0.08), 0.85, 7.0, 0.0)
+lit_masked_column("M_FxDirt", (0.16, 0.12, 0.08), 0.85, 7.0, 0.0, 0.85, (0.62, 0.62, 0.62))
 # smoke: pale dust albedo, slow upward scroll
-lit_masked_column("M_FxSmoke", (0.63, 0.60, 0.55), 0.95, 11.0, 1.6)
+lit_masked_column("M_FxSmoke", (0.63, 0.60, 0.55), 0.95, 11.0, 1.6, 0.60, (0.44, 0.44, 0.44))
 
 unreal.log("gen_fx_assets: done")

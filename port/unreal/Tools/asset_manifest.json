@@ -8,7 +8,16 @@
     "port/CREDITS.md and port/unreal/uasset-allowlist.txt.",
     "License rails (UNREAL_RESEARCH.md 7/11): CC0 preferred, CC-BY needs the",
     "credit line in CREDITS.md, no GPL / CC-BY-SA / NC / ND, nothing",
-    "license-less, nothing extracted from Arma/DCS."
+    "license-less, nothing extracted from Arma/DCS.",
+    "Every model carries vis {nvg: 0..1 tube luminance, th: [r,g,b] thermal",
+    "colour} from the browser tables (src/js/04-world.js:93-159); it lands on",
+    "the model's MI_* instances of M_ShitfireMaster as VisNvg/VisThermal.",
+    "A model without vis makes import_assets.py raise - never a default.",
+    "reparent_imported_materials: true = the pack's own materials are",
+    "imported, each mesh slot gets an MI_<Mesh>_<slot> of the master with",
+    "the slot's texture/baseColorFactor, then the Interchange materials are",
+    "deleted (textures kept). Absent/false = the vegetation path (palette",
+    "texture + MI_<Model>_<slot> under dest, import folder deleted)."
   ],
   "textures": [
     {
@@ -94,6 +103,7 @@
       "fetched": "2026-09-03",
       "dest": "/Game/Vegetation",
       "nanite": true,
+      "vis": {"nvg": 0.85, "th": [0.24, 0.24, 0.24]},
       "role": "canopy vegetation (wired into SpawnVegetation)"
     },
     {
@@ -107,6 +117,7 @@
       "fetched": "2026-09-03",
       "dest": "/Game/Vegetation",
       "nanite": true,
+      "vis": {"nvg": 0.85, "th": [0.24, 0.24, 0.24]},
       "role": "canopy vegetation variant (spare)"
     },
     {
@@ -121,6 +132,7 @@
       "dest": "/Game/Vegetation",
       "nanite": true,
       "tint": [0.62, 0.58, 0.34],
+      "vis": {"nvg": 0.50, "th": [0.27, 0.27, 0.27]},
       "role": "scatter vegetation (wired into SpawnVegetation), arid-tinted"
     },
     {
@@ -134,6 +146,7 @@
       "fetched": "2026-09-03",
       "dest": "/Game/Vegetation",
       "nanite": true,
+      "vis": {"nvg": 0.50, "th": [0.27, 0.27, 0.27]},
       "role": "scatter vegetation variant (spare)"
     },
     {
@@ -147,6 +160,7 @@
       "fetched": "2026-09-03",
       "dest": "/Game/Vegetation",
       "nanite": true,
+      "vis": {"nvg": 0.50, "th": [0.27, 0.27, 0.27]},
       "role": "scatter vegetation variant (spare, Kofa saguaro stand-in)"
     },
     {
@@ -159,7 +173,8 @@
       "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "fetched": "2026-09-03",
       "dest": "/Game/Models/Soldier",
-      "keep_imported_materials": true,
+      "reparent_imported_materials": true,
+      "vis": {"nvg": 0.16, "th": [1.0, 1.0, 1.0]},
       "role": "troop/squad unit (for BUILDER-CHARACTERS wiring)"
     },
     {
@@ -172,7 +187,8 @@
       "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "fetched": "2026-09-03",
       "dest": "/Game/Models/SoldierSwat",
-      "keep_imported_materials": true,
+      "reparent_imported_materials": true,
+      "vis": {"nvg": 0.16, "th": [1.0, 1.0, 1.0]},
       "role": "alternate soldier (for BUILDER-CHARACTERS wiring)"
     },
     {
@@ -186,7 +202,8 @@
       "credit": "M939 Truck by J-Toastie [CC-BY] via Poly Pizza",
       "fetched": "2026-09-03",
       "dest": "/Game/Models/TruckM939",
-      "keep_imported_materials": true,
+      "reparent_imported_materials": true,
+      "vis": {"nvg": 0.14, "th": [0.90, 0.90, 0.90]},
       "role": "military truck unit (for BUILDER-CHARACTERS wiring)"
     },
     {
@@ -200,7 +217,8 @@
       "credit": "Humvee by madtrollstudio [CC-BY] via Poly Pizza",
       "fetched": "2026-09-03",
       "dest": "/Game/Models/Humvee",
-      "keep_imported_materials": true,
+      "reparent_imported_materials": true,
+      "vis": {"nvg": 0.14, "th": [0.90, 0.90, 0.90]},
       "role": "light vehicle unit (for BUILDER-CHARACTERS wiring)"
     },
     {
@@ -213,7 +231,8 @@
       "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "fetched": "2026-09-03",
       "dest": "/Game/Models/Tank",
-      "keep_imported_materials": true,
+      "reparent_imported_materials": true,
+      "vis": {"nvg": 0.14, "th": [0.90, 0.90, 0.90]},
       "role": "light armor unit (for BUILDER-CHARACTERS wiring)"
     },
     {
@@ -226,7 +245,8 @@
       "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "fetched": "2026-09-03",
       "dest": "/Game/Models/Cannon",
-      "keep_imported_materials": true,
+      "reparent_imported_materials": true,
+      "vis": {"nvg": 0.27, "th": [0.086, 0.086, 0.086]},
       "role": "battery gun stand-in (for BUILDER-CHARACTERS wiring)"
     }
   ]
