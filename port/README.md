@@ -236,6 +236,34 @@ measured: an FFE with six bursts live (the P4 gate's wording) - run a
 mission with `-ShitfireBench`-style CSV capture when the by-hand mission
 happens.
 
+### Agent sessions: Unreal MCP (2026-10-28)
+
+UE 5.8 ships an experimental **Unreal MCP** plugin
+(`Engine/Plugins/Experimental/ModelContextProtocol`, off by default). It is
+enabled editor-only in `Shitfire.uproject` with two toolsets: `EditorToolset`
+(editor state, logs, actors, assets, blueprints, properties, viewport camera,
+PIE control) and `AutomationTestToolset` (discover and run the `SHITFIRE.*`
+suite through the same backend as the Session Frontend). `.mcp.json` at the
+repo root points Claude Code at `http://127.0.0.1:8000/mcp`; the server only
+exists while an editor is running with it started:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File port\mcp-editor.ps1          # editor + server
+powershell -ExecutionPolicy Bypass -File port\mcp-editor.ps1 -Headless # -nullrhi tool session
+```
+
+Verified 2026-10-28 headless: `initialize` 200 with a session id, protocol
+`2025-11-25`, three meta-tools (`list_toolsets`, `describe_toolset`,
+`call_tool`), and `list_toolsets` returning the editor, logs, actor, asset,
+blueprint and automation-test toolsets. Facts that bind: loopback only, no
+auth (never expose the port); editor-only (nothing in the Shipping parity
+gate); tools run serially on the game thread; no Python-exec or asset-import
+tool, so `Tools/*.py` stay the asset pipeline; the plugin's usage telemetry
+is on by default (`ModelContextProtocol.EnableAnalytics`) and the script
+turns it off. Project settings live in `EditorPerProjectUserSettings`
+(port, URL path, auto-start) - left at defaults, no auto-start, so headless
+automation runs never bind a port.
+
 ### Art asset pipeline (BUILDER-ASSETS, P3)
 
 Every downloaded art asset is pinned in `port/unreal/Tools/asset_manifest.json`

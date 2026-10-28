@@ -16,6 +16,10 @@ campaign, grading or tooling. `DOCTRINE.md` is the authority for CFF formats and
   P2 verdict and the adversarial standard: `port/ADVERSARY_SIGNOFF.md`.
 - Parallel agents each build into their own `port/build-<name>/` (gitignored). No shared
   build dir.
+- Agent editor sessions: `.mcp.json` (repo root) → Epic's Unreal MCP at
+  `http://127.0.0.1:8000/mcp`, alive only while `port/mcp-editor.ps1` has the editor up.
+  Editor state, logs, actors, assets and the `SHITFIRE.*` suite; no asset import (that
+  stays `port/unreal/Tools/*.py`). See `port/README.md` "Agent sessions".
 - The browser sim rules below still bind the port: parity with the oracle is the gate.
 
 ## Golden rules
